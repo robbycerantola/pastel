@@ -1,0 +1,15 @@
+[package]
+name = "pastel"
+description = "Simple graphics editor for Redox"
+repository = "https://github.com/robbycerantola/pastel"
+version = "0.0.2"
+keywords = ["orbital", "redox", "ui", "graphics"]
+authors = ["Robby <robbycerantola@gmail.com>"]
+
+
+[dependencies]
+orbclient = "0.3.4"
+orbtk = "0.2.19"
+orbimage = "0.1.15"
+image = "0.12.4"
+

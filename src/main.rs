@@ -17,7 +17,11 @@ use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, Rect,
 use orbtk::traits::{Border, Click, Enter, Place, Text};
 
 use std::rc::Rc;
-use std::cell::RefCell;
+//use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use orbtk::cell::{CloneCell, CheckSet};
+use std::sync::Arc;
+
 use std::process;
 use std::process::Command;
 
@@ -25,12 +29,38 @@ use std::path::Path;
 use std::env;
 
 use std::slice;
+
+
 /*
 enum Tools {
     pen,
     line,
 }
 */
+struct Tool {
+    name: CloneCell<String>,
+    size: Cell<u32>,
+    hardness: Cell<u32>,
+    selected: Cell<bool>,
+}
+
+impl Tool {
+    fn new() -> Arc<Self> {
+        Arc::new(Tool {
+            name: CloneCell::new(String::new()),
+            size: Cell::new(0),
+            hardness: Cell::new(0),
+            selected: Cell::new(false),
+        })
+    }
+    fn name<S: Into<String>>(&self, text: S) -> &Self {
+        self.name.set(text.into());
+        self
+    }
+
+}
+            
+
 struct MySize {
     x: u32,
     y: u32,
@@ -39,7 +69,7 @@ struct MySize {
 
 fn main() {
 
-    let mut size = MySize{x: 500, y:500};    
+    let mut size = MySize{x: 1024, y:500};    
     let mut x = 10;
     let mut y = 56;
 
@@ -67,10 +97,15 @@ fn main() {
     let mut canvas = load_image(&filename, &size);
 
 
-
+    let ttool = Tool::new();
+    //ttool.name.set("pen".to_owned());
+    ttool.name("pen");
+    println!("{}",ttool.name.get());
+    
     let tool = Label::new();
-    tool.position(0, 0).size(400, 16).text("pen");
-
+    //tool.position(0, 0).size(400, 16).text("pen");
+    tool.text("pen");
+    
     //let mytool = Tools::pen;
 
     //implement GUI
@@ -80,40 +115,81 @@ fn main() {
                                        "Pastel",
                                        &[orbclient::WindowFlag::Resizable]);
 
-
-    let red_label = Label::new();
-    red_label.text("Red: 0%").position(x, y).size(400, 16);
-    window.add(&red_label);
-
-    y += red_label.rect.get().height as i32 + 2;
+    // color swatch
+    let swatch = Label::new();
+    swatch.text("■").position(320,80).size(56,16);
+    //swatch.fg.set(orbtk::Color::rgb(r,g,b));
+    window.add(&swatch);
+    
+    
+    
+    //color picker
 
     let red_bar = ProgressBar::new();
+    let green_bar = ProgressBar::new();
+    let blue_bar = ProgressBar::new();
+
+
+    
+
+    let red_label = Label::new();
+    red_label.text("R: 0").position(x, y).size(48, 16);
+    red_label.fg.set(orbtk::Color::rgb(255,0,0));
+    window.add(&red_label);
+
+    //y += red_label.rect.get().height as i32 + 2;
+
+
+    if cfg!(feature = "colored"){red_bar.fg.set(orbtk::Color::rgb(255,0,0));}
+    
+    let swatch_clone_r = swatch.clone();
+    let green_bar_clone_r = green_bar.clone();
+    let blue_bar_clone_r = blue_bar.clone();
+    
     red_bar
-        .position(x, y)
-        .size(400, 16)
+        .position(x+48, y)
+        .size(256, 16)
         .on_click(move |red_bar: &ProgressBar, point: Point| {
                       let progress = point.x * 100 / red_bar.rect.get().width as i32;
-                      red_label.text.set(format!("Red: {}%", progress));
+                      red_label.text.set(format!("R: {}%", progress));
                       red_bar.value.set(progress);
+                      //refresh color swatch
+                      let r = (progress as f32 * 2.56) as u8;
+                      let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
+                      let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
+                      swatch_clone_r.fg.set(orbtk::Color::rgb(r,g,b));
+                      test();
                   });
     window.add(&red_bar);
 
     y += red_bar.rect.get().height as i32 + 2;
 
     let green_label = Label::new();
-    green_label.text("Green: 0%").position(x, y).size(400, 16);
+    green_label.text("G: 0").position(x, y).size(48, 16);
+    green_label.fg.set(orbtk::Color::rgb(0,255,0));
     window.add(&green_label);
 
-    y += green_label.rect.get().height as i32 + 2;
+    //y += green_label.rect.get().height as i32 + 2;
 
-    let green_bar = ProgressBar::new();
+    
+    if cfg!(feature = "colored"){green_bar.fg.set(orbtk::Color::rgb(0,255,0));}
+    
+    let swatch_clone_g = swatch.clone();
+    let red_bar_clone_g = red_bar.clone();
+    let blue_bar_clone_g = blue_bar.clone();
+    
     green_bar
-        .position(x, y)
-        .size(400, 16)
+        .position(x+48, y)
+        .size(256, 16)
         .on_click(move |green_bar: &ProgressBar, point: Point| {
                       let progress = point.x * 100 / green_bar.rect.get().width as i32;
-                      green_label.text.set(format!("Green: {}%", progress));
+                      green_label.text.set(format!("G: {}%", progress ));
                       green_bar.value.set(progress);
+                      //refresh color swatch
+                      let g = (progress as f32 * 2.56) as u8;
+                      let r = (red_bar_clone_g.value.get() as f32 * 2.56) as u8;
+                      let b = (blue_bar_clone_g.value.get() as f32 * 2.56) as u8;
+                      swatch_clone_g.fg.set(orbtk::Color::rgb(r,g,b));
                   });
     window.add(&green_bar);
 
@@ -121,24 +197,57 @@ fn main() {
 
 
     let blue_label = Label::new();
-    blue_label.text("Blue: 0%").position(x, y).size(400, 16);
+    blue_label.text("B: 0").position(x, y).size(48, 16);
+    blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&blue_label);
 
-    y += blue_label.rect.get().height as i32 + 2;
+    //y += blue_label.rect.get().height as i32 + 2;
 
-    let blue_bar = ProgressBar::new();
+    
+    if cfg!(feature = "colored") {blue_bar.fg.set(orbtk::Color::rgb(0,0,255));}
+    
+    let swatch_clone_b = swatch.clone();
+    let green_bar_clone_b = green_bar.clone();
+    let red_bar_clone_b = red_bar.clone();
+    
     blue_bar
-        .position(x, y)
-        .size(400, 16)
+        .position(x+48, y)
+        .size(256, 16)
         .on_click(move |blue_bar: &ProgressBar, point: Point| {
                       let progress = point.x * 100 / blue_bar.rect.get().width as i32;
-                      blue_label.text.set(format!("Blue: {}%", progress));
+                      blue_label.text.set(format!("B: {}%", progress));
                       blue_bar.value.set(progress);
+                      //refresh color swatch
+                      let b = (progress as f32 * 2.56) as u8;
+                      let r = (red_bar_clone_b.value.get() as f32 * 2.56) as u8;
+                      let g = (green_bar_clone_b.value.get() as f32 * 2.56) as u8;
+                      swatch_clone_b.fg.set(orbtk::Color::rgb(r,g,b));
+                      
                   });
     window.add(&blue_bar);
 
     y += blue_bar.rect.get().height as i32 + 10;
 
+    // tool size bar
+
+    let size_label = Label::new();
+    size_label.text("Size: 10").position(x+380, 56).size(64, 16);
+    //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
+    window.add(&size_label);
+
+    let size_bar = ProgressBar::new();
+    size_bar.value.set(10);
+    size_bar
+    .position(x+450, 56)
+        .size(256, 16)
+        .on_click(move |size_bar: &ProgressBar, point: Point| {
+                      let progress = point.x * 100 / size_bar.rect.get().width as i32;
+                      size_label.text.set(format!("Size: {}", progress));
+                      size_bar.value.set(progress);
+                      
+                      
+                  });
+    window.add(&size_bar);
 
     //clickable icon
     match Image::from_path("res/pastel100.png") {
@@ -146,8 +255,9 @@ fn main() {
             //let tool_clone = tool.clone();
             image.position(900, 10);
             image.on_click(move |_image: &Image, _point: Point| {
-                               println!("Clicked");
-                               //tool_clone.text.set("pen".to_owned());
+                               popup("Info",
+                                  "Pastel, simple image editor \n for Redox by Robby Cerantola");
+                               
                            });
             window.add(&image);
 
@@ -184,13 +294,32 @@ fn main() {
         }
     }
 
-    match Image::from_path("res/line.png") {
+    match Image::from_path("res/pencil2.png") {
         Ok(image) => {
             image.position(x, y);
             let tool_clone = tool.clone();
             image.on_click(move |_image: &Image, _point: Point| {
                                println!("Line clicked");
                                tool_clone.text.set("line".to_owned());
+                           });
+            window.add(&image);
+
+            x += image.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading tools panel");
+
+
+        }
+    }
+
+    match Image::from_path("res/brush.png") {
+        Ok(image) => {
+            image.position(x, y);
+            let tool_clone = tool.clone();
+            image.on_click(move |_image: &Image, _point: Point| {
+                               println!("Brush clicked");
+                               tool_clone.text.set("brush".to_owned());
                            });
             window.add(&image);
 
@@ -216,20 +345,15 @@ fn main() {
 
     {
         let action = Action::new("New");
-        //let offset_label_clone = offset_label.clone();
-
         action.on_click(move |_action: &Action, _point: Point| {
             
                             let output = Command::new("./target/release/pastel")
                                                 .arg("new.png")
-                                                .arg("200x200")
+                                                .arg("1024x500")
                                                 .spawn()
                                                 .expect("Command executed with failing error code");
                            
                             println!("New window opened.");
-
-
-
                         });
 
         menu.add(&action);
@@ -237,11 +361,8 @@ fn main() {
 
     {
         let action = Action::new("Open");
-        //let offset_label_clone = offset_label.clone();
+
         action.on_click(move |_action: &Action, _point: Point| {
-            //offset_label_clone.text.set("Open".to_owned());
-            //Open Popup
-            //let response = popup("Open","path:").unwrap();
             match dialog("Open", "path:") {
                 Some(response) => println!("Open {}", response),
                 None => println!("Cancelled"),
@@ -317,6 +438,15 @@ fn main() {
         tools.add(&action);
     }
 
+    {
+        let action = Action::new("Brush");
+        let tool_clone = tool.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            tool_clone.text.set("brush".to_owned());
+                        });
+        tools.add(&action);
+    }
+
 
     //Menu image
     let menuimage = Menu::new("Image");
@@ -324,10 +454,10 @@ fn main() {
     
     //Menu entries for image
     {
-            let action = Action::new("Rotate 180");
+            let action = Action::new("Clear");
             let canvas_clone = canvas.clone();
             action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.rotate180();
+                            canvas_clone.clear();
                         });
         menuimage.add(&action);
     }
@@ -343,7 +473,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel, simple image editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel, simple bitmap editor \n for Redox OS ");
                         });
         help.add(&action);
     }
@@ -359,37 +489,42 @@ fn main() {
 
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
 
-    let red_bar_clone = red_bar.clone();
-    let green_bar_clone = green_bar.clone();
-    let blue_bar_clone = blue_bar.clone();
-    let tool_clone = tool.clone();
-
     canvas
         .position(0, 250)
         .on_click(move |canvas: &Image, point: Point| {
+            let red_bar_clone = red_bar.clone();
+            let green_bar_clone = green_bar.clone();
+            let blue_bar_clone = blue_bar.clone();
             let click = click_pos.clone();
+            let tool = tool.clone();
+            let size = size_bar.clone().value.get();
             {
 
                 let mut prev_opt = click.borrow_mut();
 
                 if let Some(prev_position) = *prev_opt {
                     let mut image = canvas.image.borrow_mut();
-                    let r = (red_bar_clone.value.get() as f32 * 2.55) as u8;
-                    let g = (green_bar_clone.value.get() as f32 * 2.55) as u8;
-                    let b = (blue_bar_clone.value.get() as f32 * 2.55) as u8;
-                    //println!("r{} g{} b{}",r,g,b);
-                    if tool_clone.text.get() == "line" {
-
+                    let r = (red_bar_clone.value.get() as f32 * 2.56) as u8;
+                    let g = (green_bar_clone.value.get() as f32 * 2.56) as u8;
+                    let b = (blue_bar_clone.value.get() as f32 * 2.56) as u8;
+                    
+                    
+                    if tool.text.get() == "line" {
                         image.line(prev_position.x,
                                    prev_position.y,
                                    point.x,
                                    point.y,
                                    orbtk::Color::rgb(r, g, b));
                     }
-                    if tool_clone.text.get() == "pen" {
+                    if tool.text.get() == "pen" {
 
                         image.pixel(point.x, point.y, orbtk::Color::rgb(r, g, b));
                     }
+                    if tool.text.get() == "brush"{
+                        image.circle(point.x, point.y,-size,orbtk::Color::rgb(r, g, b));
+                    }
+                    
+                    
                     *prev_opt = Some(point);
                 } else {
                     
@@ -482,7 +617,7 @@ fn dialog(title: &str, text: &str) -> Option<String> {
 
     let cancel_button = Button::new();
     cancel_button
-        .position(x + 40, y)
+        .position(x + 64, y)
         .size(48 + 12, text_box.rect.get().height)
         .text("Cancel")
         .text_offset(6, 6);
@@ -543,14 +678,17 @@ fn popup(title: &str, text: &str) {
     new_window.exec();
 }
 
-
+fn test() {
+    println!("Test");
+}
+    
 
 
 // come implementare nuove funzioni a crates già esistenti (non modificabili direttamente)
 
 trait Improvements {
     fn save(&self, filename: &String);
-    fn rotate180(&self);
+    fn clear(&self);
 }
 
 impl Improvements for orbtk::Image {
@@ -566,7 +704,7 @@ impl Improvements for orbtk::Image {
         };
 
         //To save corectly the image with image::save_buffer
-        // we have to flip r with b but dont know why!!
+        // we have to switch r with b but dont know why!!
 
         let mut new_image_buffer = Vec::new();
 
@@ -592,9 +730,11 @@ impl Improvements for orbtk::Image {
                 .unwrap();
         println!("Saved");
     }
-    fn rotate180(&self){
-        println!("Rotate180 not implemented yet");
-       //Self::from_image(image::imageops::rotate180(&self.image.into_raw()));
+    fn clear(&self){
+       let mut image = self.image.borrow_mut();
+       //image.clear();
+       image.set(Color::rgb(255, 255, 255));
+       
     }
 
 }

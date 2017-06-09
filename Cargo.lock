@@ -5,7 +5,7 @@ dependencies = [
  "image 0.12.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbclient 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbimage 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "orbtk 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "orbtk 0.2.19 (git+https://github.com/robbycerantola/orbtk.git)",
 ]
 
 [[package]]
@@ -216,7 +216,7 @@ dependencies = [
 [[package]]
 name = "orbtk"
 version = "0.2.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/robbycerantola/orbtk.git#8a0bb7e77039661f3859c9aa6ef600cfb2913392"
 dependencies = [
  "orbclient 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbfont 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -345,7 +345,7 @@ dependencies = [
 "checksum orbclient 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "158157c18e7056ee050afa8914286b2fafa5ac1633679590eb12313fa2ac6dc5"
 "checksum orbfont 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "da4dfbc851e5c24c3cf1e16ec5222f868f3362d2b7493d0b53051fe2669267a2"
 "checksum orbimage 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "c3b031607ef7a3c562949dfb595b1ea2b2d697b14544af407242a52dce811a6f"
-"checksum orbtk 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)" = "2bca50ac6874107a922dd26dc79889b963afce69075940463ce026b5281bf9f1"
+"checksum orbtk 0.2.19 (git+https://github.com/robbycerantola/orbtk.git)" = "<none>"
 "checksum png 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "3cb773e9a557edb568ce9935cf783e3cdcabe06a9449d41b3e5506d88e582c82"
 "checksum rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "022e0636ec2519ddae48154b028864bdce4eaf7d35226ab8e65c611be97b189d"
 "checksum rayon 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a77c51c07654ddd93f6cb543c7a849863b03abc7e82591afda6dc8ad4ac3ac4a"

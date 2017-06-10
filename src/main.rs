@@ -14,12 +14,12 @@ extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, Rect, Separator,
             TextBox, Window, Renderer};
-use orbtk::traits::{Border, Click, Enter, Place, Text};
+use orbtk::traits::{Click, Enter, Place, Text};  //Border
 
 use std::rc::Rc;
-//use std::cell::RefCell;
+
 use std::cell::{Cell, RefCell};
-use orbtk::cell::{CloneCell, CheckSet};
+use orbtk::cell::CloneCell;
 use std::sync::Arc;
 
 use std::process;
@@ -37,9 +37,10 @@ enum Tools {
     line,
 }
 */
+#[allow(dead_code)]
 struct Settings {
-    name: CloneCell<String>,
-    size: Cell<u32>,
+    description: CloneCell<String>,
+    size: Cell<i32>,
     hardness: Cell<u32>,
     selected: Cell<bool>,
 }
@@ -47,30 +48,26 @@ struct Settings {
 impl Settings {
     fn new() -> Arc<Self> {
         Arc::new(Settings {
-            name: CloneCell::new(String::new()),
+            description: CloneCell::new(String::new()),
             size: Cell::new(0),
             hardness: Cell::new(0),
             selected: Cell::new(false),
         })
     }
-    fn name<S: Into<String>>(&self, text: S) -> &Self {
-        self.name.set(text.into());
+    fn description<S: Into<String>>(&self, text: S) -> &Self {
+        self.description.set(text.into());
         self
     }
-    fn size(&self, size: u32) -> &Self {
+    fn size(&self, size: i32) -> &Self {
         self.size.set(size);
         self
     }
 }
-            
-
-
 
 struct MySize {
     x: u32,
     y: u32,
 }
-
 
 fn main() {
 
@@ -78,7 +75,7 @@ fn main() {
     let mut x = 10;
     let mut y = 56;
 
-    let mut filename;
+    let filename;
 
     //deal with comand line arguments
     let args: Vec<String> = env::args().collect();
@@ -98,36 +95,35 @@ fn main() {
        size.y = (*k[1]).parse().unwrap() ;
     }
 
-    //load existing file or create new with filename size
-    let mut canvas = load_image(&filename, &size);
+    //load canvas from existing file or create new one with filename size
+    let canvas = load_image(&filename, &size);
 
     //use Hash to save tools properties
     let mut tools = HashMap::new();
 
-    //create tools and save properties
+    //create tools and save initial properties
     
     let pen_tool = Settings::new();
-    pen_tool.name("pen").size(10);
+    pen_tool.description("pen").size(1);
     tools.insert("pen",pen_tool);
+    
     let line_tool = Settings::new();
-    line_tool.name("line").size(20);
+    line_tool.description("line").size(1);
     tools.insert("line",line_tool);
+    
     let brush_tool = Settings::new();
-    brush_tool.name("brush").size(30);
+    brush_tool.description("brush").size(20);
     tools.insert("brush",brush_tool);
     
     
     
-    println!("{}",tools.get(&"pen").unwrap().name.get());
-    println!("{}",tools.get(&"pen").unwrap().size.get());
+    //println!("{}",tools.get(&"pen").unwrap().name.get());
+    //println!("{}",tools.get(&"pen").unwrap().size.get());
 
 
-    //temporary use Label for storing curent active tool
+    //temporary use invisible Label for storing curent active tool
     let tool = Label::new();
-    //tool.position(0, 0).size(400, 16).text("pen");
     tool.text("pen");
-    
-    //let mytool = Tools::pen;
 
     //implement GUI
 
@@ -152,7 +148,9 @@ fn main() {
     red_label.fg.set(orbtk::Color::rgb(255,0,0));
     window.add(&red_label);
 
-    if cfg!(feature = "colored"){red_bar.fg.set(orbtk::Color::rgb(255,0,0));}
+    // use forked version of orbtk to get ProgressBar rendered in colors setting fg
+    // compile with cargo flag --features colored
+    if cfg!(feature = "colored"){red_bar.fg.set(orbtk::Color::rgb(255,0,0));}  
     
     let swatch_clone_r = swatch.clone();
     let green_bar_clone_r = green_bar.clone();
@@ -236,26 +234,32 @@ fn main() {
 
     // tool size bar
     let size_label = Label::new();
-    size_label.text("Size: 10").position(x+380, 56).size(64, 16);
+    size_label.text("Size: 1").position(x+380, 56).size(64, 16);
     //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&size_label);
 
     let size_bar = ProgressBar::new();
-    size_bar.value.set(10);
+    let tool_clone = tool.clone();
+    let tools_clone=tools.clone();
+    let size_label_clone = size_label.clone();
+    size_bar.value.set(1);
     size_bar
     .position(x+450, 56)
         .size(256, 16)
         .on_click(move |size_bar: &ProgressBar, point: Point| {
                       let progress = point.x * 100 / size_bar.rect.get().width as i32;
-                      size_label.text.set(format!("Size: {}", progress));
+                      size_label_clone.text.set(format!("Size: {}", progress));
                       size_bar.value.set(progress);
+                      let cur_tool = tool_clone.text.get();
+                      let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
+                      tools_clone[a].size(progress);
+                      
                   });
     window.add(&size_bar);
 
     //clickable icon
     match Image::from_path("res/pastel100.png") {
         Ok(image) => {
-            //let tool_clone = tool.clone();
             image.position(900, 10);
             image.on_click(move |_image: &Image, _point: Point| {
                                popup("Ciao",
@@ -276,16 +280,23 @@ fn main() {
         Ok(image) => {
             image.position(x, y);
             let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            let tools_clone = tools.clone();
+            let size_label_clone = size_label.clone();
             image.on_click(move |_image: &Image, _point: Point| {
                                println!("Pencil clicked");
                                tool_clone.text.set("pen".to_owned());
+                               let v=tools_clone.get(&"pen").unwrap().size.get();
+                               
+                               size_bar_clone.value.set(v);
+                               size_label_clone.text(format!("Size: {}",v));
                            });
             window.add(&image);
 
             x += image.rect.get().width as i32 + 2;
         }
         Err(err) => {
-            println!("Error loading tools panel");
+            println!("Error loading tools panel {}",err);
         }
     }
 
@@ -293,16 +304,24 @@ fn main() {
         Ok(image) => {
             image.position(x, y);
             let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            let size_label_clone = size_label.clone();
+            let tools_clone = tools.clone();
             image.on_click(move |_image: &Image, _point: Point| {
+                               //set curent tool
                                println!("Line clicked");
                                tool_clone.text.set("line".to_owned());
+                               //get previous settings
+                               let v=tools_clone.get(&"line").unwrap().size.get();
+                               size_bar_clone.value.set(v);
+                               size_label_clone.text(format!("Size: {}",v));
                            });
             window.add(&image);
 
             x += image.rect.get().width as i32 + 2;
         }
         Err(err) => {
-            println!("Error loading tools panel");
+            println!("Error loading tools panel {}",err);
         }
     }
 
@@ -310,20 +329,26 @@ fn main() {
         Ok(image) => {
             image.position(x, y);
             let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            let size_label_clone = size_label.clone();
+            let tools_clone = tools.clone();
             image.on_click(move |_image: &Image, _point: Point| {
                                println!("Brush clicked");
                                tool_clone.text.set("brush".to_owned());
+                               let v=tools_clone.get(&"brush").unwrap().size.get();
+                               size_bar_clone.value.set(v);
+                               size_label_clone.text(format!("Size: {}",v));
                            });
             window.add(&image);
 
-            x += image.rect.get().width as i32 + 2;
+            //x += image.rect.get().width as i32 + 2;
         }
         Err(err) => {
-            println!("Error loading tools panel");
+            println!("Error loading tools panel {}",err);
         }
     }
 
-    x = 10;
+    //x = 10;
 
     //Menu file
 
@@ -331,12 +356,12 @@ fn main() {
     menu.position(10, 0).size(32, 16);
 
     //menu entries for file
-
+            //TODO ask for new dimensions
     {
         let action = Action::new("New");
         action.on_click(move |_action: &Action, _point: Point| {
             
-                            let output = Command::new("./target/release/pastel")
+                           Command::new("./target/release/pastel")
                                                 .arg("new.png")
                                                 .arg("1024x500")
                                                 .spawn()
@@ -352,7 +377,13 @@ fn main() {
         let action = Action::new("Open");
         action.on_click(move |_action: &Action, _point: Point| {
             match dialog("Open", "path:") {
-                Some(response) => println!("Open {}", response),
+                Some(response) => {
+                                    println!("Open {} ", response);
+                                    Command::new("./target/release/pastel")
+                                                .arg(response)
+                                                .spawn()
+                                                .expect("Command executed with failing error code");
+                                    },
                 None => println!("Cancelled"),
             }
         });
@@ -469,22 +500,19 @@ fn main() {
     canvas
         .position(0, 250)
         .on_click(move |canvas: &Image, point: Point| {
-            let red_bar_clone = red_bar.clone();
-            let green_bar_clone = green_bar.clone();
-            let blue_bar_clone = blue_bar.clone();
+
             let click = click_pos.clone();
-            let tool = tool.clone();
             let size = size_bar.clone().value.get();
             {
                 let mut prev_opt = click.borrow_mut();
 
                 if let Some(prev_position) = *prev_opt {
                     let mut image = canvas.image.borrow_mut();
-                    let r = (red_bar_clone.value.get() as f32 * 2.56) as u8;
-                    let g = (green_bar_clone.value.get() as f32 * 2.56) as u8;
-                    let b = (blue_bar_clone.value.get() as f32 * 2.56) as u8;
+                    let r = (red_bar.clone().value.get() as f32 * 2.56) as u8;
+                    let g = (green_bar.clone().value.get() as f32 * 2.56) as u8;
+                    let b = (blue_bar.clone().value.get() as f32 * 2.56) as u8;
                     
-                    match tool.text.get().as_ref() {
+                    match tool.clone().text.get().as_ref() {
                         "line"  => {
                                     image.line(prev_position.x,
                                                 prev_position.y,
@@ -497,7 +525,7 @@ fn main() {
                               _ => println!("No match!"),          
                     }
 
-                    *prev_opt = Some(point);
+                    *prev_opt = Some(point);     //FIXME clear last position after un-click
                 } else {
                     *prev_opt = Some(point);
                 }

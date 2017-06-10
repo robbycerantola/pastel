@@ -2,7 +2,7 @@
 name = "pastel"
 description = "Simple paint canvas"
 repository = "https://github.com/pastel.git"
-version = "0.0.2"
+version = "0.0.3"
 keywords = ["orbital", "redox", "ui", "graphics"]
 authors = ["Robby <robbycerantola@gmail.com>"]
 

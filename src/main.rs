@@ -29,7 +29,7 @@ use std::path::Path;
 use std::env;
 
 use std::slice;
-
+use std::collections::HashMap;
 
 /*
 enum Tools {
@@ -37,16 +37,16 @@ enum Tools {
     line,
 }
 */
-struct Tool {
+struct Settings {
     name: CloneCell<String>,
     size: Cell<u32>,
     hardness: Cell<u32>,
     selected: Cell<bool>,
 }
 
-impl Tool {
+impl Settings {
     fn new() -> Arc<Self> {
-        Arc::new(Tool {
+        Arc::new(Settings {
             name: CloneCell::new(String::new()),
             size: Cell::new(0),
             hardness: Cell::new(0),
@@ -57,9 +57,14 @@ impl Tool {
         self.name.set(text.into());
         self
     }
-
+    fn size(&self, size: u32) -> &Self {
+        self.size.set(size);
+        self
+    }
 }
             
+
+
 
 struct MySize {
     x: u32,
@@ -96,12 +101,28 @@ fn main() {
     //load existing file or create new with filename size
     let mut canvas = load_image(&filename, &size);
 
+    //use Hash to save tools properties
+    let mut tools = HashMap::new();
 
-    let ttool = Tool::new();
-    //ttool.name.set("pen".to_owned());
-    ttool.name("pen");
-    println!("{}",ttool.name.get());
+    //create tools and save properties
     
+    let pen_tool = Settings::new();
+    pen_tool.name("pen").size(10);
+    tools.insert("pen",pen_tool);
+    let line_tool = Settings::new();
+    line_tool.name("line").size(20);
+    tools.insert("line",line_tool);
+    let brush_tool = Settings::new();
+    brush_tool.name("brush").size(30);
+    tools.insert("brush",brush_tool);
+    
+    
+    
+    println!("{}",tools.get(&"pen").unwrap().name.get());
+    println!("{}",tools.get(&"pen").unwrap().size.get());
+
+
+    //temporary use Label for storing curent active tool
     let tool = Label::new();
     //tool.position(0, 0).size(400, 16).text("pen");
     tool.text("pen");
@@ -121,24 +142,15 @@ fn main() {
     //swatch.fg.set(orbtk::Color::rgb(r,g,b));
     window.add(&swatch);
     
-    
-    
     //color picker
-
     let red_bar = ProgressBar::new();
     let green_bar = ProgressBar::new();
     let blue_bar = ProgressBar::new();
-
-
-    
 
     let red_label = Label::new();
     red_label.text("R: 0").position(x, y).size(48, 16);
     red_label.fg.set(orbtk::Color::rgb(255,0,0));
     window.add(&red_label);
-
-    //y += red_label.rect.get().height as i32 + 2;
-
 
     if cfg!(feature = "colored"){red_bar.fg.set(orbtk::Color::rgb(255,0,0));}
     
@@ -158,7 +170,7 @@ fn main() {
                       let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
                       let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
                       swatch_clone_r.fg.set(orbtk::Color::rgb(r,g,b));
-                      test();
+                      
                   });
     window.add(&red_bar);
 
@@ -168,9 +180,6 @@ fn main() {
     green_label.text("G: 0").position(x, y).size(48, 16);
     green_label.fg.set(orbtk::Color::rgb(0,255,0));
     window.add(&green_label);
-
-    //y += green_label.rect.get().height as i32 + 2;
-
     
     if cfg!(feature = "colored"){green_bar.fg.set(orbtk::Color::rgb(0,255,0));}
     
@@ -200,9 +209,6 @@ fn main() {
     blue_label.text("B: 0").position(x, y).size(48, 16);
     blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&blue_label);
-
-    //y += blue_label.rect.get().height as i32 + 2;
-
     
     if cfg!(feature = "colored") {blue_bar.fg.set(orbtk::Color::rgb(0,0,255));}
     
@@ -229,7 +235,6 @@ fn main() {
     y += blue_bar.rect.get().height as i32 + 10;
 
     // tool size bar
-
     let size_label = Label::new();
     size_label.text("Size: 10").position(x+380, 56).size(64, 16);
     //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
@@ -244,8 +249,6 @@ fn main() {
                       let progress = point.x * 100 / size_bar.rect.get().width as i32;
                       size_label.text.set(format!("Size: {}", progress));
                       size_bar.value.set(progress);
-                      
-                      
                   });
     window.add(&size_bar);
 
@@ -255,25 +258,19 @@ fn main() {
             //let tool_clone = tool.clone();
             image.position(900, 10);
             image.on_click(move |_image: &Image, _point: Point| {
-                               popup("Info",
-                                  "Pastel, simple image editor \n for Redox by Robby Cerantola");
-                               
+                               popup("Ciao",
+                                  "Pastel is work in progress....");
                            });
             window.add(&image);
-
-            //y += image.rect.get().height as i32 + 10;
         }
         Err(err) => {
             let label = Label::new();
             label.position(x, y).size(400, 16).text(err);
             window.add(&label);
-
-            //y += label.rect.get().height as i32 + 10;
         }
     }
 
     // tools panel
-
     let y = 25;
     match Image::from_path("res/pencil1.png") {
         Ok(image) => {
@@ -289,8 +286,6 @@ fn main() {
         }
         Err(err) => {
             println!("Error loading tools panel");
-
-
         }
     }
 
@@ -308,8 +303,6 @@ fn main() {
         }
         Err(err) => {
             println!("Error loading tools panel");
-
-
         }
     }
 
@@ -327,14 +320,10 @@ fn main() {
         }
         Err(err) => {
             println!("Error loading tools panel");
-
-
         }
     }
 
     x = 10;
-
-
 
     //Menu file
 
@@ -361,14 +350,11 @@ fn main() {
 
     {
         let action = Action::new("Open");
-
         action.on_click(move |_action: &Action, _point: Point| {
             match dialog("Open", "path:") {
                 Some(response) => println!("Open {}", response),
                 None => println!("Cancelled"),
             }
-
-
         });
         menu.add(&action);
     }
@@ -377,10 +363,7 @@ fn main() {
         let action = Action::new("Save");
         let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            
                             canvas_clone.save(&filename);
-                            
-                            
                         });
         menu.add(&action);
     }
@@ -405,7 +388,6 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                             println!("Bye bye...");
                             process::exit(0x0f00);
-
                         });
         menu.add(&action);
     }
@@ -427,13 +409,10 @@ fn main() {
 
     {
         let action = Action::new("Line");
-
         let tool_clone = tool.clone();
         action.on_click(move |_action: &Action, _point: Point| {
 
                             tool_clone.text.set("line".to_owned());
-
-
                         });
         tools.add(&action);
     }
@@ -446,7 +425,6 @@ fn main() {
                         });
         tools.add(&action);
     }
-
 
     //Menu image
     let menuimage = Menu::new("Image");
@@ -478,14 +456,13 @@ fn main() {
         help.add(&action);
     }
 
-
-
     // add menues
     window.add(&menu);
     window.add(&tools);
     window.add(&menuimage);
     window.add(&help);
 
+    // paint on canvas
 
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
 
@@ -499,7 +476,6 @@ fn main() {
             let tool = tool.clone();
             let size = size_bar.clone().value.get();
             {
-
                 let mut prev_opt = click.borrow_mut();
 
                 if let Some(prev_position) = *prev_opt {
@@ -507,7 +483,6 @@ fn main() {
                     let r = (red_bar_clone.value.get() as f32 * 2.56) as u8;
                     let g = (green_bar_clone.value.get() as f32 * 2.56) as u8;
                     let b = (blue_bar_clone.value.get() as f32 * 2.56) as u8;
-                    
                     
                     if tool.text.get() == "line" {
                         image.line(prev_position.x,
@@ -517,31 +492,19 @@ fn main() {
                                    orbtk::Color::rgb(r, g, b));
                     }
                     if tool.text.get() == "pen" {
-
                         image.pixel(point.x, point.y, orbtk::Color::rgb(r, g, b));
                     }
                     if tool.text.get() == "brush"{
                         image.circle(point.x, point.y,-size,orbtk::Color::rgb(r, g, b));
                     }
-                    
-                    
                     *prev_opt = Some(point);
                 } else {
-                    
                     *prev_opt = Some(point);
-                    
                 }
-
-
-
             }
         });
-
-
-
     window.add(&canvas);
     window.exec();
-
 }
 
 //Load an image from path if exists, other way create new empty canvas
@@ -556,11 +519,9 @@ fn load_image(path: &str, size: &MySize) -> std::sync::Arc<orbtk::Image> {
             println!("Failed: {} \n Creating new one ", err);
             let image = Image::from_color(size.x, size.y, Color::rgb(255, 255, 255));
             image
-
         }
     }
 }
-
 
 //dialog window
 fn dialog(title: &str, text: &str) -> Option<String> {
@@ -589,8 +550,6 @@ fn dialog(title: &str, text: &str) -> Option<String> {
             unsafe {
                 (&mut *new_window_clone).close();
             }
-
-
         });
     }
     new_window.add(&text_box);
@@ -598,7 +557,6 @@ fn dialog(title: &str, text: &str) -> Option<String> {
     y += text_box.rect.get().height as i32 + 8;
 
     //OK button
-
     let ok_button = Button::new();
     ok_button
         .position(x, y)
@@ -614,7 +572,6 @@ fn dialog(title: &str, text: &str) -> Option<String> {
     new_window.add(&ok_button);
 
     //Cancell button
-
     let cancel_button = Button::new();
     cancel_button
         .position(x + 64, y)
@@ -632,8 +589,6 @@ fn dialog(title: &str, text: &str) -> Option<String> {
                         });
     }
     new_window.add(&cancel_button);
-
-
     new_window.exec();
 
     match text_box.text.get().len() {
@@ -655,15 +610,12 @@ fn popup(title: &str, text: &str) {
     y += label.rect.get().height as i32 + 12;
 
     //Close button
-
     let close_button = Button::new();
     close_button
         .position(x + 80, y)
         .size(48 + 12, 24)
         .text("Close")
         .text_offset(6, 6);
-
-
     {
         let button = close_button.clone();
         let new_window_clone = &mut new_window as *mut Window;
@@ -672,17 +624,9 @@ fn popup(title: &str, text: &str) {
                         });
     }
 
-
     new_window.add(&close_button);
-
     new_window.exec();
 }
-
-fn test() {
-    println!("Test");
-}
-    
-
 
 // come implementare nuove funzioni a crates già esistenti (non modificabili direttamente)
 

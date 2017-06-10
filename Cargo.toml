@@ -4,7 +4,7 @@ description = "Simple paint canvas"
 repository = "https://github.com/pastel.git"
 version = "0.0.2"
 keywords = ["orbital", "redox", "ui", "graphics"]
-authors = ["Robby <robby@gmail.com>"]
+authors = ["Robby <robbycerantola@gmail.com>"]
 
 
 [dependencies]
@@ -12,6 +12,7 @@ orbclient = "0.3.4"
 orbtk = { git = "https://github.com/robbycerantola/orbtk.git"}
 orbimage = "0.1.15"
 image = "0.12.4"
+#num-rational = "0.1.36"
 
 [features]
 colored = []

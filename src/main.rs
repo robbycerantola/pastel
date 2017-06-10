@@ -484,19 +484,19 @@ fn main() {
                     let g = (green_bar_clone.value.get() as f32 * 2.56) as u8;
                     let b = (blue_bar_clone.value.get() as f32 * 2.56) as u8;
                     
-                    if tool.text.get() == "line" {
-                        image.line(prev_position.x,
-                                   prev_position.y,
-                                   point.x,
-                                   point.y,
-                                   orbtk::Color::rgb(r, g, b));
+                    match tool.text.get().as_ref() {
+                        "line"  => {
+                                    image.line(prev_position.x,
+                                                prev_position.y,
+                                                point.x,
+                                                point.y,
+                                                orbtk::Color::rgb(r, g, b));
+                                   },
+                         "pen"  => image.pixel(point.x, point.y, orbtk::Color::rgb(r, g, b)),
+                         "brush"=> image.circle(point.x, point.y,-size,orbtk::Color::rgb(r, g, b)),
+                              _ => println!("No match!"),          
                     }
-                    if tool.text.get() == "pen" {
-                        image.pixel(point.x, point.y, orbtk::Color::rgb(r, g, b));
-                    }
-                    if tool.text.get() == "brush"{
-                        image.circle(point.x, point.y,-size,orbtk::Color::rgb(r, g, b));
-                    }
+
                     *prev_opt = Some(point);
                 } else {
                     *prev_opt = Some(point);

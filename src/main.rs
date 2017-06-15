@@ -1,33 +1,22 @@
 /*Pastel by Robby 21-05-2017
 simple image editor in Rust for Redox
 */
-
-
-
 extern crate orbtk;
-
 extern crate orbimage;
-
 extern crate image;
-
 extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, Rect, Separator,
             TextBox, Window, Renderer};
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
-
 use std::rc::Rc;
-
 use std::cell::{Cell, RefCell};
 use orbtk::cell::CloneCell;
 use std::sync::Arc;
-
 use std::process;
 use std::process::Command;
-
 use std::path::Path;
 use std::env;
-
 use std::slice;
 use std::collections::HashMap;
 
@@ -37,11 +26,38 @@ enum Tools {
     line,
 }
 */
+
+//implements structures to create new tools and store properties 
+#[allow(dead_code)]
+struct Property{
+    name: CloneCell<String>,
+    value: Cell<i32>,
+}
+
+impl Property {
+        fn new(name: &str, value: i32) -> Arc<Self> {
+            Arc::new(Property {
+            name: CloneCell::new(name.to_owned()),
+            value: Cell::new(value),
+            })
+            
+            
+    }
+    fn name<S: Into<String>>(&self, text: S) -> &Self {
+        self.name.set(text.into());
+        self
+    }
+    fn value(&self, value: i32) -> &Self {
+        self.value.set(value);
+        self
+    }
+}
+
 #[allow(dead_code)]
 struct Settings {
-    description: CloneCell<String>,
-    size: Cell<i32>,
-    hardness: Cell<u32>,
+    description: CloneCell<String>,     //tool's long description to be used in help popup
+    size: Cell<i32>,                    
+    //property: Vec<Cell<&Property>>,
     selected: Cell<bool>,
 }
 
@@ -50,8 +66,9 @@ impl Settings {
         Arc::new(Settings {
             description: CloneCell::new(String::new()),
             size: Cell::new(0),
-            hardness: Cell::new(0),
+            //property: Cell::new(Property::new("lucentezza")),
             selected: Cell::new(false),
+            
         })
     }
     fn description<S: Into<String>>(&self, text: S) -> &Self {
@@ -101,8 +118,8 @@ fn main() {
     //use Hash to save tools properties
     let mut tools = HashMap::new();
 
-    //create tools and save initial properties
-    
+    //create tools and save initial size property
+
     let pen_tool = Settings::new();
     pen_tool.description("pen").size(1);
     tools.insert("pen",pen_tool);
@@ -115,6 +132,9 @@ fn main() {
     brush_tool.description("brush").size(20);
     tools.insert("brush",brush_tool);
     
+    //TODO case for tools with many properties
+    //create new tool with some properties and initial values
+    //tools.insert("pen2",vec![Property::new("Size",1),Property::new("Transparency",0)]);
     
     
     //println!("{}",tools.get(&"pen").unwrap().name.get());
@@ -232,6 +252,9 @@ fn main() {
 
     y += blue_bar.rect.get().height as i32 + 10;
 
+
+
+    
     // tool size bar
     let size_label = Label::new();
     size_label.text("Size: 1").position(x+380, 56).size(64, 16);
@@ -256,6 +279,9 @@ fn main() {
                       
                   });
     window.add(&size_bar);
+    
+
+
 
     //clickable icon
     match Image::from_path("res/pastel100.png") {

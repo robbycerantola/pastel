@@ -6,7 +6,7 @@ extern crate orbimage;
 extern crate image;
 extern crate orbclient;
 
-use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, Rect, Separator,
+use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, ControlKnob, Rect, Separator,
             TextBox, Window, Renderer};
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
 use std::rc::Rc;
@@ -19,6 +19,7 @@ use std::path::Path;
 use std::env;
 use std::slice;
 use std::collections::HashMap;
+
 
 /*
 enum Tools {
@@ -43,10 +44,12 @@ impl Property {
             
             
     }
+    #[allow(dead_code)]
     fn name<S: Into<String>>(&self, text: S) -> &Self {
         self.name.set(text.into());
         self
     }
+    #[allow(dead_code)]
     fn value(&self, value: i32) -> &Self {
         self.value.set(value);
         self
@@ -132,10 +135,17 @@ fn main() {
     brush_tool.description("brush").size(20);
     tools.insert("brush",brush_tool);
     
+    let fill_tool = Settings::new();
+    fill_tool.description("fill").size(0);
+    tools.insert("fill",fill_tool);
+    
     //TODO case for tools with many properties
     //create new tool with some properties and initial values
-    //tools.insert("pen2",vec![Property::new("Size",1),Property::new("Transparency",0)]);
-    
+    let mut ntools = HashMap::new();
+    ntools.insert("pen",vec![Property::new("Size",1),Property::new("Transparency",0)]);
+    ntools.insert("line",vec![]); //no properties
+    ntools.insert("brush",vec![Property::new("size",4)]);
+    ntools.insert("fill",vec![]);
     
     //println!("{}",tools.get(&"pen").unwrap().name.get());
     //println!("{}",tools.get(&"pen").unwrap().size.get());
@@ -150,7 +160,7 @@ fn main() {
     //resizable main window
     let mut window = Window::new_flags(Rect::new(100, 100, 1024, 768),
                                        "Pastel",
-                                       &[orbclient::WindowFlag::Resizable]);
+                                       &[orbclient::WindowFlag::Resizable ]);
 
     // color swatch
     let swatch = Label::new();
@@ -258,16 +268,19 @@ fn main() {
     // tool size bar
     let size_label = Label::new();
     size_label.text("Size: 1").position(x+380, 56).size(64, 16);
+    size_label.visible.set(false);
     //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&size_label);
 
     let size_bar = ProgressBar::new();
+    
     let tool_clone = tool.clone();
     let tools_clone=tools.clone();
     let size_label_clone = size_label.clone();
     size_bar.value.set(1);
+    size_bar.visible.set(false);
     size_bar
-    .position(x+450, 56)
+        .position(x+450, 56)
         .size(256, 16)
         .on_click(move |size_bar: &ProgressBar, point: Point| {
                       let progress = point.x * 100 / size_bar.rect.get().width as i32;
@@ -279,9 +292,34 @@ fn main() {
                       
                   });
     window.add(&size_bar);
+
+/*
+    // tool Volume nob
+    let volume_label = Label::new();
+    volume_label.text("Volume: 1").position(x+380, 90).size(128, 16);
+    //size_label.fg.set(orbtk::Color::rgb(0,0,255));
+    window.add(&volume_label);
     
-
-
+    let volume = ControlKnob::new(); //try widget control_knob
+    let tool_clone = tool.clone();
+    let tools_clone=tools.clone();
+    let volume_label_clone = volume_label.clone();
+    
+    volume.border.set(true);
+    volume.position(x+500, 120)
+        .size(40, 40)   //size.x must be equal to size.y so the circle is exactly inside the rect 
+        .on_click(move |volume: &ControlKnob, point: Point| {
+                      let progress = Point{ x: point.x ,
+                                            y:point.y};
+                      volume_label_clone.text.set(format!("Volume: {} {}", progress.x , progress.y));
+                      volume.value.set(progress);
+                      //let cur_tool = tool_clone.text.get();
+                      //let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
+                      //tools_clone[a].size(progress);
+                      
+                  });
+    window.add(&volume);
+*/
 
     //clickable icon
     match Image::from_path("res/pastel100.png") {
@@ -292,14 +330,20 @@ fn main() {
                                   "Pastel is work in progress....");
                            });
             window.add(&image);
+            //let id=window.add(&image);
+            //window.remove(id);  //test widget deletion from window
+            
         }
         Err(err) => {
             let label = Label::new();
             label.position(x, y).size(400, 16).text(err);
             window.add(&label);
+            
         }
     }
-
+    
+    
+    
     // tools panel
     let y = 25;
     match Image::from_path("res/pencil1.png") {
@@ -308,7 +352,9 @@ fn main() {
             let tool_clone = tool.clone();
             let size_bar_clone = size_bar.clone();
             let tools_clone = tools.clone();
+            let ntools_clone = ntools.clone();
             let size_label_clone = size_label.clone();
+            let window_clone = &mut window as *mut Window;
             image.on_click(move |_image: &Image, _point: Point| {
                                println!("Pencil clicked");
                                tool_clone.text.set("pen".to_owned());
@@ -316,6 +362,15 @@ fn main() {
                                
                                size_bar_clone.value.set(v);
                                size_label_clone.text(format!("Size: {}",v));
+                               size_bar_clone.visible.set(false);
+                               size_label_clone.visible.set(false);
+                               
+                               //TODO clear window area reserved for tools properties
+                               //    draw widgets for tool properties
+                               //unsafe{prop_area(&ntools_clone["pen"],&mut *window_clone, 11);}
+                               
+                               
+                               
                            });
             window.add(&image);
 
@@ -333,6 +388,8 @@ fn main() {
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let tools_clone = tools.clone();
+            let ntools_clone = ntools.clone();
+            let window_clone = &mut window as *mut Window;
             image.on_click(move |_image: &Image, _point: Point| {
                                //set curent tool
                                println!("Line clicked");
@@ -341,6 +398,10 @@ fn main() {
                                let v=tools_clone.get(&"line").unwrap().size.get();
                                size_bar_clone.value.set(v);
                                size_label_clone.text(format!("Size: {}",v));
+                               
+                               //    draw widgets for tool properties
+                               //unsafe {prop_area(&ntools_clone["line"],&mut *window_clone);}
+                               
                            });
             window.add(&image);
 
@@ -358,12 +419,49 @@ fn main() {
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let tools_clone = tools.clone();
+            let ntools_clone = ntools.clone();
+            let window_clone = &mut window as *mut Window;
             image.on_click(move |_image: &Image, _point: Point| {
                                println!("Brush clicked");
                                tool_clone.text.set("brush".to_owned());
+                               size_label_clone.visible.set(true);
+                               size_bar_clone.visible.set(true);
                                let v=tools_clone.get(&"brush").unwrap().size.get();
                                size_bar_clone.value.set(v);
                                size_label_clone.text(format!("Size: {}",v));
+                               
+                               //    draw widgets for tool properties
+                               //unsafe {prop_area(&ntools_clone["brush"],&mut *window_clone);}
+                           });
+            window.add(&image);
+
+            x += image.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading tools panel {}",err);
+        }
+    }
+
+    match Image::from_path("res/fillbucket.png") {
+        Ok(image) => {
+            image.position(x, y);
+            let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            let size_label_clone = size_label.clone();
+            let tools_clone = tools.clone();
+            let ntools_clone = ntools.clone();
+            let window_clone = &mut window as *mut Window;
+            image.on_click(move |_image: &Image, _point: Point| {
+                               println!("Fill clicked");
+                               tool_clone.text.set("fill".to_owned());
+                               size_label_clone.visible.set(false);
+                               size_bar_clone.visible.set(false);
+                               //let v=tools_clone.get(&"fill").unwrap().size.get();
+                               //size_bar_clone.value.set(v);
+                               //size_label_clone.text(format!("Size: {}",v));
+                               
+                               //    draw widgets for tool properties
+                               //unsafe {prop_area(&ntools_clone["brush"],&mut *window_clone);}
                            });
             window.add(&image);
 
@@ -482,6 +580,15 @@ fn main() {
                         });
         tools.add(&action);
     }
+    
+        {
+        let action = Action::new("Fill");
+        let tool_clone = tool.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            tool_clone.text.set("fill".to_owned());
+                        });
+        tools.add(&action);
+    }
 
     //Menu image
     let menuimage = Menu::new("Image");
@@ -548,6 +655,7 @@ fn main() {
                                    },
                          "pen"  => image.pixel(point.x, point.y, orbtk::Color::rgb(r, g, b)),
                          "brush"=> image.circle(point.x, point.y,-size,orbtk::Color::rgb(r, g, b)),
+                         "fill" => image.fill(point.x, point.y,orbtk::Color::rgb(r, g, b)),
                               _ => println!("No match!"),          
                     }
 
@@ -558,7 +666,18 @@ fn main() {
             }
         });
     window.add(&canvas);
+    
+    
     window.exec();
+
+/*
+    'event: while window.running.get() {
+            window.drain_events();
+            window.draw_if_needed();
+            window.drain_orbital_events();
+
+        }
+*/    
 }
 
 //Load an image from path if exists, other way create new empty canvas
@@ -576,6 +695,26 @@ fn load_image(path: &str, size: &MySize) -> std::sync::Arc<orbtk::Image> {
         }
     }
 }
+
+fn prop_area(properties: &Vec<Arc<Property>>, window: &mut orbtk::Window, id: usize) {
+    ///This is the tool properties area that shows different widgets for different tools.
+    
+    //window.add(&label);//does not work , panics at runtime, because we cannot add widgets at runtime
+
+    //But knowing the widget id we can hide or unhide it at runtime
+    
+    window.remove(id); //It works !!
+
+    //window.add(&label);//does not work , panics at runtime, 
+    //because we cannot add widgets when rendering the window
+
+    //window.close(); //works
+    for prop in properties {
+        println!("Drawing widget for property {}",prop.name.get());
+    }
+        
+}
+
 
 //dialog window
 fn dialog(title: &str, text: &str) -> Option<String> {
@@ -653,7 +792,9 @@ fn dialog(title: &str, text: &str) -> Option<String> {
 
 //popup window
 fn popup(title: &str, text: &str) {
-    let mut new_window = Window::new(Rect::new(200, 200, 300, 100), title);
+            
+    let mut new_window = Window::new_flags(Rect::new(200, 200, 300, 100),
+                                    title,&[orbclient::WindowFlag::Resizable,orbclient::WindowFlag::Async ]);
     let x = 10;
     let mut y = 10;
 
@@ -680,16 +821,20 @@ fn popup(title: &str, text: &str) {
 
     new_window.add(&close_button);
     new_window.exec();
+
+   
 }
 
 // come implementare nuove funzioni a crates già esistenti (non modificabili direttamente)
 
-trait Improvements {
+trait AddOnsToImage {
     fn save(&self, filename: &String);
     fn clear(&self);
+
+    
 }
 
-impl Improvements for orbtk::Image {
+impl AddOnsToImage for orbtk::Image {
     fn save(&self, filename: &String) {
         let width = self.rect.get().width as u32;
         let height = self.rect.get().height as u32;
@@ -734,5 +879,60 @@ impl Improvements for orbtk::Image {
        image.set(Color::rgb(255, 255, 255));
        
     }
+
+}
+
+/*
+//remove a widget from window by id number (added to orbtk fork)
+trait AddOnsToWindows {
+    fn remove(&self, id: usize);
+}
+
+impl AddOnsToWindows for orbtk::Window {
+    fn remove(&self, id: usize){
+    let mut widgets = self.widgets.borrow_mut();
+    widgets.remove(id);
+    
+    }
+}
+*/
+
+// in future to be added directly to orbclient
+trait AddOnsToOrbimage {
+        fn fill(&mut self, x: i32 , y: i32, color: Color);
+        fn flood_fill4 ( &mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
+        fn pixcol(&self, x:i32, y:i32) -> Color;
+        
+    }
+
+impl AddOnsToOrbimage for orbimage::Image {
+    ///return rgba color of pixel at position (x,y)
+    fn pixcol(&self, x:i32, y:i32) -> Color {
+        let p = self.width()as i32 * y + x;
+        let rgba = self.data()[p as usize];
+        rgba
+    }
+    
+    
+    fn fill(&mut self, x: i32, y: i32 , color: Color){
+        //get curent pixel color 
+        let rgba = self.pixcol(x,y);
+        self.flood_fill4(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
+    }
+
+    ///Recursive 4-way floodfill (be aware of stack overflow !!)
+    fn flood_fill4 ( &mut self, x:i32, y:i32, new_color: u32 , old_color: u32) {
+        if x >= 0 && x < self.width()as i32 && y >= 0 && y < self.height() as i32 
+            && self.pixcol(x,y).data == old_color && self.pixcol(x,y).data != new_color {
+            
+            self.pixel(x,y, Color{data:new_color});
+            
+            self.flood_fill4(x+1,y,new_color,old_color);
+            self.flood_fill4(x-1,y,new_color,old_color);
+            self.flood_fill4(x,y+1,new_color,old_color);
+            self.flood_fill4(x,y-1,new_color,old_color);
+        }
+    }
+
 
 }

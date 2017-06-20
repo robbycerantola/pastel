@@ -59,7 +59,8 @@ impl Property {
 #[allow(dead_code)]
 struct Settings {
     description: CloneCell<String>,     //tool's long description to be used in help popup
-    size: Cell<i32>,                    
+    size: Cell<i32>,
+    transparency: Cell<i32>,                    
     //property: Vec<Cell<&Property>>,
     selected: Cell<bool>,
 }
@@ -69,6 +70,7 @@ impl Settings {
         Arc::new(Settings {
             description: CloneCell::new(String::new()),
             size: Cell::new(0),
+            transparency: Cell::new(0),
             //property: Cell::new(Property::new("lucentezza")),
             selected: Cell::new(false),
             
@@ -80,6 +82,10 @@ impl Settings {
     }
     fn size(&self, size: i32) -> &Self {
         self.size.set(size);
+        self
+    }
+    fn transparency(&self, transparency: i32) -> &Self {
+        self.transparency.set(transparency);
         self
     }
 }
@@ -124,19 +130,19 @@ fn main() {
     //create tools and save initial size property
 
     let pen_tool = Settings::new();
-    pen_tool.description("pen").size(1);
+    pen_tool.description("pen").size(1).transparency(100);
     tools.insert("pen",pen_tool);
     
     let line_tool = Settings::new();
-    line_tool.description("line").size(1);
+    line_tool.description("line").size(1).transparency(100);
     tools.insert("line",line_tool);
     
     let brush_tool = Settings::new();
-    brush_tool.description("brush").size(20);
+    brush_tool.description("brush").size(20).transparency(100);
     tools.insert("brush",brush_tool);
     
     let fill_tool = Settings::new();
-    fill_tool.description("fill").size(0);
+    fill_tool.description("fill").size(0).transparency(100);
     tools.insert("fill",fill_tool);
     
     //TODO case for tools with many properties
@@ -158,7 +164,7 @@ fn main() {
     //implement GUI
 
     //resizable main window
-    let mut window = Window::new_flags(Rect::new(100, 100, 1024, 768),
+    let mut window = Window::new_flags(Rect::new(100, 100, 1024, 718),
                                        "Pastel",
                                        &[orbclient::WindowFlag::Resizable ]);
 
@@ -286,12 +292,44 @@ fn main() {
                       let progress = point.x * 100 / size_bar.rect.get().width as i32;
                       size_label_clone.text.set(format!("Size: {}", progress));
                       size_bar.value.set(progress);
+                      
+                      //save size value for curent tool
                       let cur_tool = tool_clone.text.get();
                       let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
                       tools_clone[a].size(progress);
                       
                   });
     window.add(&size_bar);
+    
+        // tool transparency bar
+    let trans_label = Label::new();
+    trans_label.text("Opacity: 100%").position(x+340, 90).size(120, 16);
+    trans_label.visible.set(true);
+    //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
+    window.add(&trans_label);
+
+    let trans_bar = ProgressBar::new();
+    
+    let tool_clone = tool.clone();
+    let tools_clone=tools.clone();
+    let trans_label_clone = trans_label.clone();
+    trans_bar.value.set(100);
+    trans_bar.visible.set(true);
+    trans_bar
+        .position(x+450, 90)
+        .size(256, 16)
+        .on_click(move |trans_bar: &ProgressBar, point: Point| {
+                      let progress = point.x * 100 / trans_bar.rect.get().width as i32;
+                      trans_label_clone.text.set(format!("Opacity: {}%", progress));
+                      trans_bar.value.set(progress);
+                      
+                      //save transparency value for curent tool
+                      let cur_tool = tool_clone.text.get();
+                      let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
+                      tools_clone[a].transparency(progress);
+                      
+                  });
+    window.add(&trans_bar);
 
 /*
     // tool Volume nob
@@ -351,19 +389,26 @@ fn main() {
             image.position(x, y);
             let tool_clone = tool.clone();
             let size_bar_clone = size_bar.clone();
+            let trans_bar_clone = trans_bar.clone();
             let tools_clone = tools.clone();
             let ntools_clone = ntools.clone();
             let size_label_clone = size_label.clone();
+            let trans_label_clone = trans_label.clone();
             let window_clone = &mut window as *mut Window;
             image.on_click(move |_image: &Image, _point: Point| {
                                println!("Pencil clicked");
                                tool_clone.text.set("pen".to_owned());
                                let v=tools_clone.get(&"pen").unwrap().size.get();
-                               
                                size_bar_clone.value.set(v);
                                size_label_clone.text(format!("Size: {}",v));
                                size_bar_clone.visible.set(false);
                                size_label_clone.visible.set(false);
+                               
+                               //retrive memorized opacity for tool pen
+                               let o=tools_clone.get(&"pen").unwrap().transparency.get();
+                               trans_bar_clone.value.set(o);
+                               trans_label_clone.text(format!("Opacity: {}%",o));
+                               
                                
                                //TODO clear window area reserved for tools properties
                                //    draw widgets for tool properties
@@ -398,6 +443,8 @@ fn main() {
                                let v=tools_clone.get(&"line").unwrap().size.get();
                                size_bar_clone.value.set(v);
                                size_label_clone.text(format!("Size: {}",v));
+                               size_bar_clone.visible.set(false);
+                               size_label_clone.visible.set(false);
                                
                                //    draw widgets for tool properties
                                //unsafe {prop_area(&ntools_clone["line"],&mut *window_clone);}
@@ -631,7 +678,7 @@ fn main() {
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
 
     canvas
-        .position(0, 250)
+        .position(0, 200)
         .on_click(move |canvas: &Image, point: Point| {
 
             let click = click_pos.clone();
@@ -641,9 +688,10 @@ fn main() {
 
                 if let Some(prev_position) = *prev_opt {
                     let mut image = canvas.image.borrow_mut();
-                    let r = (red_bar.clone().value.get() as f32 * 2.56) as u8;
-                    let g = (green_bar.clone().value.get() as f32 * 2.56) as u8;
-                    let b = (blue_bar.clone().value.get() as f32 * 2.56) as u8;
+                    let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
+                    let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
+                    let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
+                    let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;//TODO read transparency value from tool 
                     
                     match tool.clone().text.get().as_ref() {
                         "line"  => {
@@ -651,11 +699,11 @@ fn main() {
                                                 prev_position.y,
                                                 point.x,
                                                 point.y,
-                                                orbtk::Color::rgb(r, g, b));
+                                                orbtk::Color::rgba(r, g, b, a));
                                    },
-                         "pen"  => image.pixel(point.x, point.y, orbtk::Color::rgb(r, g, b)),
-                         "brush"=> image.circle(point.x, point.y,-size,orbtk::Color::rgb(r, g, b)),
-                         "fill" => image.fill(point.x, point.y,orbtk::Color::rgb(r, g, b)),
+                         "pen"  => image.pixel(point.x, point.y, orbtk::Color::rgba(r, g, b, a)),
+                         "brush"=> image.circle(point.x, point.y,-size,orbtk::Color::rgba(r, g, b, a)),
+                         "fill" => image.fill(point.x, point.y,orbtk::Color::rgba(r, g, b, a)),
                               _ => println!("No match!"),          
                     }
 

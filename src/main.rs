@@ -528,11 +528,17 @@ fn main() {
 
     //menu entries for file
             //TODO ask for new dimensions
+//#[cfg(not(target_os = "redox"))]
     {
         let action = Action::new("New");
         action.on_click(move |_action: &Action, _point: Point| {
-            
-                           Command::new("./target/release/pastel")
+                           let mut path="";
+                           if cfg!(target_os = "redox"){
+                               path="/ui/bin/pastel";
+                           } else{
+                               path="./target/release/pastel"; 
+                           }
+                           Command::new(&path)
                                                 .arg("new.png")
                                                 .arg("1024x500")
                                                 .spawn()
@@ -544,13 +550,21 @@ fn main() {
         menu.add(&action);
     }
 
+//#[cfg(not(target_os = "redox"))]
     {
         let action = Action::new("Open");
         action.on_click(move |_action: &Action, _point: Point| {
             match dialog("Open", "path:") {
                 Some(response) => {
                                     println!("Open {} ", response);
-                                    Command::new("./target/release/pastel")
+                                    let mut path="";
+                                    if cfg!(target_os = "redox"){
+                                        path="/ui/bin/pastel";
+                                        } else{
+                                            path="./target/release/pastel"; 
+                                        }
+                                    
+                                    Command::new(&path)
                                                 .arg(response)
                                                 .spawn()
                                                 .expect("Command executed with failing error code");
@@ -747,7 +761,7 @@ fn load_image(path: &str, size: &MySize) -> std::sync::Arc<orbtk::Image> {
 fn prop_area(properties: &Vec<Arc<Property>>, window: &mut orbtk::Window, id: usize) {
     ///This is the tool properties area that shows different widgets for different tools.
     
-    //window.add(&label);//does not work , panics at runtime, because we cannot add widgets at runtime
+    //window.add(&label);//does not work , panics at runtime
 
     //But knowing the widget id we can hide or unhide it at runtime
     

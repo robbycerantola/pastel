@@ -3,7 +3,7 @@ simple image editor in Rust for Redox
 */
 extern crate orbtk;
 extern crate orbimage;
-extern crate image;
+//extern crate image;
 extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, ControlKnob, Toolbar, Rect, Separator,
@@ -17,19 +17,17 @@ use std::process;
 use std::process::Command;
 use std::path::Path;
 use std::env;
-use std::slice;
+//use std::slice;
 use std::collections::HashMap;
+use orbclient::EventOption;
 
 mod dialogs;
 use dialogs::{dialog,popup};
 
+mod canvas;
+use canvas::{Canvas};
 
-/*
-enum Tools {
-    pen,
-    line,
-}
-*/
+
 
 //implements structures to create new tools and store properties 
 #[allow(dead_code)]
@@ -148,19 +146,25 @@ fn main() {
     fill_tool.description("fill").size(0).transparency(100);
     tools.insert("fill",fill_tool);
     
+    let rectangle_tool = Settings::new();
+    rectangle_tool.description("rectangle").size(0).transparency(100);
+    tools.insert("rectangle",rectangle_tool);
+    
     //TODO case for tools with many properties
     //create new tool with some properties and initial values
     let mut ntools = HashMap::new();
-    ntools.insert("pen",vec![Property::new("Size",1),Property::new("Transparency",0)]);
-    ntools.insert("line",vec![]); //no properties
-    ntools.insert("brush",vec![Property::new("size",4)]);
-    ntools.insert("fill",vec![]);
+    ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
+    ntools.insert("line",vec![Property::new("Opacity",100)]); 
+    ntools.insert("brush",vec![Property::new("Size",4)]);
+    ntools.insert("fill",vec![Property::new("Opacity",100)]);
+    ntools.insert("rectangle",vec![Property::new("Opacity",100)]);
+    ntools.insert("circle",vec![Property::new("Opacity",100)]);
     
     //println!("{}",tools.get(&"pen").unwrap().name.get());
     //println!("{}",tools.get(&"pen").unwrap().size.get());
 
 
-    //temporary use invisible Label for storing curent active tool
+    //temporary use invisible Label for storing current active tool
     let tool = Label::new();
     tool.text("pen");
 
@@ -172,32 +176,25 @@ fn main() {
                                        &[orbclient::WindowFlag::Resizable ]);
 
     // color swatch
-        
     let swatch = Label::new();
     swatch.text("■■").position(320,80).size(56,16);
     //swatch.fg.set(orbtk::Color::rgb(r,g,b));
     window.add(&swatch);
-    
-    
-    
+
+    // use forked version of orbtk to get ProgressBar rendered in colors setting fg
     //color picker
     let red_bar = ProgressBar::new();
     let green_bar = ProgressBar::new();
     let blue_bar = ProgressBar::new();
-
     let red_label = Label::new();
     red_label.text("R: 0").position(x, y).size(48, 16);
     red_label.fg.set(orbtk::Color::rgb(255,0,0));
     window.add(&red_label);
-
-    // use forked version of orbtk to get ProgressBar rendered in colors setting fg
     
     red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
-    
     let swatch_clone_r = swatch.clone();
     let green_bar_clone_r = green_bar.clone();
     let blue_bar_clone_r = blue_bar.clone();
-    
     red_bar
         .position(x+48, y)
         .size(256, 16)
@@ -210,7 +207,6 @@ fn main() {
                       let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
                       let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
                       swatch_clone_r.fg.set(orbtk::Color::rgb(r,g,b));
-                      
                   });
     window.add(&red_bar);
 
@@ -222,11 +218,9 @@ fn main() {
     window.add(&green_label);
     
     green_bar.fg.set(orbtk::Color::rgb(0,255,0));
-    
     let swatch_clone_g = swatch.clone();
     let red_bar_clone_g = red_bar.clone();
     let blue_bar_clone_g = blue_bar.clone();
-    
     green_bar
         .position(x+48, y)
         .size(256, 16)
@@ -251,11 +245,9 @@ fn main() {
     window.add(&blue_label);
     
     blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
-    
     let swatch_clone_b = swatch.clone();
     let green_bar_clone_b = green_bar.clone();
     let red_bar_clone_b = red_bar.clone();
-    
     blue_bar
         .position(x+48, y)
         .size(256, 16)
@@ -273,9 +265,6 @@ fn main() {
     window.add(&blue_bar);
 
     y += blue_bar.rect.get().height as i32 + 10;
-
-
-
     
     // tool size bar
     let size_label = Label::new();
@@ -285,7 +274,6 @@ fn main() {
     window.add(&size_label);
 
     let size_bar = ProgressBar::new();
-    
     let tool_clone = tool.clone();
     let tools_clone=tools.clone();
     let size_label_clone = size_label.clone();
@@ -299,7 +287,7 @@ fn main() {
                       size_label_clone.text.set(format!("Size: {}", progress));
                       size_bar.value.set(progress);
                       
-                      //save size value for curent tool
+                      //save size value for current tool
                       let cur_tool = tool_clone.text.get();
                       let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
                       tools_clone[a].size(progress);
@@ -307,7 +295,7 @@ fn main() {
                   });
     window.add(&size_bar);
     
-        // tool transparency bar
+    // tool transparency bar
     let trans_label = Label::new();
     trans_label.text("Opacity: 100%").position(x+340, 90).size(120, 16);
     trans_label.visible.set(true);
@@ -315,7 +303,6 @@ fn main() {
     window.add(&trans_label);
 
     let trans_bar = ProgressBar::new();
-    
     let tool_clone = tool.clone();
     let tools_clone=tools.clone();
     let trans_label_clone = trans_label.clone();
@@ -329,7 +316,7 @@ fn main() {
                       trans_label_clone.text.set(format!("Opacity: {}%", progress));
                       trans_bar.value.set(progress);
                       
-                      //save transparency value for curent tool
+                      //save transparency value for current tool
                       let cur_tool = tool_clone.text.get();
                       let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
                       tools_clone[a].transparency(progress);
@@ -374,24 +361,16 @@ fn main() {
                                   "Pastel is work in progress....");
                            });
             window.add(&image);
-            //let id=window.add(&image);
-            //window.remove(id);  //test widget deletion from window
-            
         }
         Err(err) => {
             let label = Label::new();
             label.position(x, y).size(400, 16).text(err);
             window.add(&label);
-            
         }
     }
     
-    
-    
     // implement toolbar by multiple clickable images loaded in widget Toolbar 
-
     let mut toolbar_obj = vec![];   //here save all Toolbar widgets clones so we can manage 'selected' property
-  
     let y = 25;
     match Toolbar::from_path("res/pencil1.png") {
         Ok(image) => {
@@ -405,9 +384,8 @@ fn main() {
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
             let window_clone = &mut window as *mut Window;
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<std::sync::Arc<orbtk::Toolbar>>;
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<Toolbar>>;
             image.on_click(move |_image: &Toolbar, _point: Point| {
-                               
                                tool_clone.text.set("pen".to_owned());
                                let v=tools_clone.get(&"pen").unwrap().size.get();
                                size_bar_clone.value.set(v);
@@ -424,9 +402,6 @@ fn main() {
                                //TODO clear window area reserved for tools properties
                                //    draw widgets for tool properties
                                //unsafe{prop_area(&ntools_clone["pen"],&mut *window_clone, 11);}
-                               
-                               
-                               
                            });
             
             window.add(&image);
@@ -448,10 +423,9 @@ fn main() {
             let tools_clone = tools.clone();
             let ntools_clone = ntools.clone();
             let window_clone = &mut window as *mut Window;
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<std::sync::Arc<orbtk::Toolbar>>;
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<Toolbar>>;
             image.on_click(move |_image: &Toolbar, _point: Point| {
-                               //set curent tool
-                                                              
+                               //set current tool
                                tool_clone.text.set("line".to_owned());
                                //get previous settings
                                let v=tools_clone.get(&"line").unwrap().size.get();
@@ -463,7 +437,6 @@ fn main() {
                                unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
                                //    draw widgets for tool properties
                                //unsafe {prop_area(&ntools_clone["line"],&mut *window_clone);}
-                               
                            });
             window.add(&image);
             toolbar_obj.push(image.clone());
@@ -484,9 +457,8 @@ fn main() {
             let tools_clone = tools.clone();
             let ntools_clone = ntools.clone();
             let window_clone = &mut window as *mut Window;
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<std::sync::Arc<orbtk::Toolbar>>;
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<Toolbar>>;
             image.on_click(move |_image: &Toolbar, _point: Point| {
-                               
                                tool_clone.text.set("brush".to_owned());
                                size_label_clone.visible.set(true);
                                size_bar_clone.visible.set(true);
@@ -518,9 +490,8 @@ fn main() {
             let tools_clone = tools.clone();
             let ntools_clone = ntools.clone();
             let window_clone = &mut window as *mut Window;
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<std::sync::Arc<orbtk::Toolbar>>;
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<Toolbar>>;
             image.on_click(move |_image: &Toolbar, _point: Point| {
-                               
                                tool_clone.text.set("fill".to_owned());
                                size_label_clone.visible.set(false);
                                size_bar_clone.visible.set(false);
@@ -553,7 +524,6 @@ fn main() {
 
     //menu entries for file
             //TODO ask for new dimensions
-//#[cfg(not(target_os = "redox"))]
     {
         let action = Action::new("New");
         action.on_click(move |_action: &Action, _point: Point| {
@@ -575,7 +545,6 @@ fn main() {
         menu.add(&action);
     }
 
-//#[cfg(not(target_os = "redox"))]
     {
         let action = Action::new("Open");
         action.on_click(move |_action: &Action, _point: Point| {
@@ -675,6 +644,15 @@ fn main() {
                         });
         tools.add(&action);
     }
+    
+    {
+        let action = Action::new("Rectangle");
+        let tool_clone = tool.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            tool_clone.text.set("rectangle".to_owned());
+                        });
+        tools.add(&action);
+    }
 
     //Menu image
     let menuimage = Menu::new("Image");
@@ -715,13 +693,14 @@ fn main() {
     // paint on canvas
 
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
-
+    let window_clone = &mut window as *mut Window;
     canvas
         .position(0, 200)
-        .on_click(move |canvas: &Image, point: Point| {
+        .on_click(move |canvas: &Canvas, point: Point| {
 
             let click = click_pos.clone();
             let size = size_bar.clone().value.get();
+            
             {
                 let mut prev_opt = click.borrow_mut();
 
@@ -730,7 +709,7 @@ fn main() {
                     let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
                     let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
                     let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
-                    let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;//TODO read transparency value from tool 
+                    let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;//TODO read transparency value from tool property
                     
                     match tool.clone().text.get().as_ref() {
                         "line"  => {
@@ -743,6 +722,11 @@ fn main() {
                          "pen"  => image.pixel(point.x, point.y, orbtk::Color::rgba(r, g, b, a)),
                          "brush"=> image.circle(point.x, point.y,-size,orbtk::Color::rgba(r, g, b, a)),
                          "fill" => image.fill(point.x, point.y,orbtk::Color::rgba(r, g, b, a)),
+                    "rectangle" => unsafe{
+                                    image.interact_rect(point.x, point.y,
+                                        orbtk::Color::rgba(r, g, b, a),&mut *window_clone
+                                        );
+                                    },
                               _ => println!("No match!"),          
                     }
 
@@ -754,30 +738,20 @@ fn main() {
         });
     window.add(&canvas);
     
-    
     window.exec();
-
-/*
-    'event: while window.running.get() {
-            window.drain_events();
-            window.draw_if_needed();
-            window.drain_orbital_events();
-
-        }
-*/    
 }
 
 //Load an image from path if exists, other way create new empty canvas
-fn load_image(path: &str, size: &MySize) -> std::sync::Arc<orbtk::Image> {
+fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  
     print!("Loading image from:  {} .....", path);
-    match Image::from_path(&path) {
+    match Canvas::from_path(&path) {
         Ok(image) => {
             println!(" OK");
             image
         }
         Err(err) => {
             println!("Failed: {} \n Creating new one ", err);
-            let image = Image::from_color(size.x, size.y, Color::rgb(255, 255, 255));
+            let image = Canvas::from_color(size.x, size.y, Color::rgb(255, 255, 255));
             image
         }
     }
@@ -785,7 +759,7 @@ fn load_image(path: &str, size: &MySize) -> std::sync::Arc<orbtk::Image> {
 
 //DIRTY HACKS
 
-fn toggle_toolbar (toolbar_obj: &mut std::vec::Vec<std::sync::Arc<orbtk::Toolbar>>) {
+fn toggle_toolbar (toolbar_obj: &mut Vec<Arc<Toolbar>>) {
     //deselect all 
     for i in 0..toolbar_obj.len(){
         if let Some(toolbar) = toolbar_obj.get(i) {
@@ -818,78 +792,6 @@ fn prop_area(properties: &Vec<Arc<Property>>, window: &mut orbtk::Window, id: us
         
 }
 
-
-// come implementare nuove funzioni a crates già esistenti (non modificabili direttamente)
-/*
-trait AddOnsToToolbar {
-    fn toolbar_deselect(&self);
-}
-
-impl AddOnsToToolbar for orbtk::Window {
-    fn toolbar_deselect(&self) {
-        for i in 0..self.widgets.borrow().len() {
-            if let Some(widget) = self.widgets.borrow().get(i) {
-                widget.selected(false).expect("Not a toolbar widget");
-            }
-        }        
-    }
-}
-*/
-
-trait AddOnsToImage {
-    fn save(&self, filename: &String);
-    fn clear(&self);
-}
-
-impl AddOnsToImage for orbtk::Image {
-    fn save(&self, filename: &String) {
-        let width = self.rect.get().width as u32;
-        let height = self.rect.get().height as u32;
-        //get image data in form of [Color] slice
-        let image_data = self.image.clone().into_inner().into_data();
-
-        // convert u32 values to 4 * u8 (r g b a) values
-        let image_buffer = unsafe {
-            slice::from_raw_parts(image_data.as_ptr() as *const u8, 4 * image_data.len())
-        };
-
-        //To save corectly the image with image::save_buffer
-        // we have to switch r with b but dont know why!!
-        
-
-        let mut new_image_buffer = Vec::new();
-
-        let mut i = 0;
-
-        while i <= image_buffer.len() - 4 {
-
-            new_image_buffer.push(image_buffer[i + 2]);
-            new_image_buffer.push(image_buffer[i + 1]);
-            new_image_buffer.push(image_buffer[i]);
-            new_image_buffer.push(image_buffer[i + 3]);
-
-            i = i + 4;
-        }
-
-        println!("Saving {}", &filename);
-        println!("x{} y{} len={}", width, height, image_data.len());
-        image::save_buffer(&Path::new(&filename),
-                           &new_image_buffer,
-                           width,
-                           height,
-                           image::RGBA(8))
-                .unwrap();
-        println!("Saved");
-    }
-    fn clear(&self){
-       let mut image = self.image.borrow_mut();
-       //image.clear();
-       image.set(Color::rgb(255, 255, 255));
-       
-    }
-
-}
-
 //  to be added directly to orbclient ?
 trait AddOnsToOrbimage {
         fn fill(&mut self, x: i32 , y: i32, color: Color);
@@ -897,6 +799,7 @@ trait AddOnsToOrbimage {
         fn flood_fill_scanline(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
         fn pixcol(&self, x:i32, y:i32) -> Color;
         fn pixraw(&self, x:i32, y:i32) -> u32;
+        fn interact_rect(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window);
     }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -912,7 +815,7 @@ impl AddOnsToOrbimage for orbimage::Image {
     }
 
     fn fill(&mut self, x: i32, y: i32 , color: Color) {
-        //get curent pixel color 
+        //get current pixel color 
         let rgba = self.pixcol(x,y);
         self.flood_fill4(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
         //println!("Old color {}", rgba.data);
@@ -934,6 +837,7 @@ impl AddOnsToOrbimage for orbimage::Image {
             self.flood_fill4(x,y-1,new_color,old_color);
         }
     }
+    
     //stack friendly and fast floodfill algorithm
     //FIXME but does not work with transparency  
     fn flood_fill_scanline( &mut self, x:i32, y:i32, new_color: u32, old_color:u32) {
@@ -1006,6 +910,19 @@ impl AddOnsToOrbimage for orbimage::Image {
             x1 += -1;
         }
     }
-
+    // draw interactive rectangle 
+    fn interact_rect(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
+        self.rect(x,y,100,100,color);
+      /*
+       'events: loop {
+        for event in window.inner().events {
+            match event.to_option() {
+                EventOption::Quit(_quit_event) => break 'events,
+                event_option => println!("{:?}", event_option)
+            }
+        }
+    }
+    */                    
+                     }
 
 }

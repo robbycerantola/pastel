@@ -120,15 +120,29 @@ impl Widget for Canvas {
 
     fn event(&self, event: Event, focused: bool, redraw: &mut bool) -> bool {
         match event {
-            Event::Mouse { point, left_button, .. } => {
+         /*   Event::Mouse { point, left_button, .. } => {
                 let rect = self.rect.get();
                 if rect.contains(point) && left_button {
                     let click_point: Point = point - rect.point();
                     self.emit_click(click_point);
                     *redraw = true;
                 }
-            }
-            _ => (),
+            }*/
+            
+            Event::Mouse {point, right_button, left_button, middle_button, ..} => {
+                let rect = self.rect.get();
+                if rect.contains(point) {
+                    let click_point: Point = point - rect.point();
+                    if right_button {println!("Right_button");}
+                    if left_button {
+                        let click_point: Point = point - rect.point();
+                        self.emit_click(click_point);
+                        *redraw = true;
+                        }
+                    if middle_button {println!("Middle_button");}
+                    }
+                }
+            _ => println!("{:?}", event),  //(),
         }
 
         focused

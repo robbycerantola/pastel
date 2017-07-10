@@ -81,7 +81,7 @@ impl Canvas {
                            width,
                            height,
                            image::RGBA(8))
-                .unwrap();
+                .unwrap();  //TODO gestione errori
         println!("Saved");
     }
 

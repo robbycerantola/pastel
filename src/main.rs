@@ -261,7 +261,7 @@ fn main() {
                       
                       //save size value for current tool
                       let cur_tool = tool_clone.text.get();
-                      let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
+                      let a: &str = &cur_tool[..];  //workarround to convert String into &str                      
                       property_set(&ntools_clone[a],"Size",progress);
                       
                   });
@@ -291,7 +291,7 @@ fn main() {
                       
                       //save Opacity (transparency) value for current tool
                       let cur_tool = tool_clone.text.get();
-                      let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
+                      let a: &str = &cur_tool[..];  //workarround to convert String into &str                      
                       property_set(&ntools_clone[a],"Opacity",progress);
                       
                   });
@@ -318,7 +318,7 @@ fn main() {
                       volume_label_clone.text.set(format!("Volume: {} {}", progress.x , progress.y));
                       volume.value.set(progress);
                       //let cur_tool = tool_clone.text.get();
-                      //let a: &str = &cur_tool[..];  //FIXME workarround to convert String into &str                      
+                      //let a: &str = &cur_tool[..];  // workarround to convert String into &str                      
                       //tools_clone[a].size(progress);
                       
                   });
@@ -343,8 +343,9 @@ fn main() {
     }
     
     // implement multiple toolbars by multiple clickable images loaded in widget Toolbar 
+    //TODO let toolbar = Toolbar::new(&window); must specify parent window!!
     let mut toolbar_obj = vec![];   //here save all Toolbar widgets clones so we can manage 'selected' property
-    let mut toolbar2_obj = vec![];   //here save Toolbar widgets clones so we can manage 'selected','visible' properties
+    let mut toolbar2_obj = vec![];   //create Toolbar2 here so we can manage 'selected','visible' properties from Toolbar
     let y = 25;
     match Toolbar::from_path("res/pencil1.png") {
         Ok(image) => {
@@ -370,9 +371,9 @@ fn main() {
                                let o = property_get(&ntools_clone["pen"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
-                               //toggle tool in toolbar
+                               //toggle tool in toolbar TODO move into Toolbar
                                unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
-                               //make invisible toolbar2
+                               //make invisible toolbar2  TODO move into Toolbar
                                unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                                //TODO clear window area reserved for tools properties
                                //    draw widgets for tool properties
@@ -380,7 +381,7 @@ fn main() {
                            });
             
             window.add(&image);
-            toolbar_obj.push(image.clone());
+            toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -516,7 +517,7 @@ fn main() {
                  .on_click(move |_image: &Toolbar, _point: Point| {
                                property_set(&ntools_clone["brush"],"Shape",0);
                                
-                               //toggle tool in toolbar
+                               //toggle shape in toolbar2
                                unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
                                });
             window.add(&item);
@@ -538,7 +539,7 @@ fn main() {
                  .on_click(move |_image: &Toolbar, _point: Point| {
                                property_set(&ntools_clone["brush"],"Shape",1);
                                
-                               //toggle tool in toolbar
+                               //toggle shape in toolbar2
                                unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
                                });
             window.add(&item);
@@ -745,7 +746,8 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
     let window_clone = &mut window as *mut Window;
     
     canvas
-        .position(0, 200)
+        .position(0, 200) 
+        .on_right_click(move |_ , point:Point|{println!("Right click closure!!")})
         .on_click(move |canvas: &Canvas, point: Point| {
 
             let click = click_pos.clone();

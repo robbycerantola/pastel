@@ -22,6 +22,7 @@ pub struct Canvas {
     pub rect: Cell<Rect>,
     pub image: RefCell<orbimage::Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
+    right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
 }
 
 impl Canvas {
@@ -37,7 +38,8 @@ impl Canvas {
         Arc::new(Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             image: RefCell::new(image),
-            click_callback: RefCell::new(None)
+            click_callback: RefCell::new(None),
+            right_click_callback: RefCell::new(None)
         })
     }
 
@@ -90,6 +92,15 @@ impl Canvas {
        //image.clear();
        image.set(Color::rgb(255, 255, 255));
     }
+    pub fn on_right_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
+        *self.right_click_callback.borrow_mut() = Some(Arc::new(func));
+        self
+    }
+    pub fn emit_right_click(&self, point: Point) {
+        if let Some(ref right_click_callback) = *self.right_click_callback.borrow() {
+            right_click_callback(self, point);
+        }
+    }
 }
 
 impl Click for Canvas {
@@ -133,7 +144,12 @@ impl Widget for Canvas {
                 let rect = self.rect.get();
                 if rect.contains(point) {
                     let click_point: Point = point - rect.point();
-                    if right_button {println!("Right_button");}
+                    if right_button {
+                        //println!("Right_button");
+                        let click_point: Point = point - rect.point();
+                        self.emit_right_click(click_point);
+                        *redraw = true;
+                        }
                     if left_button {
                         let click_point: Point = point - rect.point();
                         self.emit_click(click_point);

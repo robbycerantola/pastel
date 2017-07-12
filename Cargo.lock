@@ -230,7 +230,7 @@ dependencies = [
 [[package]]
 name = "orbtk"
 version = "0.2.19"
-source = "git+https://github.com/robbycerantola/orbtk.git?branch=toolbar#8a8c15512ef7a42f5be8e840c8df49c23e80bf60"
+source = "git+https://github.com/robbycerantola/orbtk.git?branch=toolbar#fbf8d050f8874ef90ef51afc6bd877506d4a12b8"
 dependencies = [
  "orbclient 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbfont 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",

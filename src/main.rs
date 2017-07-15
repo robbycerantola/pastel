@@ -19,6 +19,7 @@ use std::process;
 use std::process::Command;
 use std::env;
 use std::collections::HashMap;
+use std::path::Path;
 
 
 mod dialogs;
@@ -94,7 +95,20 @@ struct MySize {
     y: u32,
 }
 
+
+
+
+
 fn main() {
+
+    // deal with icons path under diferent os
+    #[cfg(target_os = "linux")]
+    let root = Path::new("./res/");
+    
+    #[cfg(target_os = "redox")]
+    let root = Path::new("/ui/pastel/");
+
+    env::set_current_dir(&root);
 
     let mut size = MySize{x: 1024, y:500};    
     let mut x = 10;
@@ -110,7 +124,7 @@ fn main() {
 
         filename = args[1].clone();
     } else {
-        filename = String::from("test.png");  //no name
+        filename = String::from("../test.png");  //no name
     }
     
     //size given
@@ -323,9 +337,9 @@ fn main() {
                   });
     window.add(&volume);
 */
-
+ 
     //clickable icon
-    match Image::from_path("res/pastel100.png") {
+    match Image::from_path( "pastel100.png" ) {
         Ok(image) => {
             image.position(900, 10);
             image.on_click(move |_image: &Image, _point: Point| {
@@ -346,7 +360,7 @@ fn main() {
     let mut toolbar_obj = vec![];   //here save all Toolbar widgets clones so we can manage 'selected' property
     let mut toolbar2_obj = vec![];   //create Toolbar2 here so we can manage 'selected','visible' properties from Toolbar
     let y = 25;
-    match ToolbarIcon::from_path("res/pencil1.png") {
+    match ToolbarIcon::from_path("pencil1.png") {
         Ok(image) => {
             image.position(x, y)
                 .text("Draft painting".to_owned())
@@ -389,7 +403,7 @@ fn main() {
         }
     }
 
-    match ToolbarIcon::from_path("res/pencil2.png") {
+    match ToolbarIcon::from_path("pencil2.png") {
         Ok(image) => {
             image.position(x, y)                
                  .text("Draw lines".to_owned());
@@ -427,7 +441,7 @@ fn main() {
         }
     }
 
-    match ToolbarIcon::from_path("res/brush.png") {
+    match ToolbarIcon::from_path("brush.png") {
         Ok(image) => {
             image.position(x, y)
                  .text("Paint brush".to_owned());
@@ -467,7 +481,7 @@ fn main() {
         }
     }
 
-    match ToolbarIcon::from_path("res/fillbucket.png") {
+    match ToolbarIcon::from_path("fillbucket.png") {
         Ok(item) => {
             
             let tool_clone = tool.clone();
@@ -507,7 +521,7 @@ fn main() {
 
 //2nd toolbar
 
-    match ToolbarIcon::from_path("res/circle.png") {
+    match ToolbarIcon::from_path("circle.png") {
         Ok(item) => {
             let ntools_clone = ntools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
@@ -529,7 +543,7 @@ fn main() {
         }
     }
 
-    match ToolbarIcon::from_path("res/block.png") {
+    match ToolbarIcon::from_path("block.png") {
         Ok(item) => {
             let ntools_clone = ntools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
@@ -571,7 +585,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                            if cfg!(target_os = "redox"){
                                path="/ui/bin/pastel";
                            } else{
-                               path="./target/release/pastel"; 
+                               path="../target/release/pastel"; 
                            }
                            Command::new(&path)
                                                 .arg("new.png")
@@ -595,7 +609,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                                     if cfg!(target_os = "redox"){
                                         path="/ui/bin/pastel";
                                         } else{
-                                            path="./target/release/pastel"; 
+                                            path="../target/release/pastel"; 
                                         }
                                     
                                     Command::new(&path)

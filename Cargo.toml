@@ -2,7 +2,7 @@
 name = "pastel"
 description = "Simple paint canvas"
 repository = "https://github.com/pastel.git"
-version = "0.0.4"
+version = "0.0.5"
 keywords = ["orbital", "redox", "ui", "graphics"]
 authors = ["Robby <robbycerantola@gmail.com>"]
 
@@ -14,7 +14,7 @@ orbtk = { git = "https://github.com/robbycerantola/orbtk.git" , branch = "toolba
 orbimage = "0.1.15"
 image = "0.12.4"
 #num-rational = "0.1.36"
-
+#stacker = "*"
 
 
 [features]

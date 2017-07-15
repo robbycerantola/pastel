@@ -3,24 +3,23 @@ simple image editor in Rust for Redox
 */
 extern crate orbtk;
 extern crate orbimage;
-//extern crate image;
+extern crate image;
 extern crate orbclient;
+//extern crate stacker;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             ControlKnob, ToolbarIcon, Rect, Separator,
             TextBox, Window, Renderer};
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
-//use orbtk::event::Event;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use orbtk::cell::CloneCell;
 use std::sync::Arc;
 use std::process;
 use std::process::Command;
-//use std::path::Path;
 use std::env;
 use std::collections::HashMap;
-//use orbclient::EventOption;
+
 
 mod dialogs;
 use dialogs::{dialog,popup};
@@ -718,6 +717,60 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
         menuimage.add(&action);
     }
     
+    {
+            let action = Action::new("Blur");
+            let canvas_clone = canvas.clone();
+            action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.transformation("blur");
+                        });
+        menuimage.add(&action);
+    }
+    
+    {
+            let action = Action::new("Unsharpen");
+            let canvas_clone = canvas.clone();
+            action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.transformation("unsharpen");
+                        });
+        menuimage.add(&action);
+    }
+    
+    {
+            let action = Action::new("Verical flip");
+            let canvas_clone = canvas.clone();
+            action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.transformation("flip_vertical");
+                        });
+        menuimage.add(&action);
+    }
+
+    {
+            let action = Action::new("Horizontal flip");
+            let canvas_clone = canvas.clone();
+            action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.transformation("flip_horizontal");
+                        });
+        menuimage.add(&action);
+    }
+    
+    {
+            let action = Action::new("Brighten");
+            let canvas_clone = canvas.clone();
+            action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.transformation("brighten");
+                        });
+        menuimage.add(&action);
+    }
+    
+    {
+            let action = Action::new("Darken");
+            let canvas_clone = canvas.clone();
+            action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.transformation("darken");
+                        });
+        menuimage.add(&action);
+    }
+    
     //Menu help
 
     let help = Menu::new("Help");
@@ -888,15 +941,18 @@ impl AddOnsToOrbimage for orbimage::Image {
     fn fill(&mut self, x: i32, y: i32 , color: Color) {
         //get current pixel color 
         let rgba = self.pixcol(x,y);
-        //self.flood_fill_line(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
+        //self.flood_fill4(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
         //println!("Old color {}", rgba.data);
         self.flood_fill_scanline(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
     }
 
     /*Recursive 4-way floodfill works with transparency but be aware of stack overflow !! 
     credits to http://lodev.org/cgtutor/floodfill.html
+    Added stacker crate to mitigate overflow issue , does it work also for Redox?
     */
     fn flood_fill4(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32) {
+        //stacker::maybe_grow(32 * 1024, 1024 * 1024, || {
+        
         if x >= 0 && x < self.width()as i32 && y >= 0 && y < self.height() as i32 
             && self.pixcol(x,y).data == old_color && self.pixcol(x,y).data != new_color {
             
@@ -907,6 +963,7 @@ impl AddOnsToOrbimage for orbimage::Image {
             self.flood_fill4(x,y+1,new_color,old_color);
             self.flood_fill4(x,y-1,new_color,old_color);
         }
+        //});
     }
     
     //stack friendly and fast floodfill algorithm

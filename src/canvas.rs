@@ -1,6 +1,6 @@
 //canvas widget based on image widget
 
-extern crate image;
+use image;
 
 use orbtk;
 
@@ -8,6 +8,7 @@ use orbclient::{Color, Renderer};
 use orbimage;
 use std::cell::{Cell, RefCell};
 use std::path::Path;
+use std::fs::File;
 use std::sync::Arc;
 
 use orbtk::event::Event;
@@ -57,7 +58,7 @@ impl Canvas {
         let image_buffer = unsafe {
             slice::from_raw_parts(image_data.as_ptr() as *const u8, 4 * image_data.len())
         };
-
+        //let () = image_buffer;
         //To save corectly the image with image::save_buffer
         // we have to switch r with b but dont know why!!
         
@@ -92,6 +93,54 @@ impl Canvas {
        //image.clear();
        image.set(Color::rgb(255, 255, 255));
     }
+    
+    pub fn transformation(&self, cod: &str){
+        //using image::imageops library
+        let width = self.rect.get().width as u32;
+        let height = self.rect.get().height as u32;
+        //get image data in form of [Color] slice
+        let mut image_data = self.image.clone().into_inner().into_data();
+        
+        let image_buffer = unsafe {
+            slice::from_raw_parts(image_data.as_ptr() as *const u8, 4 * image_data.len())
+        };
+                
+        let mut imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, image_buffer.to_vec()).unwrap();
+        let vec_image_buffer:Vec<u8> = image::ImageBuffer::into_raw ( match cod.as_ref() {
+            
+                                                             "blur"            => image::imageops::blur(&imgbuf,5.1),
+                                                             "unsharpen"       => image::imageops::unsharpen(&imgbuf,5.1,10),
+                                                             "flip_vertical"   => image::imageops::flip_vertical(&imgbuf),
+                                                             "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
+                                                             "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
+                                                             "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
+                                                                             _ => imgbuf,
+         });
+        
+        //convert rgba 8u image buffer back into Color slice
+        let mut i = 0;
+        let mut r =0;
+        let mut g = 0;
+        let mut b =0;
+        let mut a =0;
+        let mut new_slice = Vec::new();
+        while i <= vec_image_buffer.len() - 4 {        
+            
+            r = vec_image_buffer[i];
+            g = vec_image_buffer[i+1];
+            b = vec_image_buffer[i+2];
+            a = vec_image_buffer[i+3];
+            new_slice.push(orbtk::Color::rgba(b, g, r, a)); //taking care of wird bug
+            i += 4;
+        }
+        
+        let mut image = self.image.borrow_mut();
+        //image.clear();
+        image.image(0,0,width,height,&new_slice[..]);
+        
+    }
+        
+    
     pub fn on_right_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
         *self.right_click_callback.borrow_mut() = Some(Arc::new(func));
         self

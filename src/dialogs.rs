@@ -8,7 +8,7 @@ use orbtk::traits::{Click, Enter, Place, Text};  //Border
 
 
 //dialog window
-pub fn dialog(title: &str, text: &str) -> Option<String> {
+pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
     let mut new_window = Window::new(Rect::new(200, 200, 320, 100), title);
 
     let x = 10;
@@ -21,7 +21,10 @@ pub fn dialog(title: &str, text: &str) -> Option<String> {
     y += label.rect.get().height as i32 + 2;
 
     let text_box = TextBox::new();
-    text_box.position(x, y).size(290, 28).text_offset(6, 6);
+    text_box.position(x, y)
+    .size(290, 28)
+    .text_offset(6, 6)
+    .text(suggestion);
 
     //pressing enter in text_box closes popup window
     {

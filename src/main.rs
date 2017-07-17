@@ -29,18 +29,17 @@ mod canvas;
 use canvas::{Canvas};
 
 //structure to store tools properties 
-
 struct Property{
     name: CloneCell<String>,
     value: Cell<i32>,
 }
 
 impl Property {
-        fn new(name: &str, value: i32) -> Arc<Self> {
-            Arc::new(Property {
-            name: CloneCell::new(name.to_owned()),
-            value: Cell::new(value),
-            })
+    fn new(name: &str, value: i32) -> Arc<Self> {
+        Arc::new(Property {
+        name: CloneCell::new(name.to_owned()),
+        value: Cell::new(value),
+        })
     }
 
     fn name<S: Into<String>>(&self, text: S) -> &Self {
@@ -95,10 +94,6 @@ struct MySize {
     y: u32,
 }
 
-
-
-
-
 fn main() {
 
     // deal with icons path under diferent os
@@ -109,12 +104,22 @@ fn main() {
     let root = Path::new("/ui/pastel/");
 
     env::set_current_dir(&root);
+    
+    //get user home directory (writable) 
+    let mut home_dir = String::new();
+    match env::home_dir() {
+        Some(path) => {
+                home_dir.push_str(path.to_str().unwrap());
+                if cfg!(feature = "debug"){println!("Home path:{}", home_dir);}                        
+                },
+        None => println!("Impossible to get your home dir!"),
+    }
 
     let mut size = MySize{x: 1024, y:500};    
     let mut x = 10;
     let mut y = 56;
 
-    let filename;
+    let filename;          //FIXME change filename type to Box so we can update
 
     //deal with comand line arguments
     let args: Vec<String> = env::args().collect();
@@ -136,7 +141,6 @@ fn main() {
 
     //load canvas from existing file or create new one with filename size
     let canvas = load_image(&filename, &size);
-
 
     //Tools and properties for tools
     //create new tool with some properties and initial values
@@ -160,7 +164,7 @@ fn main() {
                                        "Pastel",
                                        &[orbclient::WindowFlag::Resizable ]);
 
-    // color swatch
+    // color swatch               TODO better bigger color swatch
     let swatch = Label::new();
     swatch.text("■■").position(320,80).size(56,16);
     //swatch.fg.set(orbtk::Color::rgb(r,g,b));
@@ -601,8 +605,9 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
 
     {
         let action = Action::new("Open");
+        let home_dir_clone = home_dir.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-            match dialog("Open", "path:") {
+            match dialog("Open", "path:",&home_dir_clone[..]) {
                 Some(response) => {
                                     println!("Open {} ", response);
                                     let mut path="";
@@ -627,7 +632,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
         let action = Action::new("Save");
         let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.save(&filename);
+                            canvas_clone.save(&filename);  
                         });
         menu.add(&action);
     }
@@ -635,11 +640,17 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
     {
         let action = Action::new("Save As");
         let canvas_clone = canvas.clone();
-        
+        //FIXME change filename after a SaveAs 
         action.on_click(move |_action: &Action, _point: Point| {
-                            match dialog("Save As", "path:") {
-                            Some(response) => canvas_clone.save(&(String::from(response))),
-                            None => println!("Cancelled"),
+                            match dialog("Save As", "path:",&home_dir[..]) {
+                            Some(response) => {
+                                match canvas_clone.save(&(String::from(response))){
+                                    Ok(_) => (),
+                                    Err(e) => popup("Error",&format!("{}",e)[..]),
+                                }
+                                
+                                },
+                            None => {println!("Cancelled");},
                             }
                         });
         menu.add(&action);
@@ -796,7 +807,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel, simple bitmap editor \n for Redox OS ");
+                                  "Pastel v0.0.5, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }
@@ -808,13 +819,12 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
     window.add(&help);
 
     // paint on canvas
-
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
     let window_clone = &mut window as *mut Window;
     
     canvas
         .position(0, 200) 
-        .on_right_click(move |_ , point:Point|{println!("Right click closure!!")})
+        .on_right_click(move |_ , point:Point|{println!("Right click, closure not implemented yet!!")})
         .on_click(move |canvas: &Canvas, point: Point| {
 
             let click = click_pos.clone();
@@ -859,19 +869,18 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                                                         );
                                     },
                         "circle"=> image.circle(prev_position.x, prev_position.y,
-                                                (2.0*((prev_position.x-point.x)^2+(prev_position.y-point.y)^2) as f64).sqrt() as i32,
+                                                2*(((point.x-prev_position.x)^2+(point.y-prev_position.y)^2) as f64).sqrt() as i32,
                                                  orbtk::Color::rgba(r, g, b, a)),
                               _ => println!("No match!"),          
                     }
 
-                    *prev_opt = Some(point);     //FIXME clear last position after un-click
+                    *prev_opt = Some(point);     //FIXME clear last position after un-click (need release button event!!)
                 } else {
                     *prev_opt = Some(point);
                 }
             }
         });
     window.add(&canvas);
-    
     window.exec();
 }
 
@@ -879,14 +888,14 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
 
 //Load an image from path if exists, other way create new empty canvas
 fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  
-    print!("Loading image from:  {} .....", path);
+    if cfg!(feature = "debug"){print!("Loading image from:  {} .....", path);}
     match Canvas::from_path(&path) {
         Ok(image) => {
-            println!(" OK");
+            if cfg!(feature = "debug"){println!(" OK");}
             image
         }
         Err(err) => {
-            println!("Failed: {} \n Creating new one ", err);
+            if cfg!(feature = "debug"){println!("Failed: {} \n Creating new one ", err);}
             let image = Canvas::from_color(size.x, size.y, Color::rgb(255, 255, 255));
             image
         }

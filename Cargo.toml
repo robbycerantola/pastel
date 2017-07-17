@@ -18,4 +18,4 @@ image = "0.12.4"
 
 
 [features]
-colored = []
+debug = []

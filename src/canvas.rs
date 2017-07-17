@@ -1,23 +1,22 @@
 //canvas widget based on image widget
 
 use image;
-
 use orbtk;
-
 use orbclient::{Color, Renderer};
 use orbimage;
 use std::cell::{Cell, RefCell};
 use std::path::Path;
-use std::fs::File;
+//use std::fs::File;
 use std::sync::Arc;
-
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
 use orbtk::traits::{Click, Place};
 use orbtk::widgets::Widget;
-
 use std::slice;
+use std::io::Error;
+
+
 
 pub struct Canvas {
     pub rect: Cell<Rect>,
@@ -48,7 +47,7 @@ impl Canvas {
         Ok(Self::from_image(orbimage::Image::from_path(path)?))
     }
     
-    pub fn save(&self, filename: &String) {
+    pub fn save(&self, filename: &String) -> Result <i32, Error>{
         let width = self.rect.get().width as u32;
         let height = self.rect.get().height as u32;
         //get image data in form of [Color] slice
@@ -60,32 +59,37 @@ impl Canvas {
         };
         //let () = image_buffer;
         //To save corectly the image with image::save_buffer
-        // we have to switch r with b but dont know why!!
-        
-
+        // we have to switch r with b but dont know why!
         let mut new_image_buffer = Vec::new();
-
         let mut i = 0;
-
         while i <= image_buffer.len() - 4 {
-
             new_image_buffer.push(image_buffer[i + 2]);
             new_image_buffer.push(image_buffer[i + 1]);
             new_image_buffer.push(image_buffer[i]);
             new_image_buffer.push(image_buffer[i + 3]);
-
             i = i + 4;
         }
 
-        println!("Saving {}", &filename);
-        println!("x{} y{} len={}", width, height, image_data.len());
-        image::save_buffer(&Path::new(&filename),
+        if cfg!(feature = "debug"){
+            println!("Saving {}", &filename);
+            println!("x{} y{} len={}", width, height, image_data.len());
+        }
+        
+        match image::save_buffer(&Path::new(&filename),
                            &new_image_buffer,
                            width,
                            height,
-                           image::RGBA(8))
-                .unwrap();  //TODO gestione errori
-        println!("Saved");
+                           image::RGBA(8)){
+                Ok(_)   => {
+                            if cfg!(feature = "debug"){println!("Saved");}
+                            Ok(0)
+                            },               
+                Err(e) => {
+                            if cfg!(feature = "debug"){println!("Error: {}",e);}
+                            Err(e)
+                            },
+                
+        }
     }
 
     pub fn clear(&self){
@@ -207,7 +211,7 @@ impl Widget for Canvas {
                     if middle_button {println!("Middle_button");}
                     }
                 }
-            _ => println!("{:?}", event),  //(),
+            _ => if cfg!(feature = "debug"){println!("{:?}", event)} else {()}, 
         }
 
         focused

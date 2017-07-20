@@ -1,6 +1,6 @@
 [root]
 name = "pastel"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "image 0.12.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbclient 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -230,7 +230,7 @@ dependencies = [
 [[package]]
 name = "orbtk"
 version = "0.2.20"
-source = "git+https://github.com/robbycerantola/orbtk.git?branch=toolbar#2d845165ec6499eba7f16c56b4f9ed400a463342"
+source = "git+https://github.com/robbycerantola/orbtk.git?branch=toolbar#1a7ee0b862d0d471cfeea89f0a377ed56798f89c"
 dependencies = [
  "orbclient 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbfont 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",

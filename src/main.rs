@@ -1,6 +1,7 @@
 /*Pastel by Robby 21-05-2017
 simple image editor in Rust for Redox
 */
+
 extern crate orbtk;
 extern crate orbimage;
 extern crate image;
@@ -12,7 +13,7 @@ use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             TextBox, Window, Renderer};
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
 use std::rc::Rc;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, RefMut};
 use orbtk::cell::CloneCell;
 use std::sync::Arc;
 use std::process;
@@ -20,7 +21,9 @@ use std::process::Command;
 use std::env;
 use std::collections::HashMap;
 use std::path::Path;
-
+//use orbclient::EventOption;
+use orbclient::EventOption;
+use std::borrow::Borrow;
 
 mod dialogs;
 use dialogs::{dialog,popup};
@@ -146,7 +149,8 @@ fn main() {
     //create new tool with some properties and initial values
     let mut ntools = HashMap::new();
     ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
-    ntools.insert("line",vec![Property::new("Opacity",100)]); 
+    ntools.insert("line",vec![Property::new("Opacity",100)]);
+    ntools.insert("polyline",vec![Property::new("Opacity",100)]); 
     ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]);
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
     ntools.insert("rectangle",vec![Property::new("Opacity",100)]);
@@ -445,6 +449,44 @@ fn main() {
         }
     }
 
+    match ToolbarIcon::from_path("polyline.png") {
+        Ok(image) => {
+            image.position(x, y)                
+                 .text("Draw polylines".to_owned());
+            let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            let size_label_clone = size_label.clone();
+            let trans_bar_clone = trans_bar.clone();
+            let trans_label_clone = trans_label.clone();
+            let ntools_clone = ntools.clone();
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               //set current tool
+                               tool_clone.text.set("polyline".to_owned());
+                               
+                               //get previous settings
+                               size_bar_clone.visible.set(false);
+                               size_label_clone.visible.set(false);
+                               let o = property_get(&ntools_clone["polyline"],"Opacity").unwrap();
+                               trans_bar_clone.value.set(o);
+                               trans_label_clone.text(format!("Opacity: {}%",o));
+                               
+                               //toggle tool in toolbar
+                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               //make invisible toolbar2
+                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               });
+            window.add(&image);
+            toolbar_obj.push(image.clone());
+
+            x += image.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
     match ToolbarIcon::from_path("brush.png") {
         Ok(image) => {
             image.position(x, y)
@@ -693,6 +735,16 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
     }
 
     {
+        let action = Action::new("Polyline");
+        let tool_clone = tool.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+
+                            tool_clone.text.set("polyline".to_owned());
+                        });
+        tools.add(&action);
+    }
+
+    {
         let action = Action::new("Brush");
         let tool_clone = tool.clone();
         action.on_click(move |_action: &Action, _point: Point| {
@@ -727,6 +779,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                         });
         tools.add(&action);
     }
+    
 
     //Menu image
     let menuimage = Menu::new("Image");
@@ -795,7 +848,9 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                         });
         menuimage.add(&action);
     }
-    
+
+
+
     //Menu help
 
     let help = Menu::new("Help");
@@ -807,7 +862,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.5, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.6, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }
@@ -821,10 +876,17 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
     // paint on canvas
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
     let window_clone = &mut window as *mut Window;
+    let click_pos_clone = click_pos.clone();
     
     canvas
         .position(0, 200) 
-        .on_right_click(move |_ , point:Point|{println!("Right click, closure not implemented yet!!")})
+        .on_right_click(move |_ , point:Point|{
+            // right click clears last cursor position 
+                let mut ck=click_pos_clone.borrow_mut();
+                if cfg!(feature = "debug"){
+                println!("Right click {:?}",ck);}
+                *ck = None;
+                })
         .on_click(move |canvas: &Canvas, point: Point| {
 
             let click = click_pos.clone();
@@ -868,13 +930,20 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                                                         &mut *window_clone
                                                         );
                                     },
+                    "polyline" => unsafe{
+                                    image.interact_line(point.x,
+                                                        point.y,
+                                                        orbtk::Color::rgba(r, g, b, a),
+                                                        &mut *window_clone
+                                                        );
+                                    },
                         "circle"=> image.circle(prev_position.x, prev_position.y,
                                                 2*(((point.x-prev_position.x)^2+(point.y-prev_position.y)^2) as f64).sqrt() as i32,
                                                  orbtk::Color::rgba(r, g, b, a)),
                               _ => println!("No match!"),          
                     }
 
-                    *prev_opt = Some(point);     //FIXME clear last position after un-click (need release button event!!)
+                    *prev_opt = Some(point);     
                 } else {
                     *prev_opt = Some(point);
                 }
@@ -947,6 +1016,7 @@ trait AddOnsToOrbimage {
         fn pixcol(&self, x:i32, y:i32) -> Color;
         fn pixraw(&self, x:i32, y:i32) -> u32;
         fn interact_rect(&mut self,px: i32, py: i32, x: i32 , y: i32, color: Color, window: &mut orbtk::Window);
+        fn interact_line(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window);
     }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -1095,6 +1165,184 @@ impl AddOnsToOrbimage for orbimage::Image {
 
     // draw interactive rectangle 
     fn interact_rect(&mut self, px: i32, py: i32, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
-        self.rect(x ,y,(px -x) as u32 ,(py -y) as u32 ,color);
+    
+         //gets events from orbclient and render helping lines directly into orbclient window 
+         let mut orbclient = window.inner.borrow_mut();
+         let mut lx = 0;
+         let mut ly = 0;
+         let mut w =false;
+        'events: loop{
+            for event in orbclient.events() { 
+                match event.to_option() {
+                    EventOption::Key(key_event) => break 'events,
+                    EventOption::Quit(_quit_event) => break 'events,
+                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet.."),
+                    EventOption::Mouse(evt) => {
+                                                if evt.y < 200{
+                                                    break 'events
+                                                };
+                                                if w {
+                                                    orbclient.ant_line(x,
+                                                    y+200,
+                                                    lx,
+                                                    ly+200,
+                                                    orbtk::Color::rgba(100, 100, 100, 255));
+                                                }
+                                                w=true;
+                                                
+                                                orbclient.ant_line(x,
+                                                y+200,
+                                                evt.x,
+                                                evt.y,
+                                                orbtk::Color::rgba(100, 100, 100, 255));
+                                                lx=evt.x;
+                                                ly=evt.y-200;
+                                                   
+                                                },
+                    EventOption::Button(btn) => {if btn.left {
+                                                let dx=lx-x;
+                                                let dy=ly-y;
+                                                if dx >0 && dy>0 {
+                                                    self.rect(x ,y,dx as u32, dy as u32 ,color);
+                                                }
+                                                if dx<0 && dy > 0 {
+                                                    self.rect(x+dx ,y ,-dx as u32, dy as u32, color);
+                                                }
+                                                if dx<0 && dy <0 {
+                                                    self.rect(x+dx ,y+dy ,-dx as u32, -dy as u32, color);
+                                                }
+                                                if dx>0 && dy <0 {
+                                                    self.rect(x ,y+dy ,dx as u32, (-dy) as u32, color);
+                                                }
+                                                break 'events
+                                                }
+                                                },
+                    event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
+                                    else{ ()}
+                }
+          }
+        }
+        
+    }
+    
+    // draw interactive polyline 
+    fn interact_line(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
+    
+         //gets events from orbclient and render helping lines directly into orbclient window 
+         let mut orbclient = window.inner.borrow_mut();
+         let mut lx =0;
+         let mut ly =0;
+         let mut ox = x;
+         let mut oy = y;
+         let mut w = false;
+        'events: loop{
+            for event in orbclient.events() { 
+                match event.to_option() {
+                    EventOption::Key(key_event) => break 'events,
+                    EventOption::Quit(_quit_event) => break 'events,
+                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet.."),
+                    EventOption::Mouse(evt) => {
+                                                if evt.y < 200{
+                                                    break 'events
+                                                };
+                                                if w {
+                                                    orbclient.ant_line(ox,
+                                                    oy+200,
+                                                    lx,
+                                                    ly+200,
+                                                    orbtk::Color::rgba(100, 100, 100, 255));
+                                                }
+                                                w=true;
+                                                lx=evt.x;
+                                                ly=evt.y-200;
+                                                 
+                                                orbclient.ant_line(ox,
+                                                oy+200,
+                                                evt.x,
+                                                evt.y,
+                                                orbtk::Color::rgba(100, 100, 100, 255));
+                                                
+                                                
+                                                     
+                                                },
+                    EventOption::Button(btn) => {
+                                                    if btn.left {
+                                                        self.line(ox ,oy,lx, ly ,color); //update image
+                                                        orbclient.line(ox ,oy+200,lx, ly+200 ,color); //update preview 
+                                                        orbclient.sync();
+                                                        ox=lx;
+                                                        oy=ly;
+                                                        w =false;
+                                                    }
+                                                    if btn.right{
+                                                        break 'events
+                                                    }
+                                                },
+                    event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
+                                    else{ ()}
+                }
+          }
+        }
+        
+    }
+    
+}
+
+trait AddOnsToOrbclient {
+    fn pixcol(&self, x:i32, y:i32) -> Color;
+    fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
+}
+impl AddOnsToOrbclient for orbclient::Window{
+    fn pixcol(&self, x:i32, y:i32) -> Color {
+        let p = self.width()as i32 * y + x;
+        let rgba = self.data()[p as usize];
+        rgba
+    }
+    /// Draw ant_line
+    fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
+        let mut x = argx1;
+        let mut y = argy1;
+        let mut c = 0;
+        
+        
+        let dx = if argx1 > argx2 { argx1 - argx2 } else { argx2 - argx1 };
+        let dy = if argy1 > argy2 { argy1 - argy2 } else { argy2 - argy1 };
+
+        let sx = if argx1 < argx2 { 1 } else { -1 };
+        let sy = if argy1 < argy2 { 1 } else { -1 };
+
+        let mut err = if dx > dy { dx } else {-dy} / 2;
+        let mut err_tolerance;
+
+        let mut old_color = orbtk::Color::rgba(0, 0, 0, 0);
+        let mut r = 0;
+        let mut g = 0;
+        let mut b = 0;
+        let mut a = 0;
+        
+        let nr = orbtk::Color::r(&color);
+        let ng = orbtk::Color::g(&color);
+        let nb = orbtk::Color::b(&color);
+        let na = orbtk::Color::a(&color);
+        
+        loop {
+            old_color = self.pixcol(x,y);
+            // rgb bitwise or between old and new pixel color
+            r = orbtk::Color::r(&old_color);
+            g = orbtk::Color::g(&old_color);
+            b = orbtk::Color::b(&old_color);
+            a = orbtk::Color::a(&old_color);
+            
+            self.pixel(x, y, orbtk::Color::rgba(r^nr, g^ng, b^nb, a));
+
+            if x == argx2 && y == argy2 { break };
+
+            err_tolerance = 2 * err;
+
+            if err_tolerance > -dx { err -= dy; x += sx; }
+            if err_tolerance < dy { err += dx; y += sy; }
+        }
+        self.sync();
+        
     }
 }

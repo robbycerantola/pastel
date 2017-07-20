@@ -167,7 +167,11 @@ impl Click for Canvas {
         *self.click_callback.borrow_mut() = Some(Arc::new(func));
         self
     }
+
+
 }
+
+
 
 impl Place for Canvas {}
 

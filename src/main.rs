@@ -10,7 +10,7 @@ extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             ControlKnob, ToolbarIcon, Rect, Separator,
-            TextBox, Window, Renderer};
+            TextBox, Window, Renderer}; //Toolbar
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
 use std::rc::Rc;
 use std::cell::{Cell, RefCell, RefMut};
@@ -364,9 +364,13 @@ fn main() {
     }
     
     // implement multiple toolbars by multiple clickable images loaded in widget Toolbar 
-    //TODO let toolbar = Toolbar::new(&window); must specify parent window!!
+    
     let mut toolbar_obj = vec![];   //here save all Toolbar widgets clones so we can manage 'selected' property
     let mut toolbar2_obj = vec![];   //create Toolbar2 here so we can manage 'selected','visible' properties from Toolbar
+    //TODO let toolbar = Toolbar::new(&window); must specify parent window !!
+    //let parent_window = &mut window as *mut Window;
+    //let mut toolbar3 = Toolbar::new(parent_window);   //work in progress
+    
     let y = 25;
     match ToolbarIcon::from_path("pencil1.png") {
         Ok(image) => {
@@ -403,6 +407,8 @@ fn main() {
             
             window.add(&image);
             toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
+            //TODO toolbar.add(&image);
+            //toolbar3.add(&image.clone());  //testing work in progress, no real functionality yet
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -611,7 +617,7 @@ fn main() {
         }
     }
 
-// set 2nd toolbar as not visible at start
+// set 2nd toolbar not visible at start
 let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
 unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
 
@@ -922,9 +928,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                                     },
                          "fill" => image.fill(point.x, point.y,orbtk::Color::rgba(r, g, b, a)),
                     "rectangle" => unsafe{
-                                    image.interact_rect(prev_position.x,
-                                                        prev_position.y,
-                                                        point.x,
+                                    image.interact_rect(point.x,
                                                         point.y,
                                                         orbtk::Color::rgba(r, g, b, a),
                                                         &mut *window_clone
@@ -1015,7 +1019,7 @@ trait AddOnsToOrbimage {
         fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
         fn pixcol(&self, x:i32, y:i32) -> Color;
         fn pixraw(&self, x:i32, y:i32) -> u32;
-        fn interact_rect(&mut self,px: i32, py: i32, x: i32 , y: i32, color: Color, window: &mut orbtk::Window);
+        fn interact_rect(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window);
         fn interact_line(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window);
     }
 
@@ -1164,7 +1168,7 @@ impl AddOnsToOrbimage for orbimage::Image {
 
 
     // draw interactive rectangle 
-    fn interact_rect(&mut self, px: i32, py: i32, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
+    fn interact_rect(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -1174,9 +1178,9 @@ impl AddOnsToOrbimage for orbimage::Image {
         'events: loop{
             for event in orbclient.events() { 
                 match event.to_option() {
-                    EventOption::Key(key_event) => break 'events,
+                    EventOption::Key(key_event) => {println!("{:?}",key_event); break 'events;},
                     EventOption::Quit(_quit_event) => break 'events,
-                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet.."),
+                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
                     EventOption::Mouse(evt) => {
                                                 if evt.y < 200{
                                                     break 'events
@@ -1250,7 +1254,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     oy+200,
                                                     lx,
                                                     ly+200,
-                                                    orbtk::Color::rgba(100, 100, 100, 255));
+                                                    orbtk::Color::rgba(100, 100, 100, 0));//alfa has to be 0 for trick to work
                                                 }
                                                 w=true;
                                                 lx=evt.x;
@@ -1260,7 +1264,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 oy+200,
                                                 evt.x,
                                                 evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 255));
+                                                orbtk::Color::rgba(100, 100, 100, 0));//alfa has to be 0 for trick to work
                                                 
                                                 
                                                      
@@ -1302,9 +1306,7 @@ impl AddOnsToOrbclient for orbclient::Window{
     fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
         let mut x = argx1;
         let mut y = argy1;
-        let mut c = 0;
-        
-        
+                
         let dx = if argx1 > argx2 { argx1 - argx2 } else { argx2 - argx1 };
         let dy = if argy1 > argy2 { argy1 - argy2 } else { argy2 - argy1 };
 
@@ -1315,26 +1317,32 @@ impl AddOnsToOrbclient for orbclient::Window{
         let mut err_tolerance;
 
         let mut old_color = orbtk::Color::rgba(0, 0, 0, 0);
-        let mut r = 0;
-        let mut g = 0;
-        let mut b = 0;
-        let mut a = 0;
+
+        /* Old implementation
+        let mut r :u8;
+        let mut g :u8;
+        let mut b :u8;
+        let mut a :u8;
         
         let nr = orbtk::Color::r(&color);
         let ng = orbtk::Color::g(&color);
         let nb = orbtk::Color::b(&color);
         let na = orbtk::Color::a(&color);
-        
+        */
         loop {
             old_color = self.pixcol(x,y);
-            // rgb bitwise or between old and new pixel color
+            // rgb bitwise xor between old and new pixel color
+            /* old slower implementation
             r = orbtk::Color::r(&old_color);
             g = orbtk::Color::g(&old_color);
             b = orbtk::Color::b(&old_color);
             a = orbtk::Color::a(&old_color);
+            self.pixel(x, y, orbtk::Color::rgba(r^nr, g^ng, b^nb, a)); //it works xor-ing each r g b 8bit value
+            */
+            // New faster implementation xor-ing 32 bit internal color data 
+            // Attention :trick does not work as intended xor-ing entire 32bit color data, if alfa > 0!!
+            self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)}); 
             
-            self.pixel(x, y, orbtk::Color::rgba(r^nr, g^ng, b^nb, a));
-
             if x == argx2 && y == argy2 { break };
 
             err_tolerance = 2 * err;

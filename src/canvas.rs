@@ -103,13 +103,13 @@ impl Canvas {
         let width = self.rect.get().width as u32;
         let height = self.rect.get().height as u32;
         //get image data in form of [Color] slice
-        let mut image_data = self.image.clone().into_inner().into_data();
+        let image_data = self.image.clone().into_inner().into_data();//mut
         
         let image_buffer = unsafe {
             slice::from_raw_parts(image_data.as_ptr() as *const u8, 4 * image_data.len())
         };
                 
-        let mut imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, image_buffer.to_vec()).unwrap();
+        let imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, image_buffer.to_vec()).unwrap();
         let vec_image_buffer:Vec<u8> = image::ImageBuffer::into_raw ( match cod.as_ref() {
             
                                                              "blur"            => image::imageops::blur(&imgbuf,5.1),

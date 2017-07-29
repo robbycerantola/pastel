@@ -9,7 +9,7 @@ extern crate orbclient;
 //extern crate stacker;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
-            ControlKnob, ToolbarIcon, Rect, Separator,
+            ControlKnob,Toolbar, ToolbarIcon, Rect, Separator,
             TextBox, Window, Renderer}; //Toolbar
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
 use std::rc::Rc;
@@ -124,7 +124,7 @@ fn main() {
 
     let filename;          //FIXME change filename type to Box so we can update
 
-    //deal with comand line arguments
+    //deal with command line arguments
     let args: Vec<String> = env::args().collect();
     
     //only name given
@@ -145,7 +145,7 @@ fn main() {
     //load canvas from existing file or create new one with filename size
     let canvas = load_image(&filename, &size);
 
-    //Tools and properties for tools
+    //Tools and properties 
     //create new tool with some properties and initial values
     let mut ntools = HashMap::new();
     ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
@@ -363,13 +363,13 @@ fn main() {
         }
     }
     
-    // implement multiple toolbars by multiple clickable images loaded in widget Toolbar 
+    // implement toolbars by multiple clickable images loaded in widget ToolbarIcon  
     
     let mut toolbar_obj = vec![];   //here save all Toolbar widgets clones so we can manage 'selected' property
     let mut toolbar2_obj = vec![];   //create Toolbar2 here so we can manage 'selected','visible' properties from Toolbar
     //TODO let toolbar = Toolbar::new(&window); must specify parent window !!
-    //let parent_window = &mut window as *mut Window;
-    //let mut toolbar3 = Toolbar::new(parent_window);   //work in progress
+    let parent_window = &mut window as *mut Window;
+    let mut toolbar3 = Toolbar::new();   //work in progress
     
     let y = 25;
     match ToolbarIcon::from_path("pencil1.png") {
@@ -407,8 +407,7 @@ fn main() {
             
             window.add(&image);
             toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
-            //TODO toolbar.add(&image);
-            //toolbar3.add(&image.clone());  //testing work in progress, no real functionality yet
+
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -622,6 +621,55 @@ let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
 unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
 
     //x = 10;
+
+#[cfg(feature = "debug")]
+//3rd toolbar new api 
+    match ToolbarIcon::from_path("block.png") {
+        Ok(item) => {
+            let ntools_clone = ntools.clone();
+            let toolbar3_clone = toolbar3.clone();
+            item.position(x+520, y)
+                 .text("Test 3rd toolbar".to_owned()) 
+                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               property_set(&ntools_clone["brush"],"Shape",1);
+                               
+                               //toggle item in toolbar3
+                               toolbar3_clone.toggle();
+                               });
+
+            toolbar3.add(&item,parent_window);
+            
+            x += item.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
+#[cfg(feature = "debug")]
+    match ToolbarIcon::from_path("circle.png") {
+        Ok(item) => {
+            let ntools_clone = ntools.clone();
+            let toolbar3_clone = toolbar3.clone();
+            //let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            item.position(x+520, y)
+                 .text("Test 3rd toolbar".to_owned())
+                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               property_set(&ntools_clone["brush"],"Shape",0);
+                               
+                               //toggle item in toolbar3  
+                               toolbar3_clone.toggle();
+                               });
+
+            toolbar3.add(&item,parent_window);
+            
+            //x += item.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
 
     //Menu file
 
@@ -1174,7 +1222,7 @@ impl AddOnsToOrbimage for orbimage::Image {
          let mut orbclient = window.inner.borrow_mut();
          let mut lx = 0;
          let mut ly = 0;
-         let mut w =false;
+         let mut w = false;
         'events: loop{
             for event in orbclient.events() { 
                 match event.to_option() {
@@ -1186,19 +1234,19 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     break 'events
                                                 };
                                                 if w {
-                                                    orbclient.ant_line(x,
+                                                    orbclient.rect_marquee(x,
                                                     y+200,
                                                     lx,
                                                     ly+200,
-                                                    orbtk::Color::rgba(100, 100, 100, 255));
+                                                    orbtk::Color::rgba(100, 100, 100, 0));
                                                 }
                                                 w=true;
                                                 
-                                                orbclient.ant_line(x,
+                                                orbclient.rect_marquee(x,
                                                 y+200,
                                                 evt.x,
                                                 evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 255));
+                                                orbtk::Color::rgba(100, 100, 100, 0));
                                                 lx=evt.x;
                                                 ly=evt.y-200;
                                                    
@@ -1295,6 +1343,7 @@ impl AddOnsToOrbimage for orbimage::Image {
 trait AddOnsToOrbclient {
     fn pixcol(&self, x:i32, y:i32) -> Color;
     fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
+    fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
 }
 impl AddOnsToOrbclient for orbclient::Window{
     fn pixcol(&self, x:i32, y:i32) -> Color {
@@ -1302,7 +1351,8 @@ impl AddOnsToOrbclient for orbclient::Window{
         let rgba = self.data()[p as usize];
         rgba
     }
-    /// Draw ant_line
+    // Draw ant_line    
+    // FIXME too slow
     fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
         let mut x = argx1;
         let mut y = argy1;
@@ -1317,31 +1367,18 @@ impl AddOnsToOrbclient for orbclient::Window{
         let mut err_tolerance;
 
         let mut old_color = orbtk::Color::rgba(0, 0, 0, 0);
-
-        /* Old implementation
-        let mut r :u8;
-        let mut g :u8;
-        let mut b :u8;
-        let mut a :u8;
         
-        let nr = orbtk::Color::r(&color);
-        let ng = orbtk::Color::g(&color);
-        let nb = orbtk::Color::b(&color);
-        let na = orbtk::Color::a(&color);
-        */
+        let mut ct = 0;
+
         loop {
+            if ct == 0 {
             old_color = self.pixcol(x,y);
             // rgb bitwise xor between old and new pixel color
-            /* old slower implementation
-            r = orbtk::Color::r(&old_color);
-            g = orbtk::Color::g(&old_color);
-            b = orbtk::Color::b(&old_color);
-            a = orbtk::Color::a(&old_color);
-            self.pixel(x, y, orbtk::Color::rgba(r^nr, g^ng, b^nb, a)); //it works xor-ing each r g b 8bit value
-            */
-            // New faster implementation xor-ing 32 bit internal color data 
-            // Attention :trick does not work as intended xor-ing entire 32bit color data, if alfa > 0!!
+            // New faster implementation xor-ing 32 bit internal color data  (not faster enought !) 
+            // Attention :trick does not work as intended xor-ing entire 32bit color data, if new color alfa > 0!!
             self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)}); 
+            
+            }
             
             if x == argx2 && y == argy2 { break };
 
@@ -1349,8 +1386,19 @@ impl AddOnsToOrbclient for orbclient::Window{
 
             if err_tolerance > -dx { err -= dy; x += sx; }
             if err_tolerance < dy { err += dx; y += sy; }
+            
+            if ct<2 {ct += 1;}  
+            else {ct = 0;}            
         }
         self.sync();
         
     }
+    
+    fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
+        self.ant_line(argx1,argy1,argx2,argy1,color);
+        self.ant_line(argx2,argy1,argx2,argy2,color);
+        self.ant_line(argx2,argy2,argx1,argy2,color);
+        self.ant_line(argx1,argy2,argx1,argy1,color);
+    }
+        
 }

@@ -56,41 +56,7 @@ impl Property {
     }
 }
 
-/*
-#[allow(dead_code)]
-struct Settings {
-    description: CloneCell<String>,     //tool's long description to be used in help popup
-    size: Cell<i32>,
-    transparency: Cell<i32>,                    
-    //property: Vec<Cell<&Property>>,
-    selected: Cell<bool>,
-}
 
-impl Settings {
-    fn new() -> Arc<Self> {
-        Arc::new(Settings {
-            description: CloneCell::new(String::new()),
-            size: Cell::new(0),
-            transparency: Cell::new(0),
-            //property: Cell::new(Property::new("lucentezza")),
-            selected: Cell::new(false),
-            
-        })
-    }
-    fn description<S: Into<String>>(&self, text: S) -> &Self {
-        self.description.set(text.into());
-        self
-    }
-    fn size(&self, size: i32) -> &Self {
-        self.size.set(size);
-        self
-    }
-    fn transparency(&self, transparency: i32) -> &Self {
-        self.transparency.set(transparency);
-        self
-    }
-}
-*/
 
 struct MySize {
     x: u32,
@@ -842,6 +808,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
     }
 
 
+
     //Menu tool
     let tools = Menu::new("Tools");
     tools.position(90, 0).size(48, 16);
@@ -1336,6 +1303,8 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 orbtk::Color::rgba(100, 100, 100, 0));
                                                 lx=evt.x;
                                                 ly=evt.y-200;
+                                                
+                                                orbclient.sync();
                                                    
                                                 },
                     EventOption::Button(btn) => {if btn.left {
@@ -1412,6 +1381,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 evt.y,
                                                 orbtk::Color::rgba(100, 100, 100, 0));//alfa has to be 0 for trick to work
                                                 
+                                                orbclient.sync();
                                                 
                                                      
                                                 },
@@ -1489,10 +1459,10 @@ impl AddOnsToOrbclient for orbclient::Window{
             if err_tolerance > -dx { err -= dy; x += sx; }
             if err_tolerance < dy { err += dx; y += sy; }
             
-            if ct<2 {ct += 1;}  
+            if ct<3 {ct += 1;}  
             else {ct = 0;}            
         }
-        self.sync();
+        //self.sync();
         
     }
     
@@ -1501,6 +1471,7 @@ impl AddOnsToOrbclient for orbclient::Window{
         self.ant_line(argx2,argy1,argx2,argy2,color);
         self.ant_line(argx2,argy2,argx1,argy2,color);
         self.ant_line(argx1,argy2,argx1,argy1,color);
+        //self.sync();
     }
         
 }

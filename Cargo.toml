@@ -9,8 +9,8 @@ authors = ["Robby <robbycerantola@gmail.com>"]
 
 [dependencies]
 orbclient = "0.3.8"
-#orbtk = { git = "https://github.com/robbycerantola/orbtk.git" , branch = "toolbar"}
-orbtk = { path = "/home/robby/orbtk"}
+orbtk = { git = "https://github.com/robbycerantola/orbtk.git" , branch = "toolbar"}
+#orbtk = { path = "/home/robby/orbtk"}
 orbimage = "0.1.15"
 image = "0.12.4"
 #stacker = "*"

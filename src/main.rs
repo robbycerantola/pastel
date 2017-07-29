@@ -150,10 +150,10 @@ fn main() {
     let mut ntools = HashMap::new();
     ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
     ntools.insert("line",vec![Property::new("Opacity",100)]);
-    ntools.insert("polyline",vec![Property::new("Opacity",100)]); 
+    ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100)]); 
     ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]);
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
-    ntools.insert("rectangle",vec![Property::new("Opacity",100)]);
+    ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Filled",1)]);
     ntools.insert("circle",vec![Property::new("Opacity",100)]);
 
     //use invisible Label for storing current active tool
@@ -352,7 +352,7 @@ fn main() {
             image.position(900, 10);
             image.on_click(move |_image: &Image, _point: Point| {
                                popup("Ciao",
-                                  "Pastel is work in progress....");
+                                  "Pastel is work in progress,\nplease be patient....");
                            });
             window.add(&image);
         }
@@ -387,6 +387,7 @@ fn main() {
             //let window_clone = &mut window as *mut Window;
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("pen".to_owned());
 
@@ -400,9 +401,8 @@ fn main() {
                                unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
                                //make invisible toolbar2  TODO move into Toolbar
                                unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
-                               //TODO clear window area reserved for tools properties
-                               //    draw widgets for tool properties
-                               //unsafe{prop_area(&ntools_clone["pen"],&mut *window_clone, 11);}
+                               //make toolbar3 invisible
+                               unsafe{(&mut *toolbar3_clone).visible(false);}
                            });
             
             window.add(&image);
@@ -428,6 +428,7 @@ fn main() {
             let ntools_clone = ntools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tool_clone.text.set("line".to_owned());
@@ -443,6 +444,8 @@ fn main() {
                                unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
                                //make invisible toolbar2
                                unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               //make toolbar3 invisible
+                               unsafe{(&mut *toolbar3_clone).visible(false);}
                                });
             window.add(&image);
             toolbar_obj.push(image.clone());
@@ -454,43 +457,6 @@ fn main() {
         }
     }
 
-    match ToolbarIcon::from_path("polyline.png") {
-        Ok(image) => {
-            image.position(x, y)                
-                 .text("Draw polylines".to_owned());
-            let tool_clone = tool.clone();
-            let size_bar_clone = size_bar.clone();
-            let size_label_clone = size_label.clone();
-            let trans_bar_clone = trans_bar.clone();
-            let trans_label_clone = trans_label.clone();
-            let ntools_clone = ntools.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
-            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               //set current tool
-                               tool_clone.text.set("polyline".to_owned());
-                               
-                               //get previous settings
-                               size_bar_clone.visible.set(false);
-                               size_label_clone.visible.set(false);
-                               let o = property_get(&ntools_clone["polyline"],"Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                               
-                               //toggle tool in toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
-                               //make invisible toolbar2
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
-                               });
-            window.add(&image);
-            toolbar_obj.push(image.clone());
-
-            x += image.rect.get().width as i32 + 2;
-        }
-        Err(err) => {
-            println!("Error loading toolbar element {}",err);
-        }
-    }
 
     match ToolbarIcon::from_path("brush.png") {
         Ok(image) => {
@@ -504,6 +470,7 @@ fn main() {
             let ntools_clone = ntools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("brush".to_owned());
                                size_label_clone.visible.set(true);
@@ -521,6 +488,8 @@ fn main() {
                                unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
                                //make visible toolbar2
                                unsafe{visible_toolbar(&mut *toolbar2_obj_clone,true);}
+                               //make toolbar3 invisible
+                               unsafe{(&mut *toolbar3_clone).visible(false);}
                                });
             window.add(&image);
             toolbar_obj.push(image.clone());
@@ -543,6 +512,7 @@ fn main() {
             let ntools_clone = ntools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
                  .text("Fill up area with color".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
@@ -558,6 +528,8 @@ fn main() {
                                unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
                                //make invisible toolbar2
                                unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               //make toolbar3 invisible
+                               unsafe{(&mut *toolbar3_clone).visible(false);}
                                });
             window.add(&item);
             toolbar_obj.push(item.clone());
@@ -570,13 +542,99 @@ fn main() {
     }
 
 
-//2nd toolbar
+    match ToolbarIcon::from_path("polyline.png") {
+        Ok(image) => {
+            image.position(x, y)                
+                 .text("Draw polylines".to_owned());
+            let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            let size_label_clone = size_label.clone();
+            let trans_bar_clone = trans_bar.clone();
+            let trans_label_clone = trans_label.clone();
+            let ntools_clone = ntools.clone();
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
+            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               //set current tool
+                               tool_clone.text.set("polyline".to_owned());
+                               
+                               //get previous settings
+                               size_bar_clone.visible.set(true);
+                               size_label_clone.visible.set(true);
+                               let o = property_get(&ntools_clone["polyline"],"Opacity").unwrap();
+                               trans_bar_clone.value.set(o);
+                               trans_label_clone.text(format!("Opacity: {}%",o));
+                               let s = property_get(&ntools_clone["polyline"],"Size").unwrap();
+                               size_bar_clone.value.set(s);
+                               size_label_clone.text(format!("Size: {}",s));
+                               
+                               //toggle tool in toolbar
+                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               //make visible toolbar2
+                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               //make toolbar3 invisible
+                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               });
+            window.add(&image);
+            toolbar_obj.push(image.clone());
 
+            x += image.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
+    match ToolbarIcon::from_path("rectangle.png") {
+        Ok(image) => {
+            image.position(x, y)                
+                 .text("Draw rectangles".to_owned());
+            let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            let size_label_clone = size_label.clone();
+            let trans_bar_clone = trans_bar.clone();
+            let trans_label_clone = trans_label.clone();
+            let ntools_clone = ntools.clone();
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
+            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               //set current tool
+                               tool_clone.text.set("rectangle".to_owned());
+                               
+                               //get previous settings
+                               size_bar_clone.visible.set(false);
+                               size_label_clone.visible.set(false);
+                               let o = property_get(&ntools_clone["polyline"],"Opacity").unwrap();
+                               trans_bar_clone.value.set(o);
+                               trans_label_clone.text(format!("Opacity: {}%",o));
+                               
+                               //toggle tool in toolbar
+                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               //make invisible toolbar2
+                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               //make toolbar3 visible
+                               unsafe{(&mut *toolbar3_clone).visible(true);}
+                               });
+            window.add(&image);
+            toolbar_obj.push(image.clone());
+
+            x += image.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
+//2nd toolbar
+    x=500;
+    
     match ToolbarIcon::from_path("circle.png") {
         Ok(item) => {
             let ntools_clone = ntools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
-            item.position(x+320, y)
+            item.position(x, y)
                  .text("Circular shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                property_set(&ntools_clone["brush"],"Shape",0);
@@ -598,7 +656,7 @@ fn main() {
         Ok(item) => {
             let ntools_clone = ntools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
-            item.position(x+320, y)
+            item.position(x, y)
                  .text("Blocky shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                property_set(&ntools_clone["brush"],"Shape",1);
@@ -620,21 +678,22 @@ fn main() {
 let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
 unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
 
-    //x = 10;
+    x = 500;
 
-#[cfg(feature = "debug")]
 //3rd toolbar new api 
-    match ToolbarIcon::from_path("block.png") {
+    match ToolbarIcon::from_path("rectangle.png") {
         Ok(item) => {
             let ntools_clone = ntools.clone();
-            let toolbar3_clone = toolbar3.clone();
-            item.position(x+520, y)
-                 .text("Test 3rd toolbar".to_owned()) 
+            //let toolbar3_clone = toolbar3.clone(); //does not work properly!!
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
+            item.position(x, y)
+                 .text("Not filled".to_owned()) 
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               property_set(&ntools_clone["brush"],"Shape",1);
+                               property_set(&ntools_clone["rectangle"],"Filled",0);
                                
                                //toggle item in toolbar3
-                               toolbar3_clone.toggle();
+                               //toolbar3_clone.toggle(); //does not work properly !!
+                               unsafe{(&mut *toolbar3_clone).toggle();}  
                                });
 
             toolbar3.add(&item,parent_window);
@@ -646,19 +705,19 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
         }
     }
 
-#[cfg(feature = "debug")]
-    match ToolbarIcon::from_path("circle.png") {
+    match ToolbarIcon::from_path("filled.png") {
         Ok(item) => {
             let ntools_clone = ntools.clone();
-            let toolbar3_clone = toolbar3.clone();
-            //let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
-            item.position(x+520, y)
-                 .text("Test 3rd toolbar".to_owned())
+            //let toolbar3_clone = toolbar3.clone();
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
+            item.position(x, y)
+                 .text("Filled".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               property_set(&ntools_clone["brush"],"Shape",0);
+                               property_set(&ntools_clone["rectangle"],"Filled",1);
                                
                                //toggle item in toolbar3  
-                               toolbar3_clone.toggle();
+                               //toolbar3_clone.toggle();
+                               unsafe{(&mut *toolbar3_clone).toggle();}  
                                });
 
             toolbar3.add(&item,parent_window);
@@ -670,6 +729,8 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
         }
     }
 
+    //toolbar3 not visibile at start
+    toolbar3.visible(false);
 
     //Menu file
 
@@ -763,10 +824,27 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
         menu.add(&action);
     }
 
+    //Menu edit
+    let edit = Menu::new("Edit");
+        edit.position(50, 0).size(32, 16);
+
+    //Menu entries for edit
+    {
+            let action = Action::new("Copy");
+            
+            edit.add(&action);
+    }
+    
+    {
+            let action = Action::new("Paste");
+            
+            edit.add(&action);
+    }
+
 
     //Menu tool
     let tools = Menu::new("Tools");
-    tools.position(50, 0).size(48, 16);
+    tools.position(90, 0).size(48, 16);
 
     //Menu entries for tools
     {
@@ -837,7 +915,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
 
     //Menu image
     let menuimage = Menu::new("Image");
-    menuimage.position (100,0).size (48,16);
+    menuimage.position (140,0).size (48,16);
     
     //Menu entries for image
     {
@@ -908,7 +986,7 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
     //Menu help
 
     let help = Menu::new("Help");
-    help.position(150, 0).size(32, 16);
+    help.position(190, 0).size(32, 16);
 
     //menu entries for help
 
@@ -921,8 +999,9 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
         help.add(&action);
     }
 
-    // add menues
+    // add menus
     window.add(&menu);
+    window.add(&edit);
     window.add(&tools);
     window.add(&menuimage);
     window.add(&help);
@@ -975,19 +1054,27 @@ unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
                                         }
                                     },
                          "fill" => image.fill(point.x, point.y,orbtk::Color::rgba(r, g, b, a)),
-                    "rectangle" => unsafe{
-                                    image.interact_rect(point.x,
+                    "rectangle" => {
+                                    let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
+                                
+                                    unsafe{
+                                            image.interact_rect(point.x,
                                                         point.y,
                                                         orbtk::Color::rgba(r, g, b, a),
+                                                        filled == 1,
                                                         &mut *window_clone
                                                         );
+                                    }
                                     },
-                    "polyline" => unsafe{
+                    "polyline" => {let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
+                                    unsafe{
                                     image.interact_line(point.x,
                                                         point.y,
                                                         orbtk::Color::rgba(r, g, b, a),
+                                                        width,
                                                         &mut *window_clone
                                                         );
+                                    }
                                     },
                         "circle"=> image.circle(prev_position.x, prev_position.y,
                                                 2*(((point.x-prev_position.x)^2+(point.y-prev_position.y)^2) as f64).sqrt() as i32,
@@ -1067,8 +1154,8 @@ trait AddOnsToOrbimage {
         fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
         fn pixcol(&self, x:i32, y:i32) -> Color;
         fn pixraw(&self, x:i32, y:i32) -> u32;
-        fn interact_rect(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window);
-        fn interact_line(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window);
+        fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
+        fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, window: &mut orbtk::Window);
     }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -1216,7 +1303,7 @@ impl AddOnsToOrbimage for orbimage::Image {
 
 
     // draw interactive rectangle 
-    fn interact_rect(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
+    fn interact_rect(&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -1252,22 +1339,33 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                    
                                                 },
                     EventOption::Button(btn) => {if btn.left {
-                                                let dx=lx-x;
-                                                let dy=ly-y;
-                                                if dx >0 && dy>0 {
-                                                    self.rect(x ,y,dx as u32, dy as u32 ,color);
+                                                    if filled {
+                                                        let dx=lx-x;
+                                                        let dy=ly-y;
+                                                        if dx >0 && dy>0 {
+                                                            self.rect(x ,y,dx as u32, dy as u32 ,color);
+                                                        }
+                                                        if dx<0 && dy > 0 {
+                                                            self.rect(x+dx ,y ,-dx as u32, dy as u32, color);
+                                                        }
+                                                        if dx<0 && dy <0 {
+                                                            self.rect(x+dx ,y+dy ,-dx as u32, -dy as u32, color);
+                                                        }
+                                                        if dx>0 && dy <0 {
+                                                            self.rect(x ,y+dy ,dx as u32, (-dy) as u32, color);
+                                                        }
+                                                        break 'events
+                                                    } else {
+                                                        self.line(x,y,lx,y,color);
+                                                        self.line(lx,y,lx,ly,color);
+                                                        self.line(lx,ly,x,ly,color);
+                                                        self.line(x,ly,x,y,color);
+                                                        break 'events
+                                                    }
                                                 }
-                                                if dx<0 && dy > 0 {
-                                                    self.rect(x+dx ,y ,-dx as u32, dy as u32, color);
-                                                }
-                                                if dx<0 && dy <0 {
-                                                    self.rect(x+dx ,y+dy ,-dx as u32, -dy as u32, color);
-                                                }
-                                                if dx>0 && dy <0 {
-                                                    self.rect(x ,y+dy ,dx as u32, (-dy) as u32, color);
-                                                }
-                                                break 'events
-                                                }
+                                                if btn.right{
+                                                        break 'events
+                                                    }
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
                                     else{ ()}
@@ -1278,7 +1376,7 @@ impl AddOnsToOrbimage for orbimage::Image {
     }
     
     // draw interactive polyline 
-    fn interact_line(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
+    fn interact_line(&mut self, x: i32 , y: i32, color: Color, width: i32, window: &mut orbtk::Window) {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -1319,8 +1417,12 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 },
                     EventOption::Button(btn) => {
                                                     if btn.left {
-                                                        self.line(ox ,oy,lx, ly ,color); //update image
-                                                        orbclient.line(ox ,oy+200,lx, ly+200 ,color); //update preview 
+                                                        //quick and dirty workaround to trace thick lines
+                                                        //TODO implement new line method to deal with thickness properly
+                                                        for d in 0..width {
+                                                            self.line(ox+d ,oy,lx+d, ly ,color); //update image
+                                                            orbclient.line(ox+d ,oy+200,lx+d, ly+200 ,color); //update preview 
+                                                        }
                                                         orbclient.sync();
                                                         ox=lx;
                                                         oy=ly;

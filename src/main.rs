@@ -1106,7 +1106,15 @@ fn main() {
                                              *bf = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
                                              //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
                                              let newcanvas= Canvas::from_image(bf.clone());
-                                             if let Ok(_) = newcanvas.save(&"pastel_copy_buffer.png".to_string()){}
+                                             
+                                             #[cfg(target_os = "linux")]
+                                             let path = "pastel_copy_buffer.png".to_string();
+                                                                                          
+                                             #[cfg(target_os = "redox")]
+                                             let path = "/tmp/pastel_copy_buffer.png".to_string();
+                                             
+                                             if let Ok(_) = newcanvas.save(&path){}
+                                             
                                             }
                                         },
                         "paste" => image.paste_selection(point.x,point.y,bf.clone()),
@@ -1143,7 +1151,13 @@ fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {
 
 ///load pastel_copy_buffer if exists
 fn load_buffer() -> orbimage::Image {
+    
+    #[cfg(target_os = "redox")]
+    let path="/tmp/pastel_copy_buffer.png".to_string();
+    
+    #[cfg(target_os = "linux")]
     let path="pastel_copy_buffer.png".to_string();
+    
     if cfg!(feature = "debug"){print!("Loading copy buffer from:  {} .....", path);}
     match orbimage::Image::from_path(&path) {
         Ok(image) => {

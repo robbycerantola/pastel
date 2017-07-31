@@ -2,7 +2,7 @@
 name = "pastel"
 description = "Simple bitmap editor for Redox OS"
 repository = "https://github.com/pastel.git"
-version = "0.0.6"
+version = "0.0.7"
 keywords = ["orbital", "redox", "editor", "graphics"]
 authors = ["Robby <robbycerantola@gmail.com>"]
 
@@ -13,7 +13,7 @@ orbtk = { git = "https://github.com/robbycerantola/orbtk.git" , branch = "toolba
 #orbtk = { path = "/home/robby/orbtk"}
 orbimage = "0.1.15"
 image = "0.12.4"
-#stacker = "*"
+
 
 
 [features]

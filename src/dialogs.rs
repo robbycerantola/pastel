@@ -2,8 +2,8 @@ extern crate orbtk;
 //extern crate orbimage;
 extern crate orbclient;
 
-use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, ControlKnob, Rect, Separator,
-            TextBox, Window, Renderer};
+use orbtk::{ Button, Label, Point,  Rect,
+            TextBox, Window}; //Color, Action,ControlKnob, Image, Menu, ProgressBar, Separator, Renderer
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
 
 

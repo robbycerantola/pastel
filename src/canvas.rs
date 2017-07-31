@@ -17,7 +17,6 @@ use std::slice;
 use std::io::Error;
 
 
-
 pub struct Canvas {
     pub rect: Cell<Rect>,
     pub image: RefCell<orbimage::Image>,
@@ -98,6 +97,55 @@ impl Canvas {
        image.set(Color::rgb(255, 255, 255));
     }
     
+    ///draws image into curent canvas starting at x,y (paste)
+    pub fn paste_selection (&self, x: i32, y:i32,buffer: orbimage::Image){
+        let mut image = self.image.borrow_mut();
+        
+        let w = buffer.width() as i32;
+        let h = buffer.height() as i32;
+        let data = buffer.into_data();
+        let mut i:usize = 0;
+        let x1:i32;
+        let y1:i32;
+        
+        for y1 in y..y+h {
+            for x1 in x..x+w {
+                if i < data.len(){
+                    image.pixel(x1,y1,data[i]);
+                }
+                i += 1;
+            }
+        }
+    }
+    
+
+    //crop new image from curent canvas (copy)
+    pub fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
+        let image = self.image.borrow();
+        let data = image.data();
+        let mut vec = vec![];
+        
+        
+        for y1 in y..y+h as i32 {
+            for x1 in x..x+w as i32 {
+                vec.push(self.pixcol(x1,y1));
+            }
+        }
+        //println!("len {} w*h {}",vec.len(), w*h);
+        orbimage::Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap()
+    }
+    
+    ///return rgba color of pixel at canvas position (x,y)
+    pub fn pixcol(&self, x:i32, y:i32) -> Color {
+        let image = self.image.borrow();
+        let p = image.width()as i32 * y + x;
+        let rgba = image.data()[p as usize];
+        rgba
+    }
+
+
+
+    ///apply some transformations to entire canvas
     pub fn transformation(&self, cod: &str){
         //using image::imageops library
         let width = self.rect.get().width as u32;
@@ -122,11 +170,11 @@ impl Canvas {
          });
         
         //convert rgba 8u image buffer back into Color slice
-        let mut i = 0;
-        let mut r =0;
-        let mut g = 0;
-        let mut b =0;
-        let mut a =0;
+        let mut i = 0 ;
+        let mut r: u8 ;
+        let mut g: u8 ;
+        let mut b: u8 ;
+        let mut a: u8 ;
         let mut new_slice = Vec::new();
         while i <= vec_image_buffer.len() - 4 {        
             

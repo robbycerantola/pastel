@@ -10,22 +10,24 @@ extern crate orbtk;
 extern crate orbimage;
 extern crate image;
 extern crate orbclient;
-//extern crate stacker;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             ControlKnob,Toolbar, ToolbarIcon, Rect, Separator,
-            TextBox, Window, Renderer}; //Toolbar
+            TextBox, Window, Renderer, ColorSwatch}; //Toolbar
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
+use orbtk::cell::CloneCell;
+
+use orbclient::EventOption;
+
 use std::rc::Rc;
 use std::cell::{Cell, RefCell}; //, RefMut
-use orbtk::cell::CloneCell;
 use std::sync::Arc;
 use std::process;
 use std::process::Command;
 use std::env;
 use std::collections::HashMap;
 use std::path::Path;
-use orbclient::EventOption;
+
 //use std::borrow::Borrow;
 //use std::borrow::BorrowMut;
 
@@ -34,6 +36,9 @@ use dialogs::{dialog,popup};
 
 mod canvas;
 use canvas::{Canvas};
+
+mod palette;
+use palette::palette;
 
 //structure to store tools properties 
 struct Property{
@@ -66,7 +71,7 @@ struct MySize {
 }
 
 //canvas position
-const CANVASOFFSET: i32 = 150;
+const CANVASOFFSET: i32 = 200;
 
 fn main() {
 
@@ -149,11 +154,15 @@ fn main() {
                                        "Pastel",
                                        &[orbclient::WindowFlag::Resizable ]);
 
-    // color swatch               TODO better bigger color swatch
-    let swatch = Label::new();
-    swatch.text("■■").position(320,80).size(56,16);
-    //swatch.fg.set(orbtk::Color::rgb(r,g,b));
+    // color swatch 
+    let swatch = ColorSwatch::new();
+    swatch.position(320,56).size(24,48);
+    swatch.color(orbtk::Color::rgb(0,0,0));
     window.add(&swatch);
+
+    // show a palette of color swatches
+    let p=palette(120,11,&window, swatch.clone() );
+
 
     // use forked version of orbtk to get ProgressBar rendered in colors setting fg
     //color picker
@@ -165,8 +174,9 @@ fn main() {
     red_label.fg.set(orbtk::Color::rgb(255,0,0));
     window.add(&red_label);
     
+    {
     red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
-    let swatch_clone_r = swatch.clone();
+    let swatch_clone = swatch.clone();
     let green_bar_clone_r = green_bar.clone();
     let blue_bar_clone_r = blue_bar.clone();
     red_bar
@@ -180,19 +190,21 @@ fn main() {
                       let r = (progress as f32 * 2.56) as u8;
                       let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
                       let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
-                      swatch_clone_r.fg.set(orbtk::Color::rgb(r,g,b));
+                      
+                      swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
                   });
     window.add(&red_bar);
-
+    }
     y += red_bar.rect.get().height as i32 + 2;
 
     let green_label = Label::new();
     green_label.text("G: 0").position(x, y).size(48, 16);
     green_label.fg.set(orbtk::Color::rgb(0,255,0));
     window.add(&green_label);
-    
+
+    {
     green_bar.fg.set(orbtk::Color::rgb(0,255,0));
-    let swatch_clone_g = swatch.clone();
+    let swatch_clone = swatch.clone();
     let red_bar_clone_g = red_bar.clone();
     let blue_bar_clone_g = blue_bar.clone();
     green_bar
@@ -206,10 +218,10 @@ fn main() {
                       let g = (progress as f32 * 2.56) as u8;
                       let r = (red_bar_clone_g.value.get() as f32 * 2.56) as u8;
                       let b = (blue_bar_clone_g.value.get() as f32 * 2.56) as u8;
-                      swatch_clone_g.fg.set(orbtk::Color::rgb(r,g,b));
+                      swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
                   });
     window.add(&green_bar);
-
+    }
     y += green_bar.rect.get().height as i32 + 2;
 
 
@@ -218,8 +230,9 @@ fn main() {
     blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&blue_label);
     
+    {
     blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
-    let swatch_clone_b = swatch.clone();
+    let swatch_clone = swatch.clone();
     let green_bar_clone_b = green_bar.clone();
     let red_bar_clone_b = red_bar.clone();
     blue_bar
@@ -233,11 +246,12 @@ fn main() {
                       let b = (progress as f32 * 2.56) as u8;
                       let r = (red_bar_clone_b.value.get() as f32 * 2.56) as u8;
                       let g = (green_bar_clone_b.value.get() as f32 * 2.56) as u8;
-                      swatch_clone_b.fg.set(orbtk::Color::rgb(r,g,b));
+                      //swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
+                      swatch_clone.color(orbtk::Color::rgb(r,g,b));
                       
                   });
     window.add(&blue_bar);
-
+    }
     y += blue_bar.rect.get().height as i32 + 10;
     
     // tool size bar
@@ -645,6 +659,28 @@ fn main() {
             window.add(&item);
             toolbar2_obj.push(item.clone());
             
+            x += item.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
+    match ToolbarIcon::from_path("buffer.png") {
+        Ok(item) => {
+            let ntools_clone = ntools.clone();
+            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            item.position(x, y)
+                 .text("from buffer".to_owned())
+                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               property_set(&ntools_clone["brush"],"Shape",2);
+                               
+                               //toggle shape in toolbar2
+                               unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
+                               });
+            window.add(&item);
+            toolbar2_obj.push(item.clone());
+            
             //x += item.rect.get().width as i32 + 2;
         }
         Err(err) => {
@@ -812,7 +848,7 @@ fn main() {
     //Menu entries for edit
 
 
-/*
+
     {
             let action = Action::new("Select");
             //let canvas_clone = canvas.clone();
@@ -826,7 +862,7 @@ fn main() {
 
     edit.add(&Separator::new());
 
-*/
+
     {
             let action = Action::new("Copy");
             let tool_clone = tool.clone();
@@ -1032,6 +1068,7 @@ fn main() {
             let click = click_pos.clone();
             let size = size_bar.clone().value.get();
             let buffer_clone = buffer.clone();
+            let swatch_clone = swatch.clone();
             
             let mut selection_clone = selection.clone();
             
@@ -1040,10 +1077,13 @@ fn main() {
                 let mut bf = buffer_clone.borrow_mut();
                 if let Some(prev_position) = *prev_opt {
                     let mut image = canvas.image.borrow_mut();
-                    let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
-                    let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
-                    let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
+                    //let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
+                    //let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
+                    //let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
                     let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;
+                    let swc = swatch_clone.read();
+                    let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
+                    
                     
                     match tool.clone().text.get().as_ref() {
                         "line"  => {
@@ -1051,25 +1091,26 @@ fn main() {
                                                 prev_position.y,
                                                 point.x,
                                                 point.y,
-                                                orbtk::Color::rgba(r, g, b, a));
+                                                color);
                                    },
-                         "pen"  => image.pixel(point.x, point.y, orbtk::Color::rgba(r, g, b, a)),
+                         "pen"  => image.pixel(point.x, point.y, color),
                          "brush"=> { 
                                     match property_get(&ntools.clone()["brush"],"Shape") {
                                            Some(0) => image.circle(point.x, point.y,-size,
-                                                        orbtk::Color::rgba(r, g, b, a)),
+                                                        color),
                                            Some(1) => image.rect(point.x ,point.y,size as u32, size as u32,
-                                                        orbtk::Color::rgba(r, g, b, a)),
+                                                        color),
+                                           Some(2) =>  image.paste_selection(point.x,point.y,bf.clone()), 
                                            None | Some(_)   => println!("no Shape match!"),
                                         }
                                     },
-                         "fill" => image.fill(point.x, point.y,orbtk::Color::rgba(r, g, b, a)),
+                         "fill" => image.fill(point.x, point.y,color),
                     "rectangle" => {
                                     let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
                                     unsafe{
                                             image.interact_rect(point.x,
                                                         point.y,
-                                                        orbtk::Color::rgba(r, g, b, a),
+                                                        color,
                                                         filled == 1,
                                                         &mut *window_clone
                                                         );
@@ -1079,7 +1120,7 @@ fn main() {
                                     unsafe{
                                             image.interact_line(point.x,
                                                         point.y,
-                                                        orbtk::Color::rgba(r, g, b, a),
+                                                        color,
                                                         width,
                                                         &mut *window_clone
                                                         );
@@ -1088,7 +1129,7 @@ fn main() {
                         "circle"=> image.circle(prev_position.x, prev_position.y,
                                                 2*(((point.x-prev_position.x)^2+
                                                 (point.y-prev_position.y)^2) as f64).sqrt() as i32,
-                                                 orbtk::Color::rgba(r, g, b, a)),
+                                                 color),
                        "marquee"=> {
                                     if let Some(selection) = unsafe{image.select_rect(point.x,
                                                         point.y,&mut *window_clone)}
@@ -1106,13 +1147,7 @@ fn main() {
                                              *bf = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
                                              //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
                                              let newcanvas= Canvas::from_image(bf.clone());
-                                             
-                                             #[cfg(target_os = "linux")]
-                                             let path = "pastel_copy_buffer.png".to_string();
-                                                                                          
-                                             #[cfg(target_os = "redox")]
                                              let path = "/tmp/pastel_copy_buffer.png".to_string();
-                                             
                                              if let Ok(_) = newcanvas.save(&path){}
                                              
                                             }
@@ -1152,11 +1187,7 @@ fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {
 ///load pastel_copy_buffer if exists
 fn load_buffer() -> orbimage::Image {
     
-    #[cfg(target_os = "redox")]
     let path="/tmp/pastel_copy_buffer.png".to_string();
-    
-    #[cfg(target_os = "linux")]
-    let path="pastel_copy_buffer.png".to_string();
     
     if cfg!(feature = "debug"){print!("Loading copy buffer from:  {} .....", path);}
     match orbimage::Image::from_path(&path) {
@@ -1208,6 +1239,24 @@ fn visible_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>, v: bool) {
         }
     }
 }
+
+/*
+///draw a palette
+fn palette (start_y: i32, max_swatches: u32, window: &Window) {
+    
+    let mut s: std::sync::Arc<orbtk::ColorSwatch>;
+    
+    for k in 1..max_swatches {
+        s=ColorSwatch::new();
+        s.position(24*k as i32,start_y)
+        .size(24, 24)
+        .color(Color::rgb(100,100,100));
+    
+        window.add(&s);
+    }
+}
+*/
+
 
 //  to be added directly to orbclient ?
 trait AddOnsToOrbimage {
@@ -1453,7 +1502,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 
                                                 if btn.right{
                                                         break 'events;
-                                                        //TODO paste also from here
+                                                        //TODO show menu with actions upon selection
                                                     }
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
@@ -1608,6 +1657,7 @@ impl AddOnsToOrbimage for orbimage::Image {
     
 }
 
+
 trait AddOnsToOrbclient {
     fn pixcol(&self, x:i32, y:i32) -> Color;
     fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
@@ -1674,3 +1724,4 @@ impl AddOnsToOrbclient for orbclient::Window{
     }
         
 }
+

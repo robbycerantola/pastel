@@ -39,7 +39,7 @@ pub(crate) fn palette (start_y: i32, max_swatches: u32, window: &Window, swatch:
         
         let swatch_clone = swatch.clone(); 
         s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
-            println!("{:?}",color);
+            
             swatch_clone.color(color);
         });
     

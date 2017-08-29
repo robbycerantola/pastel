@@ -38,7 +38,7 @@ mod canvas;
 use canvas::{Canvas};
 
 mod palette;
-use palette::palette;
+use palette::Palette;
 
 //structure to store tools properties 
 struct Property{
@@ -82,6 +82,9 @@ fn main() {
     #[cfg(target_os = "redox")]
     let root = Path::new("/ui/pastel/");
 
+    #[cfg(target_os = "windows")]
+    let root = Path::new("./res/");
+    
     if let Ok(_) = env::set_current_dir(&root) {}
     
     //get user home directory (writable) 
@@ -139,7 +142,7 @@ fn main() {
     let selection = Rect::new(0,0,0,0);
     
     
-    //if exist pastel_copy_buffer.png load into buffer
+    //if pastel_copy_buffer.png exists load it into buffer
     //for copy/paste between instances 
     
     let buffer: Rc<RefCell<orbimage::Image>> = Rc::new(RefCell::new(load_buffer()));
@@ -160,8 +163,22 @@ fn main() {
     swatch.color(orbtk::Color::rgb(0,0,0));
     window.add(&swatch);
 
-    // show a palette of color swatches
-    let p=palette(120,11,&window, swatch.clone() );
+    // create a new palette at x,y,width,height linked to swatch 
+    let palette=Palette::new(20,120,window.width(),50,swatch.clone());
+
+
+    // show on window the palette
+    palette.draw(&window);
+    palette.add(Color::rgb(010,020,230),&mut window); 
+    
+    {
+    // add new color to palette on window 
+    let window_clone = &mut window as *mut Window;
+    unsafe{palette.clone().add(Color::rgb(200,100,50),&mut *window_clone);}//here works but not inside a closure !!
+    unsafe{palette.clone().add(Color::rgb(100,200,150),&mut *window_clone);}
+    }
+    
+
 
 
     // use forked version of orbtk to get ProgressBar rendered in colors setting fg
@@ -853,7 +870,7 @@ fn main() {
             let action = Action::new("Select");
             //let canvas_clone = canvas.clone();
             let tool_clone = tool.clone();
-            let window_clone = &mut window as *mut Window;
+            //let window_clone = &mut window as *mut Window;
             action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("marquee".to_owned());
                               });
@@ -882,6 +899,28 @@ fn main() {
             let tool_clone = tool.clone();
             action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("paste".to_owned());
+                              });
+            edit.add(&action);
+    }
+
+    edit.add(&Separator::new());
+    
+        {
+            let action = Action::new("Add swatch");
+            
+            let swatch_clone = swatch.clone();
+            let palette_clone = palette.clone();
+            let window_clone = &mut window as *mut Window;
+            action.on_click(move |_action: &Action, _point: Point| {
+                            let color = swatch_clone.read();
+                            
+                            unsafe{palette_clone.add(color, &mut *window_clone);}  //RUST bug ??
+                //thread 'main' panicked at 'already borrowed: BorrowMutError', /checkout/src/libcore/result.rs:860:4
+                            palette.swatches.borrow_mut().push(color);
+                            palette.hello();
+                            //unsafe{test(s,&mut *window_clone);}
+                            println!("{:?}, {:?}",swatch_clone.read(), palette.swatches.borrow());
+                            
                               });
             edit.add(&action);
     }
@@ -1036,7 +1075,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.7, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.8, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }
@@ -1168,6 +1207,11 @@ fn main() {
 
 //Helper functions
 
+fn test (widget: Arc<orbtk::ColorSwatch>, window: &mut orbtk::Window) {
+    window.add(&widget);
+}
+
+
 ///Load an image from path if exists, other way create new empty canvas
 fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  
     if cfg!(feature = "debug"){print!("Loading image from:  {} .....", path);}
@@ -1256,6 +1300,10 @@ fn palette (start_y: i32, max_swatches: u32, window: &Window) {
     }
 }
 */
+
+
+
+
 
 
 //  to be added directly to orbclient ?
@@ -1694,7 +1742,7 @@ impl AddOnsToOrbclient for orbclient::Window{
             if ct == 0 {
             old_color = self.pixcol(x,y);
             // rgb bitwise xor between old and new pixel color
-            // New faster implementation xor-ing 32 bit internal color data  (not faster enought !) 
+            // New faster implementation xor-ing 32 bit internal color data   
             // Attention :trick does not work as intended xor-ing entire 32bit color data, if new color alfa > 0!!
             self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)}); 
             

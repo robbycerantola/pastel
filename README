@@ -3,3 +3,25 @@ Pastel is a simple bitmap editor written in rust.
 Compatible with Redox and SDL2 platforms.
 
 Now packaged for Redox !!
+
+To run on Redox simply edit file filesystem.toml and delete '#' before pastel item to enable its compilation.
+Once Redox is running simply select pastel from the menu.
+
+To run on Linux install dependencies (SDL2      ) and type on terminal
+cargo run --relese
+
+To run on Windows (msvc) download from https://www.libsdl.org/release/SDL2-devel-2.0.5-VC.zip 
+and manually copy SDL2.dll and SDL2.lib to 
+      
+      <rust_install_dir>\lib\rustlib\x86_64-pc-windows-msvc\lib 
+
+Than go to pastel directory and in command prompt type :
+cargo run --release
+
+
+
+To enable some debug informations you could type:
+
+RUST_BACKTRACE=1 cargo run --release --features debug
+
+

@@ -121,11 +121,13 @@ impl Palette {
         .size(SWATCH_SIZE as u32, SWATCH_SIZE as u32)
         .color(color);
             
+            
             let swatch_clone = self.current_swatch.clone(); 
             s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
                 
                 swatch_clone.borrow_mut().color(color);
             });
+            
             window.add(&s);
             
     }

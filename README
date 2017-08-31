@@ -15,7 +15,7 @@ and manually copy SDL2.dll and SDL2.lib to
       
       <rust_install_dir>\lib\rustlib\x86_64-pc-windows-msvc\lib 
 
-Than go to pastel directory and in command prompt type :
+Than go to pastel directory and at command prompt type :
 cargo run --release
 
 

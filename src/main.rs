@@ -13,7 +13,8 @@ extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             ControlKnob,Toolbar, ToolbarIcon, Rect, Separator,
-            TextBox, Window, Renderer, ColorSwatch}; //Toolbar
+            TextBox, Window, Renderer, ColorSwatch};
+use orbtk::dialogs::FileDialog;
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use orbtk::cell::CloneCell;
 
@@ -162,22 +163,24 @@ fn main() {
     swatch.position(320,56).size(24,48);
     swatch.color(orbtk::Color::rgb(0,0,0));
     window.add(&swatch);
-
+    let swatch_clone=swatch.clone();
+    
     // create a new palette at x,y,width,height linked to swatch 
-    let palette=Palette::new(20,120,window.width(),50,swatch.clone());
+    let palette=Palette::new(20,120,window.width(),50,swatch_clone);
 
 
     // show on window the palette
     palette.draw(&window);
-    palette.add(Color::rgb(010,020,230),&mut window); 
+    //palette.add(Color::rgb(010,020,230),&mut window); // add swatch to palette 
     
+    /*
     {
     // add new color to palette on window 
     let window_clone = &mut window as *mut Window;
     unsafe{palette.clone().add(Color::rgb(200,100,50),&mut *window_clone);}//here works but not inside a closure !!
     unsafe{palette.clone().add(Color::rgb(100,200,150),&mut *window_clone);}
     }
-    
+    */
 
 
 
@@ -378,7 +381,7 @@ fn main() {
     let mut toolbar_obj = vec![];   //here save all Toolbar widgets clones so we can manage 'selected' property
     let mut toolbar2_obj = vec![];   //create Toolbar2 here so we can manage 'selected','visible' properties from Toolbar
     //TODO let toolbar = Toolbar::new(&window); must specify parent window !!
-    let parent_window = &mut window as *mut Window;
+    let parent_window = &mut window as *mut Window;  //pointer to the parent window
     let mut toolbar3 = Toolbar::new();   //work in progress
     
     let y = 25;
@@ -795,9 +798,10 @@ fn main() {
         let action = Action::new("Open");
         let home_dir_clone = home_dir.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-            match dialog("Open", "path:",&home_dir_clone[..]) {
+            //match dialog("Open", "path:",&home_dir_clone[..]) {
+              match FileDialog::new().exec() {
                 Some(response) => {
-                                    println!("Open {} ", response);
+                                    println!("Open {:?} ", response);
                                     let path: &str ;//="";
                                     if cfg!(target_os = "redox"){
                                         path="/ui/bin/pastel";
@@ -914,10 +918,11 @@ fn main() {
             action.on_click(move |_action: &Action, _point: Point| {
                             let color = swatch_clone.read();
                             
-                            unsafe{palette_clone.add(color, &mut *window_clone);}  //RUST bug ??
+                            unsafe{palette.add(color, &mut *window_clone);}  //RUST bug ??
                 //thread 'main' panicked at 'already borrowed: BorrowMutError', /checkout/src/libcore/result.rs:860:4
                             palette.swatches.borrow_mut().push(color);
-                            palette.hello();
+                            
+                            
                             //unsafe{test(s,&mut *window_clone);}
                             println!("{:?}, {:?}",swatch_clone.read(), palette.swatches.borrow());
                             
@@ -1075,7 +1080,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.8, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.9, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }

@@ -33,7 +33,7 @@ use std::path::Path;
 //use std::borrow::BorrowMut;
 
 mod dialogs;
-use dialogs::{dialog,popup};
+use dialogs::{dialog,popup,new_dialog};
 
 mod canvas;
 use canvas::{Canvas};
@@ -152,10 +152,11 @@ fn main() {
     
     let mut x = 10;
     let mut y = 56;
-
+    
+    let title = format!("Pastel: {}", filename);
     //resizable main window
     let mut window = Window::new_flags(Rect::new(100, 100, 1024, 718),
-                                       "Pastel",
+                                       &title.to_owned(),
                                        &[orbclient::WindowFlag::Resizable ]);
 
     // color swatch 
@@ -776,19 +777,25 @@ fn main() {
     {
         let action = Action::new("New");
         action.on_click(move |_action: &Action, _point: Point| {
-                           let path: &str; //="";
-                           if cfg!(target_os = "redox"){
-                               path="/ui/bin/pastel";
-                           } else{
-                               path="../target/release/pastel"; 
-                           }
-                           Command::new(&path)
+                           match new_dialog() { 
+                                Some(resolution) => {
+                                            let path: &str; //="";
+                                            if cfg!(target_os = "redox"){
+                                                path="/ui/bin/pastel";
+                                            } else{
+                                                path="../target/release/pastel"; 
+                                            }
+                                                Command::new(&path)
                                                 .arg("new.png")
-                                                .arg("1024x500")
+                                                .arg(resolution.to_owned())
                                                 .spawn()
                                                 .expect("Command executed with failing error code");
                            
-                            println!("New window opened.");
+                                                println!("New image opened.");
+                                                },
+                                                
+                                    None => println!("New image cancelled"),
+                                }
                         });
 
         menu.add(&action);
@@ -915,6 +922,7 @@ fn main() {
             let swatch_clone = swatch.clone();
             let palette_clone = palette.clone();
             let window_clone = &mut window as *mut Window;
+            
             action.on_click(move |_action: &Action, _point: Point| {
                             let color = swatch_clone.read();
                             

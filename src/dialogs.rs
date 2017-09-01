@@ -1,4 +1,4 @@
-extern crate orbtk;
+//extern crate orbtk;
 //extern crate orbimage;
 extern crate orbclient;
 
@@ -83,6 +83,117 @@ pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
         _ => Some(text_box.text.get()),
     }
 }
+
+pub fn new_dialog() -> Option<String> {
+    //Dialog to input dimensions of new image
+    let mut new_window = Window::new(Rect::new(200, 300, 320, 200), "New file");
+
+    let x = 10;
+    let mut y = 10;
+
+    let label = Label::new();
+    label.position(x, y).size(290, 16).text("New image dimensions in pixels:".to_owned());
+    new_window.add(&label);
+
+    y += label.rect.get().height as i32 + 20;
+    
+    let labelx = Label::new();
+    labelx.position(x, y+4).size(100, 16).text("Width".to_owned());
+    new_window.add(&labelx);
+
+    let text_box_x = TextBox::new();
+    text_box_x.position(x+ 50, y)
+    .size(50, 28)
+    .text_offset(6, 6)
+    .text("640");
+
+    //pressing enter in text_box closes popup window
+    {
+        let text_box = text_box_x.clone();
+        let new_window_clone = &mut new_window as *mut Window;
+        //let label = label.clone();
+        text_box.on_enter(move |_| {
+            //text_box: &TextBox
+
+            unsafe {
+                (&mut *new_window_clone).close();
+            }
+        });
+    }
+    new_window.add(&text_box_x);
+
+    y += text_box_x.rect.get().height as i32 + 8;
+
+    let labely = Label::new();
+    labely.position(x, y+4).size(100, 16).text("Height".to_owned());
+    new_window.add(&labely);
+    
+    let text_box_y = TextBox::new();
+    text_box_y.position(x+50, y)
+    .size(50, 28)
+    .text_offset(6, 6)
+    .text("480");
+
+    {
+        let text_box = text_box_y.clone();
+        let new_window_clone = &mut new_window as *mut Window;
+        //let label = label.clone();
+        text_box.on_enter(move |_| {
+            //text_box: &TextBox
+
+            unsafe {
+                (&mut *new_window_clone).close();
+            }
+        });
+    }
+    new_window.add(&text_box_y);
+
+    y += text_box_y.rect.get().height as i32 + 12;
+
+    //OK button
+    let ok_button = Button::new();
+    ok_button
+        .position(x, y)
+        .size(48 + 12, text_box_y.rect.get().height)
+        .text("OK")
+        .text_offset(6, 6);
+
+    {
+        let text_box = text_box_x.clone();
+        let button = ok_button.clone();
+        button.on_click(move |_button: &Button, _point: Point| { text_box.emit_enter(); });
+    }
+    new_window.add(&ok_button);
+
+    //Cancell button
+    let cancel_button = Button::new();
+    cancel_button
+        .position(x + 64, y)
+        .size(48 + 12, text_box_y.rect.get().height)
+        .text("Cancel")
+        .text_offset(6, 6);
+
+    {
+        let text_box = text_box_x.clone();
+        let button = cancel_button.clone();
+        button.on_click(move |_button: &Button, _point: Point| {
+                            text_box.emit_enter();
+                            text_box.text.set("".to_owned());
+                            
+                        });
+    }
+    new_window.add(&cancel_button);
+    new_window.exec();
+    
+    let resolution = format!("{}x{}",text_box_x.text.get().trim(),text_box_y.text.get().trim());
+
+    match text_box_x.text.get().len() {
+        0 => None,
+        _ => Some(resolution),
+    }
+}
+
+
 
 //popup window
 pub fn popup(title: &str, text: &str) {

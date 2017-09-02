@@ -7,8 +7,11 @@ use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use std;
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
+use std::io::Error;
+use std::path::{Path, PathBuf};
 
 const SWATCH_SIZE :i32 = 24;
+const SWATCH_MAX :usize = 66;
 
 
 #[derive(Clone)]
@@ -121,10 +124,10 @@ impl Palette {
             let swatch_clone = self.current_swatch.clone();
             s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
                 
-                swatch_clone.borrow_mut().color(color);
-                red_bar_clone.borrow_mut().value.set((s_clone.read().r() as f32 /2.55) as i32);
-                green_bar_clone.borrow_mut().value.set((s_clone.read().g() as f32 /2.55) as i32);
-                blue_bar_clone.borrow_mut().value.set((s_clone.read().b() as f32 /2.55) as i32);
+                swatch_clone.borrow().color(color);
+                red_bar_clone.borrow().value.set((s_clone.read().r() as f32 /2.55) as i32);
+                green_bar_clone.borrow().value.set((s_clone.read().g() as f32 /2.55) as i32);
+                blue_bar_clone.borrow().value.set((s_clone.read().b() as f32 /2.55) as i32);
             });
         
             window.add(&s);
@@ -187,10 +190,18 @@ impl Palette {
     pub fn next (&self) -> usize {
         ///find next empty custom swatch
         let n = self.order.get();
-        self.order.set(n+1);
+        if n < SWATCH_MAX {
+            self.order.set(n+1);
+        }
         n
     }
-    pub fn hello(&self) {
-        println!("Hello...");
+
+    pub fn save(&self, filename: &String ) -> Result <i32, Error>{
+        println!("Save palette not implemented yet...");
+        Ok(0)
+    }
+    pub fn load(&self, filename: &PathBuf ) -> Result <i32, Error>{
+        println!("Load palette not implemented yet...");
+        Ok(0)
     }
 }

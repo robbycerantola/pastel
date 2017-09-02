@@ -362,7 +362,7 @@ fn main() {
 */
 
     // create a new palette at x,y,width,height linked to swatch 
-    let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar.clone(),green_bar.clone(),blue_bar );
+    let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar,green_bar,blue_bar );
     // show on window the standard palette
     palette.draw(&window);
     
@@ -903,9 +903,10 @@ fn main() {
     {
         let action = Action::new("Save As");
         let canvas_clone = canvas.clone();
+        let home_dir_clone = home_dir.clone();
         //FIXME change filename after a SaveAs 
         action.on_click(move |_action: &Action, _point: Point| {
-                            match dialog("Save As", "path:",&home_dir[..]) {
+                            match dialog("Save As", "path:",&home_dir_clone[..]) {
                             Some(response) => {
                                 match canvas_clone.save(&(String::from(response))){
                                     Ok(_) => (),
@@ -935,9 +936,6 @@ fn main() {
         edit.position(50, 0).size(32, 16);
 
     //Menu entries for edit
-
-
-
     {
             let action = Action::new("Select");
             //let canvas_clone = canvas.clone();
@@ -951,7 +949,6 @@ fn main() {
 
     edit.add(&Separator::new());
 
-
     {
             let action = Action::new("Copy");
             let tool_clone = tool.clone();
@@ -964,7 +961,6 @@ fn main() {
                               });
             edit.add(&action);
     }
-
     
     {
             let action = Action::new("Paste");
@@ -976,28 +972,6 @@ fn main() {
     }
 
     edit.add(&Separator::new());
-    
-        {
-            let action = Action::new("Add swatch");
-            
-            let swatch_clone = swatch.clone();
-            let palette_clone = palette.clone();
-            //let window_clone = &mut window as *mut Window;
-            let custom_clone = custom.clone();
-            
-            action.on_click(move |_action: &Action, _point: Point| {
-                            let color = swatch_clone.read();
-                            
-                            //unsafe{palette.add(color, &mut *window_clone);}  
-                            //thread 'main' panicked at 'already borrowed: BorrowMutError', /checkout/src/libcore/result.rs:860:4
-                                
-                            custom_clone[palette_clone.next()].color(color);
-                            
-                            if cfg!(feature = "debug"){println!("{:?}, {:?}",swatch_clone.read(), palette.swatches.borrow());}
-                            
-                              });
-            edit.add(&action);
-    }
 
     //Menu tool
     let tools = Menu::new("Tools");
@@ -1138,10 +1112,95 @@ fn main() {
         menuimage.add(&action);
     }
 
+    //Menu palette
+    let menupalette = Menu::new("Palette");
+        menupalette.position (190, 0).size(64, 16);
+
+    //Menu entries for palette
+    {
+        let action = Action::new("Load");
+        let home_dir_clone = home_dir.clone();
+        let palette_clone = palette.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+           
+                            let mut f= FileDialog::new();
+                            f.title="Load palette".to_owned();
+                            match f.exec() {
+                            Some(response) => {
+                                    println!("Load palette {:?} ", response);
+                                    //match palette_clone.load(&(String::from(response))){
+                                    match palette_clone.load(&response){
+                                        Ok(_) => (),
+                                        Err(e) => popup("Error",&format!("{}",e)[..]),
+                                    }
+                                    },
+                            None => println!("Cancelled"),
+                            }
+        });
+        menupalette.add(&action);
+    }    
+
+    {
+        let action = Action::new("Save");
+        let palette_clone=palette.clone();
+        let home_dir_clone = home_dir.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            match dialog("Save palette", "path:",&home_dir_clone[..]) {
+                            Some(response) => {
+                                match palette_clone.save(&(String::from(response))){
+                                    Ok(_) => (),
+                                    Err(e) => popup("Error",&format!("{}",e)[..]),
+                                }
+                                
+                                },
+                            None => {println!("Cancelled");},
+                            }
+                        });
+        menupalette.add(&action);
+    }
+    menupalette.add(&Separator::new());
+
+    {
+        let action = Action::new("Add swatch");
+        
+        let swatch_clone = swatch.clone();
+        let palette_clone = palette.clone();
+        //let window_clone = &mut window as *mut Window;
+        let custom_clone = custom.clone();
+        
+        action.on_click(move |_action: &Action, _point: Point| {
+                        let color = swatch_clone.read();
+                        
+                        //unsafe{palette.add(color, &mut *window_clone);}  
+                        //thread 'main' panicked at 'already borrowed: BorrowMutError', /checkout/src/libcore/result.rs:860:4
+                            
+                        custom_clone[palette_clone.next()].color(color);
+                        
+                        if cfg!(feature = "debug"){println!("{:?}, {:?}",swatch_clone.read(), palette_clone.swatches.borrow());}
+                        
+                          });
+        menupalette.add(&action);
+}
+ menupalette.add(&Separator::new());
+
+     {
+        let action = Action::new("Reset");
+        let palette_clone = palette.clone();
+        let custom_clone = custom.clone();
+        
+        action.on_click(move |_action: &Action, _point: Point| {
+                        for k in 0..67 {   
+                            custom_clone[k].color(Color::rgb(255,255,255));
+                        }
+                        palette_clone.order.set(0);
+                          });
+        menupalette.add(&action);
+    }
+
     //Menu help
 
     let help = Menu::new("Help");
-    help.position(190, 0).size(32, 16);
+    help.position(260, 0).size(32, 16);
 
     //menu entries for help
 
@@ -1159,6 +1218,7 @@ fn main() {
     window.add(&edit);
     window.add(&tools);
     window.add(&menuimage);
+    window.add(&menupalette);
     window.add(&help);
 
     // paint on canvas
@@ -1540,13 +1600,16 @@ impl AddOnsToOrbimage for orbimage::Image {
         
         let w = buffer.width() as i32;
         let h = buffer.height() as i32;
+        let xc=x-w/2; //center buffer at cursor 
+        let yc=y-h/2;
         let data = buffer.into_data();
         let mut i:usize = 0;
+        
         let x1:i32;
         let y1:i32;
         
-        for y1 in y..y+h {
-            for x1 in x..x+w {
+        for y1 in yc..yc+h {
+            for x1 in xc..xc+w {
                 if i < data.len(){
                     self.pixel(x1,y1,data[i]);
                 }

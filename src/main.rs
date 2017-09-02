@@ -13,7 +13,7 @@ extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             ControlKnob,Toolbar, ToolbarIcon, Rect, Separator,
-            TextBox, Window, Renderer, ColorSwatch};
+            TextBox, Window,InnerWindow, Renderer, ColorSwatch};
 use orbtk::dialogs::FileDialog;
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use orbtk::cell::CloneCell;
@@ -158,32 +158,32 @@ fn main() {
     let mut window = Window::new_flags(Rect::new(100, 100, 1024, 718),
                                        &title.to_owned(),
                                        &[orbclient::WindowFlag::Resizable ]);
+    
+        
+    /*
+    //2nd method to open a new window
+    let win : Rc<RefCell<Window>> = Rc::new(RefCell::new(Window::new_flags(
+                                            Rect::new(1134,100,400,200),
+                                            "Palette",
+                                            &[orbclient::WindowFlag::Resizable ])));
+    */
+    
+    
+    /* TESTING floating window
+    //3rd method to open a new window
+    let mut orb_window = Some(InnerWindow::new(1130, 100, 300, 200, "Test floating window").unwrap());
+    let mut win = Box::new(Window::from_inner(orb_window.take().unwrap()));
+    */
+    
 
-    // color swatch 
+    // current color swatch 
     let swatch = ColorSwatch::new();
-    swatch.position(320,56).size(24,48);
+    swatch.position(320,56).size(24,35);
     swatch.color(orbtk::Color::rgb(0,0,0));
     window.add(&swatch);
     let swatch_clone=swatch.clone();
+       
     
-    // create a new palette at x,y,width,height linked to swatch 
-    let palette=Palette::new(20,120,window.width(),50,swatch_clone);
-
-
-    // show on window the palette
-    palette.draw(&window);
-    //palette.add(Color::rgb(010,020,230),&mut window); // add swatch to palette 
-    
-    /*
-    {
-    // add new color to palette on window 
-    let window_clone = &mut window as *mut Window;
-    unsafe{palette.clone().add(Color::rgb(200,100,50),&mut *window_clone);}//here works but not inside a closure !!
-    unsafe{palette.clone().add(Color::rgb(100,200,150),&mut *window_clone);}
-    }
-    */
-
-
 
     // use forked version of orbtk to get ProgressBar rendered in colors setting fg
     //color picker
@@ -360,6 +360,44 @@ fn main() {
                   });
     window.add(&volume);
 */
+
+    // create a new palette at x,y,width,height linked to swatch 
+    let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar.clone(),green_bar.clone(),blue_bar );
+    // show on window the standard palette
+    palette.draw(&window);
+    
+    /* TESTING floating window
+    //draw something on 2nd window
+    palette.draw(& win);
+    win.draw_if_needed();
+    */
+
+    // now polulate custom part of palette with empty white swatches
+    let mut custom : Vec<Arc<ColorSwatch>> = vec!{};
+ 
+    {
+        let mut r;
+        for h in 0 .. 67 {
+            r=palette.add(Color::rgb(255,255,255),&window);
+            custom.push(r);
+        }
+    }
+    
+    //custom[palette.next()].color(Color::rgb(0,0,0)); //add a swatch to next available position 
+    
+    /*
+    // test possibilities to add a swatch to palette
+    {
+    
+    // add new color to palette on window by reference 
+    let window_clone = &mut window as *mut Window;
+    unsafe{palette.clone().add(Color::rgb(200,100,50),&mut *window_clone);}//here works but not inside a closure !!
+    unsafe{palette.clone().add(Color::rgb(100,200,150),&mut *window_clone);}
+    }
+    */
+    
+    //let k = palette.
+
  
     //clickable icon
     match Image::from_path( "pastel100.png" ) {
@@ -378,12 +416,32 @@ fn main() {
         }
     }
     
+    //button for adding current color to custom palette
+    let add_button = Button::new();
+    let swatch_clone = swatch.clone();
+    let palette_clone = palette.clone();
+    let custom_clone = custom.clone();
+
+    add_button.position(320,93)
+        .size(24, 16)
+        .text("+")
+        .text_offset(8, 0)
+        .on_click(move |_button: &Button, _point: Point| {
+            if cfg!(feature = "debug"){println!("Add custom color to palette");}
+            let color = swatch_clone.read();
+            custom_clone[palette_clone.next()].color(color);
+        });
+    window.add(&add_button);
+    
+    
+    //manually implement toolbar object (old fashion...)
     // implement toolbars by multiple clickable images loaded in widget ToolbarIcon  
-    let mut toolbar_obj = vec![];   //here save all Toolbar widgets clones so we can manage 'selected' property
+    let mut toolbar_obj = vec![];    //here we save all Toolbar widgets clones so we can manage 'selected' property
     let mut toolbar2_obj = vec![];   //create Toolbar2 here so we can manage 'selected','visible' properties from Toolbar
-    //TODO let toolbar = Toolbar::new(&window); must specify parent window !!
-    let parent_window = &mut window as *mut Window;  //pointer to the parent window
-    let mut toolbar3 = Toolbar::new();   //work in progress
+    
+    //use new Toolbar widget to implement 3rd Toolbar
+    let parent_window = &mut window as *mut Window;  //we need a pointer to the parent window to add the icons to
+    let mut toolbar3 = Toolbar::new();
     
     let y = 25;
     match ToolbarIcon::from_path("pencil1.png") {
@@ -767,6 +825,9 @@ fn main() {
     //toolbar3 not visibile at start
     toolbar3.visible(false);
 
+    
+
+
     //Menu file
 
     let menu = Menu::new("File");
@@ -921,18 +982,18 @@ fn main() {
             
             let swatch_clone = swatch.clone();
             let palette_clone = palette.clone();
-            let window_clone = &mut window as *mut Window;
+            //let window_clone = &mut window as *mut Window;
+            let custom_clone = custom.clone();
             
             action.on_click(move |_action: &Action, _point: Point| {
                             let color = swatch_clone.read();
                             
-                            unsafe{palette.add(color, &mut *window_clone);}  //RUST bug ??
-                //thread 'main' panicked at 'already borrowed: BorrowMutError', /checkout/src/libcore/result.rs:860:4
-                            palette.swatches.borrow_mut().push(color);
+                            //unsafe{palette.add(color, &mut *window_clone);}  
+                            //thread 'main' panicked at 'already borrowed: BorrowMutError', /checkout/src/libcore/result.rs:860:4
+                                
+                            custom_clone[palette_clone.next()].color(color);
                             
-                            
-                            //unsafe{test(s,&mut *window_clone);}
-                            println!("{:?}, {:?}",swatch_clone.read(), palette.swatches.borrow());
+                            if cfg!(feature = "debug"){println!("{:?}, {:?}",swatch_clone.read(), palette.swatches.borrow());}
                             
                               });
             edit.add(&action);
@@ -1088,7 +1149,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.9, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.10, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }
@@ -1288,7 +1349,7 @@ fn toggle_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>) {
     }
 }
     
-///set visibility for all toolvar items
+///set visibility for all toolbar items
 fn visible_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>, v: bool) {
     for i in 0..toolbar_obj.len(){
         if let Some(toolbar) = toolbar_obj.get(i) {
@@ -1296,28 +1357,6 @@ fn visible_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>, v: bool) {
         }
     }
 }
-
-/*
-///draw a palette
-fn palette (start_y: i32, max_swatches: u32, window: &Window) {
-    
-    let mut s: std::sync::Arc<orbtk::ColorSwatch>;
-    
-    for k in 1..max_swatches {
-        s=ColorSwatch::new();
-        s.position(24*k as i32,start_y)
-        .size(24, 24)
-        .color(Color::rgb(100,100,100));
-    
-        window.add(&s);
-    }
-}
-*/
-
-
-
-
-
 
 //  to be added directly to orbclient ?
 trait AddOnsToOrbimage {

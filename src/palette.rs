@@ -1,5 +1,6 @@
 extern crate orbtk;
 
+
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             ControlKnob,Toolbar, ToolbarIcon, Rect, Separator,
             TextBox, Window, Renderer, ColorSwatch}; //Toolbar
@@ -9,6 +10,9 @@ use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 use std::io::Error;
 use std::path::{Path, PathBuf};
+
+use std::fs::File;
+use std::io::prelude::*;
 
 const SWATCH_SIZE :i32 = 24;
 const SWATCH_MAX :usize = 66;
@@ -66,31 +70,6 @@ impl Palette {
         
         
     }
-
-/*        
-    fn init(&mut self) {
-            
-        let default = vec![
-                Color::rgb(0,0,0),
-                Color::rgb(255,255,255),
-                Color::rgb(100,100,100),
-                Color::rgb(255,0,0),
-                Color::rgb(0,255,0),
-                Color::rgb(0,0,255),
-                Color::rgb(12,132,166),
-                Color::rgb(13,111,136),
-                Color::rgb(11,94,112),
-                Color::rgb(12,74,89),
-                Color::rgb(7,49,61),
-                Color::rgb(100,200,30),    
-            ];
-            
-        for v in default {
-            self.swatches.push(v);
-        }
-        
-    }
-*/
     
     pub fn draw (&self,  window: &Window) {
         ///draw standard palette
@@ -131,9 +110,7 @@ impl Palette {
             });
         
             window.add(&s);
-            
 
-        
         }
     }
   
@@ -197,11 +174,80 @@ impl Palette {
     }
 
     pub fn save(&self, filename: &String ) -> Result <i32, Error>{
-        println!("Save palette not implemented yet...");
-        Ok(0)
+        
+        let mut palette_data = self.swatches.clone().into_inner();
+        let mut payload = String::new();
+        let mut r;
+        let mut g;
+        let mut b;
+        palette_data=palette_data[16..].to_vec(); //not saving first 16 default swatches 
+        //serialize
+        for col in palette_data {
+            r= col.r();
+            g= col.g();
+            b= col.b();
+            payload.push_str(&r.to_string());
+            payload.push_str(",");
+            payload.push_str(&g.to_string());
+            payload.push_str(",");
+            payload.push_str(&b.to_string());
+            payload.push_str(",");
+        }
+        
+        payload.pop(); //remove last colon    
+        
+        if cfg!(feature = "debug"){
+            println!("Save palette ");
+            println!("{:?}",payload);
+        }
+        
+        let path = Path::new(&filename);
+        let display = path.display();
+
+        
+        // Open a file in write-only mode, returns `io::Result<File>`
+        let mut file = match File::create(&path) {
+            Err(why) => panic!("couldn't create {}: {}",display,why),
+            Ok(file) => file,
+        };
+
+        // Write payload to `file`, returns `io::Result<()>`
+        match file.write_all(payload.as_bytes()) {
+            Err(why) => {
+                println!("couldn't write to {}: {}", display,why);
+                Err(why)
+            },
+            Ok(_) => {
+                println!("successfully wrote to {}", display);
+                Ok(0)
+                },
+        }
     }
-    pub fn load(&self, filename: &PathBuf ) -> Result <i32, Error>{
-        println!("Load palette not implemented yet...");
-        Ok(0)
+
+    pub fn load(&self, filename: &PathBuf ) -> Result <Vec<u8>, Error>{
+        
+        let path = Path::new(&filename);
+        let display = path.display();
+        let mut file = match File::open(&path) {
+            Err(why) => panic!("couldn't open {}: {}", display,why),
+            Ok(file) => file,
+        };
+        let mut payload = String::new();
+        let mut numbers :Vec<u8> = Vec::new();
+        match file.read_to_string(&mut payload) {
+            Err(why) => panic!("couldn't read {}: {}", display,why),
+            Ok(_) => {
+                /*                
+                let mut splitted = payload.split(",");
+                for s in splitted {
+                    numbers.push(s.parse::<u8>().unwrap());
+                }
+                */
+                numbers = payload.split(",").map(|payload| payload.parse::<u8>().unwrap()).collect();
+                //let numbers :Vec<&str> = payload.split(",").collect();
+                //println!("{:?}", numbers[1].parse::<u8>().unwrap() );
+                },
+        }
+        Ok(numbers)
     }
 }

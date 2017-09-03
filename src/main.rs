@@ -93,6 +93,7 @@ fn main() {
     match env::home_dir() {
         Some(path) => {
                 home_dir.push_str(path.to_str().unwrap());
+                home_dir.push_str("/");
                 if cfg!(feature = "debug"){println!("Home path:{}", home_dir);}                        
                 },
         None => println!("Impossible to get your home dir!"),
@@ -429,7 +430,9 @@ fn main() {
         .on_click(move |_button: &Button, _point: Point| {
             if cfg!(feature = "debug"){println!("Add custom color to palette");}
             let color = swatch_clone.read();
-            custom_clone[palette_clone.next()].color(color);
+            let id = palette_clone.next();
+            custom_clone[id].color(color);
+            palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette
         });
     window.add(&add_button);
     
@@ -1121,16 +1124,33 @@ fn main() {
         let action = Action::new("Load");
         let home_dir_clone = home_dir.clone();
         let palette_clone = palette.clone();
+        let custom_clone = custom.clone();
         action.on_click(move |_action: &Action, _point: Point| {
            
                             let mut f= FileDialog::new();
                             f.title="Load palette".to_owned();
                             match f.exec() {
                             Some(response) => {
-                                    println!("Load palette {:?} ", response);
+                                    println!("Loaded palette {:?} ", response);
                                     //match palette_clone.load(&(String::from(response))){
                                     match palette_clone.load(&response){
-                                        Ok(_) => (),
+                                        Ok(colors) => {
+                                            println!("{:?}",colors);
+                                            let mut i=0;
+                                            let mut sw=0;
+                                            for k in 0..67 {   
+                                                custom_clone[k].color(Color::rgb(colors[i],colors[i+1],colors[i+2]));
+                                                //find empty swatch
+                                                if sw==0 && colors[i] ==  255 && colors[i+1] == 255 && colors[i+2] == 255 {
+                                                    sw = k;
+                                                }
+                                                
+                                                i +=3;
+                                            }
+                                        palette_clone.order.set(sw); //next empty swatch
+                                            
+                                            
+                                            },
                                         Err(e) => popup("Error",&format!("{}",e)[..]),
                                     }
                                     },
@@ -1173,8 +1193,9 @@ fn main() {
                         
                         //unsafe{palette.add(color, &mut *window_clone);}  
                         //thread 'main' panicked at 'already borrowed: BorrowMutError', /checkout/src/libcore/result.rs:860:4
-                            
-                        custom_clone[palette_clone.next()].color(color);
+                        let id = palette_clone.next();    
+                        custom_clone[id].color(color);
+                        palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette after 16 default swatches
                         
                         if cfg!(feature = "debug"){println!("{:?}, {:?}",swatch_clone.read(), palette_clone.swatches.borrow());}
                         
@@ -1212,6 +1233,9 @@ fn main() {
                         });
         help.add(&action);
     }
+
+    //set current dir to user home for FileDialog
+    if let Ok(_) = env::set_current_dir(&home_dir) {}
 
     // add menus
     window.add(&menu);

@@ -8,7 +8,7 @@ To run on Redox simply edit file filesystem.toml and delete '#' before pastel it
 Once Redox is running select pastel from the menu.
 
 To run on Linux install dependencies (SDL2      ) and type on terminal
-cargo run --relese
+cargo run --release
 
 To run on Windows (msvc) download from https://www.libsdl.org/release/SDL2-devel-2.0.5-VC.zip 
 and manually copy SDL2.dll and SDL2.lib to 

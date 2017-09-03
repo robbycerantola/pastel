@@ -1235,7 +1235,7 @@ fn main() {
     }
 
     //set current dir to user home for FileDialog
-    if let Ok(_) = env::set_current_dir(&home_dir) {}
+    //if let Ok(_) = env::set_current_dir(&home_dir) {}
 
     // add menus
     window.add(&menu);

@@ -15,7 +15,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 const SWATCH_SIZE :i32 = 24;
-const SWATCH_MAX :usize = 66;
+const SWATCH_MAX :usize = 67;
 
 
 #[derive(Clone)]
@@ -32,51 +32,28 @@ pub struct Palette {
 
 
 impl Palette {
-///draw a palette
+
     pub fn new (x: i32, y:i32, width:u32, height:u32, 
                 swatch: std::sync::Arc<orbtk::ColorSwatch>,
                  red_bar: Arc<ProgressBar>,
                  green_bar: Arc<ProgressBar>,
                  blue_bar: Arc<ProgressBar> ) ->Arc<Self> {
-       //default 16 colors VGA palette 
+
        Arc::new(Palette {
             swatches : RefCell::new(Vec::new()),
-            /*
-            swatches : RefCell::new(vec![
-                Color::rgb(0,0,0),
-                Color::rgb(255,255,255),
-                Color::rgb(128,128,128),
-                Color::rgb(255,0,0),
-                Color::rgb(0,255,0),
-                Color::rgb(0,0,255),
-                Color::rgb(128,0,0),
-                Color::rgb(0,128,0),
-                Color::rgb(0,0,128),
-                Color::rgb(255,255,0),
-                Color::rgb(128,0,128),
-                Color::rgb(0,255,255),
-                Color::rgb(192,192,192),
-                Color::rgb(128,128,0),
-                Color::rgb(0,128,128),
-                Color::rgb(255,0,255),
-                ]),*/
             objects: RefCell::new(Vec::new()),
             rect: Cell::new(Rect::new(x,y,width,height)),
             current_swatch:RefCell::new(swatch),
             order: Cell::new(16),
             red_bar: RefCell::new(red_bar),
             green_bar: RefCell::new(green_bar),
-            blue_bar: RefCell::new(blue_bar),   
+            blue_bar: RefCell::new(blue_bar),
         })
-        
-        
     }
     
-    //function for future Palette implementation refactoring
     pub fn prepare (&self,  window: &Window) {
                  
         let mut s: std::sync::Arc<orbtk::ColorSwatch>;
-        //let mut color: Color;
         let mut x: i32;
         let mut y: i32;
                 
@@ -105,7 +82,9 @@ impl Palette {
             default.push(Color::rgb(255,255,255));
         }
         
+        let mut id;
         let mut k=0;
+        let max: i32 = self.rect.get().width as i32/ SWATCH_SIZE;  //max swatches per line in allocated space
         //add all colors to palette
         for color  in default {
                        
@@ -114,6 +93,10 @@ impl Palette {
             x = self.rect.get().x + SWATCH_SIZE*(k) as i32;
             y = self.rect.get().y;
             
+            if x > self.rect.get().width as i32 - SWATCH_SIZE { 
+                x = self.rect.get().x + SWATCH_SIZE*(self.swatches.borrow().len() as i32 - max +1) ;
+                y = self.rect.get().y + SWATCH_SIZE;
+            }
             
             s.position(x,y)
             .size(SWATCH_SIZE as u32, SWATCH_SIZE as u32)
@@ -127,16 +110,17 @@ impl Palette {
             //on click change current color 
             let swatch_clone = self.current_swatch.clone();
             s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
-                
                 swatch_clone.borrow().color(color);
                 red_bar_clone.borrow().value.set((s_clone.read().r() as f32 /2.55) as i32);
                 green_bar_clone.borrow().value.set((s_clone.read().g() as f32 /2.55) as i32);
                 blue_bar_clone.borrow().value.set((s_clone.read().b() as f32 /2.55) as i32);
             });
         
-            window.add(&s);
+            id = window.add(&s);
+            s.id(id);
             self.objects.borrow_mut().push(s); 
             self.swatches.borrow_mut().push(color);  //
+            
             k +=1;
         }
     }
@@ -146,53 +130,8 @@ impl Palette {
         self.objects.borrow_mut()[id].color(color);  //#TODO why register same value in 2 places?
         self.swatches.borrow_mut()[id] = color;
     }
-    
-    
-    //old function to be erased once new impl is working
-    pub fn draw (&self,  window: &Window) {
-        ///draw standard palette
-         
-        let mut s: std::sync::Arc<orbtk::ColorSwatch>;
-        let mut color: Color;
-        let mut x: i32;
-        let mut y: i32;
-                
-        //not customizable part of palette
-        for k  in 0..self.swatches.borrow().len() {
-            color = self.swatches.borrow()[k as usize];
-            
-            
-            s = ColorSwatch::new();
-            
-            x = self.rect.get().x + SWATCH_SIZE*(k) as i32;
-            y = self.rect.get().y;
-            
-            
-            s.position(x,y)
-            .size(SWATCH_SIZE as u32, SWATCH_SIZE as u32)
-            .color(color);
-            
-            let s_clone= s.clone();
-            let red_bar_clone = self.red_bar.clone();
-            let green_bar_clone = self.green_bar.clone();
-            let blue_bar_clone = self.blue_bar.clone();
-            
-            //on click change current color 
-            let swatch_clone = self.current_swatch.clone();
-            s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
-                
-                swatch_clone.borrow().color(color);
-                red_bar_clone.borrow().value.set((s_clone.read().r() as f32 /2.55) as i32);
-                green_bar_clone.borrow().value.set((s_clone.read().g() as f32 /2.55) as i32);
-                blue_bar_clone.borrow().value.set((s_clone.read().b() as f32 /2.55) as i32);
-            });
-        
-            window.add(&s);
-
-        }
-    }
   
-    pub fn add (&self, color: Color, window: &Window) -> Arc<ColorSwatch> {
+    pub fn add (&self, color: Color, window: &Window) {
         ///add custom swatch color to palette
         
         let mut x: i32;
@@ -234,8 +173,8 @@ impl Palette {
         
         let id = window.add(&s);
         s.id(id);
+        self.objects.borrow_mut().push(s); 
         
-        s
     }
     
     pub fn reset (&self) {

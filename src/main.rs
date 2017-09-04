@@ -371,22 +371,7 @@ fn main() {
     //draw something on 2nd window
     palette.draw(& win);
     win.draw_if_needed();
-    */
-/*
-    // now polulate custom part of palette with empty white swatches
-    let mut custom : Vec<Arc<ColorSwatch>> = vec!{};
- 
-    {
-        let mut r;
-        for h in 0 .. 67 {
-            r=palette.add(Color::rgb(255,255,255),&window);
-            custom.push(r);
-        }
-    }
-*/    
-    //custom[palette.next()].color(Color::rgb(0,0,0)); //add a swatch to next available position 
-    
-    /*
+
     // test possibilities to add a swatch to palette
     {
     
@@ -396,10 +381,7 @@ fn main() {
     unsafe{palette.clone().add(Color::rgb(100,200,150),&mut *window_clone);}
     }
     */
-    
-    //let k = palette.
 
- 
     //clickable icon
     match Image::from_path( "pastel100.png" ) {
         Ok(image) => {
@@ -429,11 +411,6 @@ fn main() {
         .text_offset(8, 0)
         .on_click(move |_button: &Button, _point: Point| {
             if cfg!(feature = "debug"){println!("Add custom color to palette");}
-            let color = swatch_clone.read();
-            let id = palette_clone.next();
-            //custom_clone[id].color(color);
-            //palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette
-            //new impl
             palette_clone.change(palette_clone.next(),swatch_clone.read());
         });
     window.add(&add_button);
@@ -461,7 +438,6 @@ fn main() {
             let ntools_clone = ntools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
-            //let window_clone = &mut window as *mut Window;
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;

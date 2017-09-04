@@ -255,20 +255,22 @@ impl Palette {
         let path = Path::new(&filename);
         let display = path.display();
         let mut file = match File::open(&path) {
-            Err(why) => panic!("couldn't open {}: {}", display,why),
+            Err(why) => return Err(why), //panic!("couldn't open {}: {}", display,why),
             Ok(file) => file,
         };
         let mut payload = String::new();
         let mut colors :Vec<u8> = Vec::new();
         match file.read_to_string(&mut payload) {
-            Err(why) => panic!("couldn't read {}: {}", display,why),
+            Err(why) => return Err(why) ,// panic!("couldn't read {}: {}", display,why),
             Ok(_) => {
                 //deserialize
                 colors = payload.split(",").map(|payload| payload.parse::<u8>().unwrap()).collect();
                 let mut i=0;
                 let mut sw=0;
+                let mut last=SWATCH_MAX;
+                if colors.len() <SWATCH_MAX {last=colors.len()/3}
                 //append loaded palette to current one
-                for k in self.next()..SWATCH_MAX {   
+                for k in self.next()..last {   
                     self.objects.borrow_mut()[k].color(Color::rgb(colors[i],colors[i+1],colors[i+2]));
                     self.swatches.borrow_mut()[k] = Color::rgb(colors[i],colors[i+1],colors[i+2]);
                     //find empty swatch 

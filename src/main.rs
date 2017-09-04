@@ -920,9 +920,9 @@ fn main() {
     //Menu entries for edit
     {
             let action = Action::new("Select");
-            //let canvas_clone = canvas.clone();
+            
             let tool_clone = tool.clone();
-            //let window_clone = &mut window as *mut Window;
+            
             action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("marquee".to_owned());
                               });
@@ -1105,14 +1105,17 @@ fn main() {
         let palette_clone = palette.clone();
         
         action.on_click(move |_action: &Action, _point: Point| {
-           
+                            //match dialog("Open", "path:",&home_dir_clone[..]) {
                             let mut f= FileDialog::new();
                             f.title="Load palette".to_owned();
                             f.path=PathBuf::from(home_dir_clone.to_owned());
                             match f.exec() {
                             Some(response) => {
                                     println!("Loaded palette {:?} ", response);
-                                    palette_clone.load(&response).unwrap();
+                                    match palette_clone.load(&response){
+                                        Ok(_) =>(),
+                                        Err(e) => popup("Error",&format!("{}",e)[..]),
+                                        }
                                 },
                             None => println!("Cancelled"),
                             }

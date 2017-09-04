@@ -40,7 +40,8 @@ impl Palette {
                  blue_bar: Arc<ProgressBar> ) ->Arc<Self> {
        //default 16 colors VGA palette 
        Arc::new(Palette {
-            
+            swatches : RefCell::new(Vec::new()),
+            /*
             swatches : RefCell::new(vec![
                 Color::rgb(0,0,0),
                 Color::rgb(255,255,255),
@@ -58,11 +59,11 @@ impl Palette {
                 Color::rgb(128,128,0),
                 Color::rgb(0,128,128),
                 Color::rgb(255,0,255),
-                ]),
+                ]),*/
             objects: RefCell::new(Vec::new()),
             rect: Cell::new(Rect::new(x,y,width,height)),
             current_swatch:RefCell::new(swatch),
-            order: Cell::new(0),
+            order: Cell::new(16),
             red_bar: RefCell::new(red_bar),
             green_bar: RefCell::new(green_bar),
             blue_bar: RefCell::new(blue_bar),   
@@ -235,8 +236,16 @@ impl Palette {
         s.id(id);
         
         s
-            
     }
+    
+    pub fn reset (&self) {
+        for k in 16..SWATCH_MAX {   
+                self.change(k,Color::rgb(255,255,255));
+        }
+        self.order.set(0);    
+    }
+    
+
     pub fn count (&self) -> usize {
         self.swatches.borrow().len()
         
@@ -300,7 +309,7 @@ impl Palette {
         }
     }
 
-    pub fn load(&self, filename: &PathBuf ) -> Result <Vec<u8>, Error>{
+    pub fn loadold(&self, filename: &PathBuf ) -> Result <Vec<u8>, Error>{
         
         let path = Path::new(&filename);
         let display = path.display();
@@ -327,7 +336,7 @@ impl Palette {
         Ok(numbers)
     }
     
-    pub fn loadnew(&self, filename: &PathBuf ) -> Result <i32, Error>{
+    pub fn load(&self, filename: &PathBuf ) -> Result <i32, Error>{
         
         let path = Path::new(&filename);
         let display = path.display();

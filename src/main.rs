@@ -365,14 +365,14 @@ fn main() {
     // create a new palette at x,y,width,height linked to swatch 
     let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar,green_bar,blue_bar );
     // show on window the standard palette
-    palette.draw(&window);
+    palette.prepare(&window);
     
     /* TESTING floating window
     //draw something on 2nd window
     palette.draw(& win);
     win.draw_if_needed();
     */
-
+/*
     // now polulate custom part of palette with empty white swatches
     let mut custom : Vec<Arc<ColorSwatch>> = vec!{};
  
@@ -383,7 +383,7 @@ fn main() {
             custom.push(r);
         }
     }
-    
+*/    
     //custom[palette.next()].color(Color::rgb(0,0,0)); //add a swatch to next available position 
     
     /*
@@ -421,7 +421,7 @@ fn main() {
     let add_button = Button::new();
     let swatch_clone = swatch.clone();
     let palette_clone = palette.clone();
-    let custom_clone = custom.clone();
+    
 
     add_button.position(320,93)
         .size(24, 16)
@@ -431,10 +431,10 @@ fn main() {
             if cfg!(feature = "debug"){println!("Add custom color to palette");}
             let color = swatch_clone.read();
             let id = palette_clone.next();
-            custom_clone[id].color(color);
-            palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette
+            //custom_clone[id].color(color);
+            //palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette
             //new impl
-            //palette_clone.change(palette_clone.next,swatch_clone.read());
+            palette_clone.change(palette_clone.next(),swatch_clone.read());
         });
     window.add(&add_button);
     
@@ -1126,7 +1126,7 @@ fn main() {
         let action = Action::new("Load");
         let home_dir_clone = home_dir.clone();
         let palette_clone = palette.clone();
-        let custom_clone = custom.clone();
+        
         action.on_click(move |_action: &Action, _point: Point| {
            
                             let mut f= FileDialog::new();
@@ -1134,6 +1134,8 @@ fn main() {
                             match f.exec() {
                             Some(response) => {
                                     println!("Loaded palette {:?} ", response);
+                                    palette_clone.load(&response).unwrap();
+                                    /*
                                     //match palette_clone.load(&(String::from(response))){
                                     match palette_clone.load(&response){
                                         Ok(colors) => {
@@ -1150,11 +1152,12 @@ fn main() {
                                                 i +=3;
                                             }
                                         palette_clone.order.set(sw); //next empty swatch
-                                            
+                                          
                                             
                                             },
                                         Err(e) => popup("Error",&format!("{}",e)[..]),
                                     }
+                                    */
                                     },
                             None => println!("Cancelled"),
                             }
@@ -1188,16 +1191,16 @@ fn main() {
         let swatch_clone = swatch.clone();
         let palette_clone = palette.clone();
         //let window_clone = &mut window as *mut Window;
-        let custom_clone = custom.clone();
+        
         
         action.on_click(move |_action: &Action, _point: Point| {
-                        let color = swatch_clone.read();
+                        /*let color = swatch_clone.read();
                         let id = palette_clone.next();    
                         custom_clone[id].color(color);
                         palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette after 16 default swatches
-                        
+                        */
                         //new impl
-                        //palette_clone.change(palette_clone.next,swatch_clone.read());
+                        palette_clone.change(palette_clone.next(),swatch_clone.read());
                         if cfg!(feature = "debug"){println!("{:?}, {:?}",swatch_clone.read(), palette_clone.swatches.borrow());}
                         
                           });
@@ -1208,13 +1211,16 @@ fn main() {
      {
         let action = Action::new("Reset");
         let palette_clone = palette.clone();
-        let custom_clone = custom.clone();
+        
         
         action.on_click(move |_action: &Action, _point: Point| {
+                        palette_clone.reset();
+                        /*
                         for k in 0..67 {   
                             custom_clone[k].color(Color::rgb(255,255,255));
                         }
                         palette_clone.order.set(0);
+                        */
                           });
         menupalette.add(&action);
     }

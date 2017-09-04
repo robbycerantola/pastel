@@ -14,7 +14,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 const SWATCH_SIZE :i32 = 24;
-const SWATCH_MAX :usize = 67;
+const SWATCH_MAX :usize = 109; //67
 
 
 #[derive(Clone)]
@@ -95,6 +95,10 @@ impl Palette {
             if x > self.rect.get().width as i32 - SWATCH_SIZE { 
                 x = self.rect.get().x + SWATCH_SIZE*(self.swatches.borrow().len() as i32 - max +1) ;
                 y = self.rect.get().y + SWATCH_SIZE;
+                if x > self.rect.get().width as i32 - SWATCH_SIZE {
+                    x = self.rect.get().x + SWATCH_SIZE*(self.swatches.borrow().len() as i32 - 2*max +1) ;
+                    y = self.rect.get().y + 2*SWATCH_SIZE;
+                }
             }
             
             s.position(x,y)
@@ -180,7 +184,7 @@ impl Palette {
         for k in 16..SWATCH_MAX {   
                 self.change(k,Color::rgb(255,255,255));
         }
-        self.order.set(0);    
+        self.order.set(16);    
     }
     
     pub fn count (&self) -> usize {

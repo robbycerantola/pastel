@@ -27,7 +27,7 @@ use std::process;
 use std::process::Command;
 use std::env;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path,PathBuf};
 
 //use std::borrow::Borrow;
 //use std::borrow::BorrowMut;
@@ -183,10 +183,7 @@ fn main() {
     swatch.color(orbtk::Color::rgb(0,0,0));
     window.add(&swatch);
     let swatch_clone=swatch.clone();
-       
-    
 
-    // use forked version of orbtk to get ProgressBar rendered in colors setting fg
     //color picker
     let red_bar = ProgressBar::new();
     let green_bar = ProgressBar::new();
@@ -246,7 +243,6 @@ fn main() {
     }
     y += green_bar.rect.get().height as i32 + 2;
 
-
     let blue_label = Label::new();
     blue_label.text("B: 0").position(x, y).size(48, 16);
     blue_label.fg.set(orbtk::Color::rgb(0,0,255));
@@ -282,6 +278,7 @@ fn main() {
     size_label.visible.set(false);
     window.add(&size_label);
 
+    
     let size_bar = ProgressBar::new();
     let tool_clone = tool.clone();
     let ntools_clone=ntools.clone();
@@ -304,6 +301,7 @@ fn main() {
                   });
     window.add(&size_bar);
     
+    
     // tool transparency bar
     let trans_label = Label::new();
     trans_label.text("Opacity: 100%").position(x+340, 90).size(120, 16);
@@ -311,6 +309,7 @@ fn main() {
     //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&trans_label);
 
+    
     let trans_bar = ProgressBar::new();
     let tool_clone = tool.clone();
     //let tools_clone = tools.clone();
@@ -333,7 +332,7 @@ fn main() {
                       
                   });
     window.add(&trans_bar);
-
+    
 /*
     // tool Volume nob
     let volume_label = Label::new();
@@ -848,7 +847,9 @@ fn main() {
         let home_dir_clone = home_dir.clone();
         action.on_click(move |_action: &Action, _point: Point| {
             //match dialog("Open", "path:",&home_dir_clone[..]) {
-              match FileDialog::new().exec() {
+              let mut f = FileDialog::new();
+                f.path=PathBuf::from(home_dir_clone.to_owned());
+              match f.exec() {
                 Some(response) => {
                                     println!("Open {:?} ", response);
                                     let path: &str ;//="";
@@ -1107,34 +1108,12 @@ fn main() {
            
                             let mut f= FileDialog::new();
                             f.title="Load palette".to_owned();
+                            f.path=PathBuf::from(home_dir_clone.to_owned());
                             match f.exec() {
                             Some(response) => {
                                     println!("Loaded palette {:?} ", response);
                                     palette_clone.load(&response).unwrap();
-                                    /*
-                                    //match palette_clone.load(&(String::from(response))){
-                                    match palette_clone.load(&response){
-                                        Ok(colors) => {
-                                            println!("{:?}",colors);
-                                            let mut i=0;
-                                            let mut sw=0;
-                                            for k in 0..67 {   
-                                                custom_clone[k].color(Color::rgb(colors[i],colors[i+1],colors[i+2]));
-                                                //find empty swatch
-                                                if sw==0 && colors[i] ==  255 && colors[i+1] == 255 && colors[i+2] == 255 {
-                                                    sw = k;
-                                                }
-                                                
-                                                i +=3;
-                                            }
-                                        palette_clone.order.set(sw); //next empty swatch
-                                          
-                                            
-                                            },
-                                        Err(e) => popup("Error",&format!("{}",e)[..]),
-                                    }
-                                    */
-                                    },
+                                },
                             None => println!("Cancelled"),
                             }
         });
@@ -1170,12 +1149,7 @@ fn main() {
         
         
         action.on_click(move |_action: &Action, _point: Point| {
-                        /*let color = swatch_clone.read();
-                        let id = palette_clone.next();    
-                        custom_clone[id].color(color);
-                        palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette after 16 default swatches
-                        */
-                        //new impl
+                        
                         palette_clone.change(palette_clone.next(),swatch_clone.read());
                         if cfg!(feature = "debug"){println!("{:?}, {:?}",swatch_clone.read(), palette_clone.swatches.borrow());}
                         
@@ -1191,12 +1165,7 @@ fn main() {
         
         action.on_click(move |_action: &Action, _point: Point| {
                         palette_clone.reset();
-                        /*
-                        for k in 0..67 {   
-                            custom_clone[k].color(Color::rgb(255,255,255));
-                        }
-                        palette_clone.order.set(0);
-                        */
+                        
                           });
         menupalette.add(&action);
     }
@@ -1216,9 +1185,6 @@ fn main() {
                         });
         help.add(&action);
     }
-
-    //set current dir to user home for FileDialog
-    //if let Ok(_) = env::set_current_dir(&home_dir) {}
 
     // add menus
     window.add(&menu);

@@ -1,6 +1,5 @@
 extern crate orbtk;
 
-
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             ControlKnob,Toolbar, ToolbarIcon, Rect, Separator,
             TextBox, Window, Renderer, ColorSwatch}; //Toolbar
@@ -184,7 +183,6 @@ impl Palette {
         self.order.set(0);    
     }
     
-
     pub fn count (&self) -> usize {
         self.swatches.borrow().len()
         
@@ -247,34 +245,7 @@ impl Palette {
                 },
         }
     }
-
-    pub fn loadold(&self, filename: &PathBuf ) -> Result <Vec<u8>, Error>{
         
-        let path = Path::new(&filename);
-        let display = path.display();
-        let mut file = match File::open(&path) {
-            Err(why) => panic!("couldn't open {}: {}", display,why),
-            Ok(file) => file,
-        };
-        let mut payload = String::new();
-        let mut numbers :Vec<u8> = Vec::new();
-        match file.read_to_string(&mut payload) {
-            Err(why) => panic!("couldn't read {}: {}", display,why),
-            Ok(_) => {
-                /*                
-                let mut splitted = payload.split(",");
-                for s in splitted {
-                    numbers.push(s.parse::<u8>().unwrap());
-                }
-                */
-                numbers = payload.split(",").map(|payload| payload.parse::<u8>().unwrap()).collect();
-                //let numbers :Vec<&str> = payload.split(",").collect();
-                //println!("{:?}", numbers[1].parse::<u8>().unwrap() );
-                },
-        }
-        Ok(numbers)
-    }
-    
     pub fn load(&self, filename: &PathBuf ) -> Result <i32, Error>{
         
         let path = Path::new(&filename);
@@ -288,13 +259,15 @@ impl Palette {
         match file.read_to_string(&mut payload) {
             Err(why) => panic!("couldn't read {}: {}", display,why),
             Ok(_) => {
+                //deserialize
                 colors = payload.split(",").map(|payload| payload.parse::<u8>().unwrap()).collect();
                 let mut i=0;
                 let mut sw=0;
-                for k in 16..SWATCH_MAX {   
+                //append loaded palette to current one
+                for k in self.next()..SWATCH_MAX {   
                     self.objects.borrow_mut()[k].color(Color::rgb(colors[i],colors[i+1],colors[i+2]));
                     self.swatches.borrow_mut()[k] = Color::rgb(colors[i],colors[i+1],colors[i+2]);
-                    //find empty swatch
+                    //find empty swatch 
                     if sw==0 && colors[i] ==  255 && colors[i+1] == 255 && colors[i+2] == 255 {
                         sw = k;
                     }

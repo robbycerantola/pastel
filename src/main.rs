@@ -433,6 +433,8 @@ fn main() {
             let id = palette_clone.next();
             custom_clone[id].color(color);
             palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette
+            //new impl
+            //palette_clone.change(palette_clone.next,swatch_clone.read());
         });
     window.add(&add_button);
     
@@ -1190,13 +1192,12 @@ fn main() {
         
         action.on_click(move |_action: &Action, _point: Point| {
                         let color = swatch_clone.read();
-                        
-                        //unsafe{palette.add(color, &mut *window_clone);}  
-                        //thread 'main' panicked at 'already borrowed: BorrowMutError', /checkout/src/libcore/result.rs:860:4
                         let id = palette_clone.next();    
                         custom_clone[id].color(color);
                         palette_clone.swatches.borrow_mut()[id+16] = color; //register also to palette after 16 default swatches
                         
+                        //new impl
+                        //palette_clone.change(palette_clone.next,swatch_clone.read());
                         if cfg!(feature = "debug"){println!("{:?}, {:?}",swatch_clone.read(), palette_clone.swatches.borrow());}
                         
                           });

@@ -21,6 +21,7 @@ const SWATCH_MAX :usize = 66;
 #[derive(Clone)]
 pub struct Palette {
     pub swatches : RefCell<Vec<Color>>,
+    pub objects : RefCell<Vec<Arc<ColorSwatch>>>,
     rect : Cell<Rect>,
     current_swatch: RefCell<std::sync::Arc<orbtk::ColorSwatch>> ,
     pub order: Cell<usize>,
@@ -57,9 +58,8 @@ impl Palette {
                 Color::rgb(128,128,0),
                 Color::rgb(0,128,128),
                 Color::rgb(255,0,255),
-                    
                 ]),
-            
+            objects: RefCell::new(Vec::new()),
             rect: Cell::new(Rect::new(x,y,width,height)),
             current_swatch:RefCell::new(swatch),
             order: Cell::new(0),
@@ -71,6 +71,83 @@ impl Palette {
         
     }
     
+    //function for future Palette implementation refactoring
+    pub fn prepare (&self,  window: &Window) {
+                 
+        let mut s: std::sync::Arc<orbtk::ColorSwatch>;
+        //let mut color: Color;
+        let mut x: i32;
+        let mut y: i32;
+                
+        //default part of colors to be inserted into palette, not customizable (16 colors VGA)
+        let mut default = vec![
+                Color::rgb(0,0,0),
+                Color::rgb(255,255,255),
+                Color::rgb(128,128,128),
+                Color::rgb(255,0,0),
+                Color::rgb(0,255,0),
+                Color::rgb(0,0,255),
+                Color::rgb(128,0,0),
+                Color::rgb(0,128,0),
+                Color::rgb(0,0,128),
+                Color::rgb(255,255,0),
+                Color::rgb(128,0,128),
+                Color::rgb(0,255,255),
+                Color::rgb(192,192,192),
+                Color::rgb(128,128,0),
+                Color::rgb(0,128,128),
+                Color::rgb(255,0,255),
+                ];
+        
+        //customizable part prepared with empy (white) swatches        
+        for i in 0..SWATCH_MAX {
+            default.push(Color::rgb(255,255,255));
+        }
+        
+        let mut k=0;
+        //add all colors to palette
+        for color  in default {
+                       
+            s = ColorSwatch::new();
+            
+            x = self.rect.get().x + SWATCH_SIZE*(k) as i32;
+            y = self.rect.get().y;
+            
+            
+            s.position(x,y)
+            .size(SWATCH_SIZE as u32, SWATCH_SIZE as u32)
+            .color(color);
+            
+            let s_clone= s.clone();
+            let red_bar_clone = self.red_bar.clone();
+            let green_bar_clone = self.green_bar.clone();
+            let blue_bar_clone = self.blue_bar.clone();
+            
+            //on click change current color 
+            let swatch_clone = self.current_swatch.clone();
+            s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
+                
+                swatch_clone.borrow().color(color);
+                red_bar_clone.borrow().value.set((s_clone.read().r() as f32 /2.55) as i32);
+                green_bar_clone.borrow().value.set((s_clone.read().g() as f32 /2.55) as i32);
+                blue_bar_clone.borrow().value.set((s_clone.read().b() as f32 /2.55) as i32);
+            });
+        
+            window.add(&s);
+            self.objects.borrow_mut().push(s); 
+            self.swatches.borrow_mut().push(color);  //
+            k +=1;
+        }
+    }
+    
+    pub fn change(&self, id: usize, color: Color){
+        //change color to element of palette by id
+        self.objects.borrow_mut()[id].color(color);  //#TODO why register same value in 2 places?
+        self.swatches.borrow_mut()[id] = color;
+    }
+    
+    
+    //old function to be erased once new impl is working
     pub fn draw (&self,  window: &Window) {
         ///draw standard palette
          
@@ -203,7 +280,6 @@ impl Palette {
         
         let path = Path::new(&filename);
         let display = path.display();
-
         
         // Open a file in write-only mode, returns `io::Result<File>`
         let mut file = match File::create(&path) {
@@ -249,5 +325,38 @@ impl Palette {
                 },
         }
         Ok(numbers)
+    }
+    
+    pub fn loadnew(&self, filename: &PathBuf ) -> Result <i32, Error>{
+        
+        let path = Path::new(&filename);
+        let display = path.display();
+        let mut file = match File::open(&path) {
+            Err(why) => panic!("couldn't open {}: {}", display,why),
+            Ok(file) => file,
+        };
+        let mut payload = String::new();
+        let mut colors :Vec<u8> = Vec::new();
+        match file.read_to_string(&mut payload) {
+            Err(why) => panic!("couldn't read {}: {}", display,why),
+            Ok(_) => {
+                colors = payload.split(",").map(|payload| payload.parse::<u8>().unwrap()).collect();
+                let mut i=0;
+                let mut sw=0;
+                for k in 16..SWATCH_MAX {   
+                    self.objects.borrow_mut()[k].color(Color::rgb(colors[i],colors[i+1],colors[i+2]));
+                    self.swatches.borrow_mut()[k] = Color::rgb(colors[i],colors[i+1],colors[i+2]);
+                    //find empty swatch
+                    if sw==0 && colors[i] ==  255 && colors[i+1] == 255 && colors[i+2] == 255 {
+                        sw = k;
+                    }
+                    
+                    i +=3;
+                }
+                self.order.set(sw); //set next empty swatch
+                
+                },
+        }
+        Ok(0)
     }
 }

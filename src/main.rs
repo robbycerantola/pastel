@@ -1221,7 +1221,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.11, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.12, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }

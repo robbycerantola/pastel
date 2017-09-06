@@ -133,10 +133,10 @@ impl Palette {
         self.objects.borrow_mut()[id].color(color);  //#TODO why register same value in 2 places?
         self.swatches.borrow_mut()[id] = color;
     }
-  
+    
+    ///add custom swatch color to palette
     pub fn add (&self, color: Color, window: &Window) {
-        ///add custom swatch color to palette
-        
+         
         let mut x: i32;
         let mut y: i32;
         let max: i32 = self.rect.get().width as i32/ SWATCH_SIZE;
@@ -191,8 +191,9 @@ impl Palette {
         self.swatches.borrow().len()
         
     }
+    ///find next empty custom swatch
     pub fn next (&self) -> usize {
-        ///find next empty custom swatch
+        
         let n = self.order.get();
         if n < SWATCH_MAX {
             self.order.set(n+1);

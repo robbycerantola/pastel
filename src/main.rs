@@ -28,6 +28,7 @@ use std::process::Command;
 use std::env;
 use std::collections::HashMap;
 use std::path::{Path,PathBuf};
+use std::fs;
 
 //use std::borrow::Borrow;
 //use std::borrow::BorrowMut;
@@ -131,7 +132,7 @@ fn main() {
     ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
     ntools.insert("line",vec![Property::new("Opacity",100)]);
     ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100)]); 
-    ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]);
+    ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
     ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Filled",1)]);
     ntools.insert("circle",vec![Property::new("Opacity",100)]);
@@ -146,8 +147,7 @@ fn main() {
     
     //if pastel_copy_buffer.png exists load it into buffer
     //for copy/paste between instances 
-    
-    let buffer: Rc<RefCell<orbimage::Image>> = Rc::new(RefCell::new(load_buffer()));
+    let buffer: Rc<RefCell<orbimage::Image>> = Rc::new(RefCell::new(load_buffer("/tmp/pastel_copy_buffer.png")));
     
     //implement GUI
     
@@ -954,6 +954,43 @@ fn main() {
     }
 
     edit.add(&Separator::new());
+    
+    {
+            let action = Action::new("Load Buffer");
+            let home_dir_clone = home_dir.clone();
+            let buffer_clone = buffer.clone();
+            action.on_click(move |_action: &Action, _point: Point| {
+                            let mut f= FileDialog::new();
+                            f.title="Load Buffer from file".to_owned();
+                            f.path=PathBuf::from(home_dir_clone.to_owned());
+                            match f.exec() {
+                            Some(response) => {
+                                let bf = load_buffer(&(response.display().to_string())[..]);
+                                *buffer_clone.borrow_mut() = bf; 
+                                },
+                            None => println!("Cancelled"),
+                            }
+                            
+                              });
+            edit.add(&action);
+    }
+    
+    
+    {
+            let action = Action::new("Save Buffer");
+            let home_dir_clone = home_dir.clone();
+            action.on_click(move |_action: &Action, _point: Point| {
+                            match dialog("Save Buffer", "path:",&home_dir_clone[..]) {
+                                Some(response) => {
+                                    if let Ok(_) = fs::copy("/tmp/pastel_copy_buffer.png",&(response.to_string())[..] ) {}
+                                },
+                            
+                                None => {println!("Cancelled");},
+                            }
+                            });
+            edit.add(&action);
+    }
+    
 
     //Menu tool
     let tools = Menu::new("Tools");
@@ -1249,7 +1286,8 @@ fn main() {
                                                         color),
                                            Some(1) => image.rect(point.x ,point.y,size as u32, size as u32,
                                                         color),
-                                           Some(2) =>  image.paste_selection(point.x,point.y,bf.clone()), 
+                                           Some(2) => image.paste_selection(point.x,point.y,bf.clone()),
+                                           //Some(3) => image.paste_selection(point.x,point.y,brush_shape.clone()),
                                            None | Some(_)   => println!("no Shape match!"),
                                         }
                                     },
@@ -1276,7 +1314,7 @@ fn main() {
                                         }   
                                     },
                         "circle"=> image.circle(prev_position.x, prev_position.y,
-                                                2*(((point.x-prev_position.x)^2+
+                                                (((point.x-prev_position.x)^2+
                                                 (point.y-prev_position.y)^2) as f64).sqrt() as i32,
                                                  color),
                        "marquee"=> {
@@ -1322,7 +1360,7 @@ fn test (widget: Arc<orbtk::ColorSwatch>, window: &mut orbtk::Window) {
 }
 
 
-///Load an image from path if exists, other way create new empty canvas
+///Load an image from path if exists, otherwise create new empty canvas
 fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  
     if cfg!(feature = "debug"){print!("Loading image from:  {} .....", path);}
     match Canvas::from_path(&path) {
@@ -1339,12 +1377,12 @@ fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {
 }
 
 ///load pastel_copy_buffer if exists
-fn load_buffer() -> orbimage::Image {
+fn load_buffer(path: &str) -> orbimage::Image {
     
-    let path="/tmp/pastel_copy_buffer.png".to_string();
+    //let path="/tmp/pastel_copy_buffer.png".to_string();
     
     if cfg!(feature = "debug"){print!("Loading copy buffer from:  {} .....", path);}
-    match orbimage::Image::from_path(&path) {
+    match orbimage::Image::from_path(path.to_string()) {
         Ok(image) => {
             if cfg!(feature = "debug"){println!(" OK");}
             image
@@ -1408,7 +1446,7 @@ trait AddOnsToOrbimage {
         fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
         fn paste_selection (&mut self, x: i32, y:i32,buffer: orbimage::Image);
         fn mycircle(&mut self, x0: i32, y0: i32, radius: i32, color: Color);
-        fn plot4points( &mut self,x0: i32, y0: i32, x: i32, y: i32, color: Color);
+        fn line4points( &mut self,x0: i32, y0: i32, x: i32, y: i32, color: Color);
     }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -1483,18 +1521,14 @@ impl AddOnsToOrbimage for orbimage::Image {
         
         //test for new scanlines above
         x1 = x;
-        //println!("newcol {} pixcol {}",new_color, self.pixcol(x1,y).data);
         
         while x1 < w && self.pixcol(x1,y).data  == res_color  { 
-        
-            //println!("Test above {} {} ", self.pixcol(x1,y).data,old_color);
             if y > 0 && self.pixcol(x1,y-1).data  == old_color  {
               self.flood_fill_scanline(x1, y - 1, new_color, old_color);
             }
             x1 += 1;
           }
         x1 = x - 1;
-        //println!("2) x1 {} y {} w {} ",x1,y,w);
         while x1 >= 0 && self.pixcol(x1,y).data == res_color {
             if y > 0 && self.pixcol(x1,y - 1).data  == old_color  {
               self.flood_fill_scanline(x1, y - 1, new_color, old_color);
@@ -1504,7 +1538,6 @@ impl AddOnsToOrbimage for orbimage::Image {
          
          //test for new scanlines below
         x1 = x;
-        //println!("Test below ");
         while x1 < w && self.pixcol(x1,y).data == res_color  {
             //println!("Test below {} {} ", self.pixcol(x1,y).data,old_color);
             if y < (h - 1) && self.pixcol(x1,y + 1).data == old_color {
@@ -1532,9 +1565,6 @@ impl AddOnsToOrbimage for orbimage::Image {
                     x1 +=1;
                 } else {break}  
             }
-                
-            //self.flood_fill4(x+1,y,new_color,old_color);
-           
            x1=x-1; 
            loop {
                 if x1>=0 && x1< self.width() as i32 && self.pixcol(x1,y).data == old_color{
@@ -1542,13 +1572,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                     x1 +=-1;
                 } else {break}  
             }
-                        
-            //self.flood_fill4(x-1,y,new_color,old_color);
-            
-
-            
             self.flood_fill_line(x,y+1,new_color,old_color);
-            
             self.flood_fill_line(x,y-1,new_color,old_color);
         }
     }
@@ -1835,16 +1859,33 @@ impl AddOnsToOrbimage for orbimage::Image {
         let mut x = radius.abs();
         let mut y = 0;
         let mut err = -radius.abs();
-
+        
+        if radius == 0 {
+            self.pixel(x0, y0, color);
+            return
+        }
+        
         while x >= y {
             let lasty = y;
             err +=y;
             y +=1;
             err += y;
-            self.plot4points(x0,y0,x,lasty,color);
+            if radius < 0 {
+                self.line4points(x0,y0,x,lasty,color);
+            }else {
+                self.pixel(x0 - x, y0 + y, color);
+                self.pixel(x0 + x, y0 + y, color);
+                self.pixel(x0 - y, y0 + x, color);
+                self.pixel(x0 + y, y0 + x, color);
+                self.pixel(x0 - x, y0 - y, color);
+                self.pixel(x0 + x, y0 - y, color);
+                self.pixel(x0 - y, y0 - x, color);
+                self.pixel(x0 + y, y0 - x, color);
+                    } 
             if err >=0 {
                 if x != lasty{
-                    self.plot4points(x0,y0,lasty,x,color);
+                   if radius <0 { self.line4points(x0,y0,lasty,x,color);
+                   }
                 }
                 err -= x;
                 x -= 1;
@@ -1853,7 +1894,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
     }
     
-    fn plot4points(&mut self, x0: i32, y0: i32, x: i32, y: i32, color: Color){
+    fn line4points(&mut self, x0: i32, y0: i32, x: i32, y: i32, color: Color){
         //self.line(x0 - x, y0 + y, (x+x0), y0 + y, color);
         self.rect(x0 - x, y0 + y, x as u32 * 2 + 1, 1, color);
         if y != 0 {
@@ -1863,18 +1904,13 @@ impl AddOnsToOrbimage for orbimage::Image {
     }
 }
 
-
 trait AddOnsToOrbclient {
     fn pixcol(&self, x:i32, y:i32) -> Color;
     fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
     fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
-    
 }
+
 impl AddOnsToOrbclient for orbclient::Window{
-    
-
-
-
     ///gets pixel Color at x,y
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = self.width()as i32 * y + x;
@@ -1897,7 +1933,6 @@ impl AddOnsToOrbclient for orbclient::Window{
         let mut err_tolerance;
 
         let mut old_color : orbtk::Color ;
-        
         let mut ct = 0;
 
         loop {
@@ -1907,7 +1942,6 @@ impl AddOnsToOrbclient for orbclient::Window{
             // New faster implementation xor-ing 32 bit internal color data   
             // Attention :trick does not work as intended xor-ing entire 32bit color data, if new color alfa > 0!!
             self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)}); 
-            
             }
             
             if x == argx2 && y == argy2 { break };
@@ -1932,6 +1966,5 @@ impl AddOnsToOrbclient for orbclient::Window{
         self.ant_line(argx1,argy2,argx1,argy1,color);
         //self.sync();
     }
-        
 }
 

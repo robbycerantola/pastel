@@ -1221,7 +1221,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.12, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.13, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }
@@ -1282,11 +1282,11 @@ fn main() {
                          "pen"  => image.pixel(point.x, point.y, color),
                          "brush"=> { 
                                     match property_get(&ntools.clone()["brush"],"Shape") {
-                                           Some(0) => image.mycircle(point.x, point.y,-size,
+                                           Some(0) => image.circle(point.x, point.y,-size,
                                                         color),
                                            Some(1) => image.rect(point.x ,point.y,size as u32, size as u32,
                                                         color),
-                                           Some(2) => image.paste_selection(point.x,point.y,bf.clone()),
+                                           Some(2) => image.paste_selection(point.x,point.y, a.clone(), bf.clone()),
                                            //Some(3) => image.paste_selection(point.x,point.y,brush_shape.clone()),
                                            None | Some(_)   => println!("no Shape match!"),
                                         }
@@ -1339,7 +1339,7 @@ fn main() {
                                              
                                             }
                                         },
-                        "paste" => image.paste_selection(point.x,point.y,bf.clone()),
+                        "paste" => image.paste_selection(point.x,point.y, a.clone(), bf.clone()),
                               _ => println!("No match!"),          
                     }
 
@@ -1444,9 +1444,7 @@ trait AddOnsToOrbimage {
         fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, window: &mut orbtk::Window);
         fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
         fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
-        fn paste_selection (&mut self, x: i32, y:i32,buffer: orbimage::Image);
-        fn mycircle(&mut self, x0: i32, y0: i32, radius: i32, color: Color);
-        fn line4points( &mut self,x0: i32, y0: i32, x: i32, y: i32, color: Color);
+        fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
     }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -1593,12 +1591,12 @@ impl AddOnsToOrbimage for orbimage::Image {
                 vec.push(col);
             }
         }
-        //println!("len {} w*h {}",vec.len(), w*h);
+        //println!("buffer {:?}",&vec);
         orbimage::Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap()
     }
 
     ///draws an image into current image starting at x,y (paste)
-    fn paste_selection (&mut self, x: i32, y:i32,buffer: orbimage::Image){
+    fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image, ){
         
         let w = buffer.width() as i32;
         let h = buffer.height() as i32;
@@ -1606,14 +1604,22 @@ impl AddOnsToOrbimage for orbimage::Image {
         let yc=y-h/2;
         let data = buffer.into_data();
         let mut i:usize = 0;
-        
+        let mut r;
+        let mut g;
+        let mut b;
+        let mut a;
         let x1:i32;
         let y1:i32;
         
         for y1 in yc..yc+h {
             for x1 in xc..xc+w {
                 if i < data.len(){
-                    self.pixel(x1,y1,data[i]);
+                    r = data[i].r();
+                    g = data[i].g();
+                    b = data[i].b();
+                    a = data[i].a();
+                    if a != 0 {a = opacity}
+                    self.pixel(x1,y1,Color::rgba(r,g,b,a));
                 }
                 i += 1;
             }
@@ -1819,81 +1825,59 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
         
     }
-    /*
-    fn mycircle(&mut self, x0: i32, y0: i32, radius: i32, color: Color) {
-        let mut x = radius.abs();
-        let mut y = 0;
-        let mut err = 0;
-
-        while x >= y {
-            if radius < 0 {
-                self.rect(x0 - x, y0 + y, x as u32 * 2 + 1, 1, color);
-                self.rect(x0 - y, y0 + x, y as u32 * 2 + 1, 1, color);
-                if y != 0 {
-                    self.rect(x0 - x, y0 - y, x as u32 * 2 + 1, 1, color);
-                    self.rect(x0 - y, y0 - x, y as u32 * 2 + 1, 1, color);
-                }
-            } else if radius == 0 {
-                self.pixel(x0, y0, color);
-            } else {
-                self.pixel(x0 - x, y0 + y, color);
-                self.pixel(x0 + x, y0 + y, color);
-                self.pixel(x0 - y, y0 + x, color);
-                self.pixel(x0 + y, y0 + x, color);
-                self.pixel(x0 - x, y0 - y, color);
-                self.pixel(x0 + x, y0 - y, color);
-                self.pixel(x0 - y, y0 - x, color);
-                self.pixel(x0 + y, y0 - x, color);
-            }
-
-            y += 1;
-            err += 1 + 2*y;
-            if 2*(err-x) + 1 > 0 {
-                x -= 1;
-                err += 1 - 2*x;
-            }
-        }
-    }
-*/
+/* fix moved to mainstream orbclient 0.3.9 
     fn mycircle(&mut self, x0: i32, y0: i32, radius: i32, color: Color) {
         let mut x = radius.abs();
         let mut y = 0;
         let mut err = -radius.abs();
         
-        if radius == 0 {
-            self.pixel(x0, y0, color);
-            return
-        }
-        
-        while x >= y {
-            let lasty = y;
-            err +=y;
-            y +=1;
-            err += y;
-            if radius < 0 {
-                self.line4points(x0,y0,x,lasty,color);
-            }else {
-                self.pixel(x0 - x, y0 + y, color);
-                self.pixel(x0 + x, y0 + y, color);
-                self.pixel(x0 - y, y0 + x, color);
-                self.pixel(x0 + y, y0 + x, color);
-                self.pixel(x0 - x, y0 - y, color);
-                self.pixel(x0 + x, y0 - y, color);
-                self.pixel(x0 - y, y0 - x, color);
-                self.pixel(x0 + y, y0 - x, color);
-                    } 
-            if err >=0 {
-                if x != lasty{
-                   if radius <0 { self.line4points(x0,y0,lasty,x,color);
-                   }
+        match radius {
+            radius if radius > 0 => {
+                err = 0;
+                while x >= y {
+                    self.pixel(x0 - x, y0 + y, color);
+                    self.pixel(x0 + x, y0 + y, color);
+                    self.pixel(x0 - y, y0 + x, color);
+                    self.pixel(x0 + y, y0 + x, color);
+                    self.pixel(x0 - x, y0 - y, color);
+                    self.pixel(x0 + x, y0 - y, color);
+                    self.pixel(x0 - y, y0 - x, color);
+                    self.pixel(x0 + y, y0 - x, color);
+                
+                    y += 1;
+                    err += 1 + 2*y;
+                    if 2*(err-x) + 1 > 0 {
+                        x -= 1;
+                        err += 1 - 2*x;
+                    }
+                }      
+            },
+            
+            radius if radius < 0 => {
+                while x >= y {
+                    let lasty = y;
+                    err +=y;
+                    y +=1;
+                    err += y;
+                    self.line4points(x0,y0,x,lasty,color);
+                    if err >=0 {
+                        if x != lasty{
+                           self.line4points(x0,y0,lasty,x,color);
+                        }
+                        err -= x;
+                        x -= 1;
+                        err -= x;
+                    }
                 }
-                err -= x;
-                x -= 1;
-                err -= x;
-            }
+
+                },
+                     _ => {
+                            self.pixel(x0, y0, color);
+                            
+                        },
         }
     }
-    
+
     fn line4points(&mut self, x0: i32, y0: i32, x: i32, y: i32, color: Color){
         //self.line(x0 - x, y0 + y, (x+x0), y0 + y, color);
         self.rect(x0 - x, y0 + y, x as u32 * 2 + 1, 1, color);
@@ -1902,6 +1886,7 @@ impl AddOnsToOrbimage for orbimage::Image {
             self.rect(x0 - x, y0 - y, x as u32 * 2 + 1, 1, color);
         }
     }
+*/
 }
 
 trait AddOnsToOrbclient {

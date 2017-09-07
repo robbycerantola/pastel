@@ -95,7 +95,7 @@ impl Canvas {
     pub fn clear(&self){
        let mut image = self.image.borrow_mut();
        //image.clear();
-       image.set(Color::rgb(255, 255, 255));
+       image.set(Color::rgba(255, 255, 255,255));
     }
     
     ///draws image into curent canvas starting at x,y (paste)

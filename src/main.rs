@@ -730,7 +730,7 @@ fn main() {
             let ntools_clone = ntools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             item.position(x, y)
-                 .text("from buffer".to_owned())
+                 .text("custom brush from buffer".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                property_set(&ntools_clone["brush"],"Shape",2);
                                
@@ -814,7 +814,6 @@ fn main() {
     menu.position(10, 0).size(32, 16);
 
     //menu entries for file
-            //TODO ask for new dimensions
     {
         let action = Action::new("New");
         action.on_click(move |_action: &Action, _point: Point| {
@@ -947,8 +946,10 @@ fn main() {
     {
             let action = Action::new("Paste");
             let tool_clone = tool.clone();
+            let ntools_clone = ntools.clone();
             action.on_click(move |_action: &Action, _point: Point| {
-                            tool_clone.text.set("paste".to_owned());
+                            property_set(&ntools_clone["brush"],"Shape",2);
+                            tool_clone.text.set("brush".to_owned());
                               });
             edit.add(&action);
     }
@@ -1221,7 +1222,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.13, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.14, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }

@@ -113,7 +113,7 @@ impl Palette {
             //on click change current color 
             let swatch_clone = self.current_swatch.clone();
             s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
-                swatch_clone.borrow().color(color);
+                swatch_clone.borrow().color(s_clone.read());  //color
                 red_bar_clone.borrow().value.set((s_clone.read().r() as f32 /2.55) as i32);
                 green_bar_clone.borrow().value.set((s_clone.read().g() as f32 /2.55) as i32);
                 blue_bar_clone.borrow().value.set((s_clone.read().b() as f32 /2.55) as i32);
@@ -169,9 +169,11 @@ impl Palette {
         s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
             
             swatch_clone.borrow_mut().color(s_clone.read());
+            
             red_bar_clone.borrow_mut().value.set((s_clone.read().r() as f32 /2.55) as i32);
             green_bar_clone.borrow_mut().value.set((s_clone.read().g() as f32 /2.55) as i32);
             blue_bar_clone.borrow_mut().value.set((s_clone.read().b() as f32 /2.55) as i32);
+            
         });
         
         let id = window.add(&s);

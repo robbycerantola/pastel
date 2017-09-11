@@ -817,7 +817,7 @@ fn main() {
     {
         let action = Action::new("New");
         action.on_click(move |_action: &Action, _point: Point| {
-                           match new_dialog() { 
+                           match new_dialog(&"New file".to_owned()) { 
                                 Some(resolution) => {
                                             let path: &str; //="";
                                             if cfg!(target_os = "redox"){
@@ -1082,7 +1082,7 @@ fn main() {
             let action = Action::new("Blur");
             let canvas_clone = canvas.clone();
             action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.transformation("blur");
+                            canvas_clone.transformation("blur",0,0);
                         });
         menuimage.add(&action);
     }
@@ -1091,7 +1091,7 @@ fn main() {
             let action = Action::new("Unsharpen");
             let canvas_clone = canvas.clone();
             action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.transformation("unsharpen");
+                            canvas_clone.transformation("unsharpen",0,0);
                         });
         menuimage.add(&action);
     }
@@ -1100,7 +1100,7 @@ fn main() {
             let action = Action::new("Verical flip");
             let canvas_clone = canvas.clone();
             action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.transformation("flip_vertical");
+                            canvas_clone.transformation("flip_vertical",0,0);
                         });
         menuimage.add(&action);
     }
@@ -1109,7 +1109,7 @@ fn main() {
             let action = Action::new("Horizontal flip");
             let canvas_clone = canvas.clone();
             action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.transformation("flip_horizontal");
+                            canvas_clone.transformation("flip_horizontal",0,0);
                         });
         menuimage.add(&action);
     }
@@ -1118,17 +1118,44 @@ fn main() {
             let action = Action::new("Brighten");
             let canvas_clone = canvas.clone();
             action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.transformation("brighten");
+                            canvas_clone.transformation("brighten",0,0);
                         });
         menuimage.add(&action);
     }
     
     {
-            let action = Action::new("Darken");
-            let canvas_clone = canvas.clone();
-            action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.transformation("darken");
-                        });
+        let action = Action::new("Darken");
+        let canvas_clone = canvas.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.transformation("darken",0,0);
+                    });
+        menuimage.add(&action);
+    }
+
+    {
+        let action = Action::new("Grayscale");
+        let canvas_clone = canvas.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.transformation("grayscale",0,0);
+                    });
+        menuimage.add(&action);
+    }
+
+    {
+        let action = Action::new("Resize");
+        let canvas_clone = canvas.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        
+                        match new_dialog(&"Resize".to_owned()) { 
+                                Some(resolution) => {
+                                    let val: Vec<&str> = resolution.split("x").collect();
+                                    let x: i32 = val[0].parse().unwrap_or(640);
+                                    let y: i32 = val[1].parse().unwrap_or(480);
+                                    canvas_clone.transformation("resize",x,y);
+                                                },
+                                    None => println!("Resize cancelled"),
+                                }
+                    });
         menuimage.add(&action);
     }
 
@@ -1222,7 +1249,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.15, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.16, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }
@@ -1245,9 +1272,14 @@ fn main() {
         .position(0, CANVASOFFSET) 
         .on_right_click(move |_ , point:Point|{
             // right click clears last cursor position 
-                let mut ck=click_pos_clone.borrow_mut();
+               // let mut ck=click_pos_clone.borrow_mut();
                 if cfg!(feature = "debug"){
-                println!("Right click {:?}",ck);}
+                println!("Right click not implemented yet");}
+               // *ck = None;
+                })
+        .on_clear_click(move |_ , point:Point|{
+            // clears last cursor position 
+                let mut ck=click_pos_clone.borrow_mut();
                 *ck = None;
                 })
         .on_click(move |canvas: &Canvas, point: Point| {
@@ -1262,7 +1294,7 @@ fn main() {
             {
                 let mut prev_opt = click.borrow_mut();
                 let mut bf = buffer_clone.borrow_mut();
-                if let Some(prev_position) = *prev_opt {
+                
                     let mut image = canvas.image.borrow_mut();
                     //let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
                     //let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
@@ -1271,28 +1303,24 @@ fn main() {
                     let swc = swatch_clone.read();
                     let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
                     
-                    
+                    //tools that dont need prev_position
                     match tool.clone().text.get().as_ref() {
-                        "line"  => {
-                                    image.line(prev_position.x,
-                                                prev_position.y,
-                                                point.x,
-                                                point.y,
-                                                color);
-                                   },
-                         "pen"  => image.pixel(point.x, point.y, color),
-                         "brush"=> { 
+                        
+                        "pen"  => image.pixel(point.x, point.y, color),
+                        "brush"=> { 
                                     match property_get(&ntools.clone()["brush"],"Shape") {
                                            Some(0) => image.circle(point.x, point.y,-size,
                                                         color),
                                            Some(1) => image.rect(point.x ,point.y,size as u32, size as u32,
                                                         color),
-                                           Some(2) => image.paste_selection(point.x,point.y, a.clone(), bf.clone()),
-                                           //Some(3) => image.paste_selection(point.x,point.y,brush_shape.clone()),
-                                           None | Some(_)   => println!("no Shape match!"),
+                                           Some(2) => image.paste_selection(point.x,point.y,
+                                                        a.clone(), bf.clone()),
+                                           Some(3) => image.smooth_circle(point.x,point.y,
+                                                        size as u32, color),
+                                    None | Some(_) => println!("no Shape match!"),
                                         }
                                     },
-                         "fill" => image.fill(point.x, point.y,color),
+                        "fill" => image.fill(point.x, point.y,color),
                     "rectangle" => {
                                     let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
                                     unsafe{
@@ -1314,20 +1342,6 @@ fn main() {
                                                         );
                                         }   
                                     },
-                        "circle"=> image.circle(prev_position.x, prev_position.y,
-                                                (((point.x-prev_position.x)^2+
-                                                (point.y-prev_position.y)^2) as f64).sqrt() as i32,
-                                                 color),
-                       "marquee"=> {
-                                    if let Some(selection) = unsafe{image.select_rect(point.x,
-                                                        point.y,&mut *window_clone)}
-                                            {
-                                                        selection_clone = selection;
-                                                        println!("{:?}",selection_clone);
-                                                        //*bf = image.copy_selection(selection_clone.x,selection_clone.y,selection_clone.width,selection_clone.height);
-                                                        
-                                             }
-                                        },
                         "copy" =>  {
                                     if let Some(selection) = unsafe{image.select_rect(point.x,
                                                         point.y,&mut *window_clone)}
@@ -1340,8 +1354,37 @@ fn main() {
                                              
                                             }
                                         },
+                       "marquee"=> {
+                                    if let Some(selection) = unsafe{image.select_rect(point.x,
+                                                        point.y,&mut *window_clone)}
+                                            {
+                                                        selection_clone = selection;
+                                                        println!("{:?}",selection_clone);
+                                                        //*bf = image.copy_selection(selection_clone.x,selection_clone.y,selection_clone.width,selection_clone.height);
+                                                        
+                                             }
+                                        },
                         "paste" => image.paste_selection(point.x,point.y, a.clone(), bf.clone()),
-                              _ => println!("No match!"),          
+                              _ => (),
+                    }
+                
+                //tools that need prev_position to work
+                if let Some(prev_position) = *prev_opt {
+
+                    match tool.clone().text.get().as_ref() {
+                        "line"  => {
+                                    image.line(prev_position.x,
+                                                prev_position.y,
+                                                point.x,
+                                                point.y,
+                                                color);
+                                   },
+                        "circle"=> image.circle(prev_position.x, prev_position.y,
+                                                (((point.x-prev_position.x)^2+
+                                                (point.y-prev_position.y)^2) as f64).sqrt() as i32,
+                                                 color),
+
+                              _ => (),          
                     }
 
                     *prev_opt = Some(point);     
@@ -1350,6 +1393,7 @@ fn main() {
                 }
             }
         });
+        
     window.add(&canvas);
     window.exec();
 }
@@ -1446,6 +1490,7 @@ trait AddOnsToOrbimage {
         fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
         fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
         fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
+        fn smooth_circle (&mut self, x: i32, y:i32, size: u32, color: Color);
     }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -1625,6 +1670,21 @@ impl AddOnsToOrbimage for orbimage::Image {
                 i += 1;
             }
         }
+    }
+
+    fn smooth_circle (&mut self, x: i32, y:i32, size: u32, color: Color) {
+        let mut sb= orbimage::Image::from_color(2*size, 2*size, Color::rgba(255,255,255,0));
+        let r = color.r();
+        let g = color.g();
+        let b = color.b();
+        let mut a = color.a();
+        
+        for n in 0..size {
+            sb.circle(size as i32 , size as i32 , -((size -n) as i32), Color::rgba(r,g,b,20));
+            self.paste_selection(x,y,20,sb.clone());
+        }
+        
+        
     }
 
     /// interactive selection (rectangle)  

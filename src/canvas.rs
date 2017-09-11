@@ -23,6 +23,7 @@ pub struct Canvas {
     pub image: RefCell<orbimage::Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
+    clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
 }
 
 impl Canvas {
@@ -39,7 +40,8 @@ impl Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             image: RefCell::new(image),
             click_callback: RefCell::new(None),
-            right_click_callback: RefCell::new(None)
+            right_click_callback: RefCell::new(None),
+            clear_click_callback: RefCell::new(None)
         })
     }
 
@@ -147,10 +149,10 @@ impl Canvas {
 
 
     ///apply some transformations to entire canvas
-    pub fn transformation(&self, cod: &str){
+    pub fn transformation(&self, cod: &str, a: i32, b:i32){
         //using image::imageops library
-        let width = self.rect.get().width as u32;
-        let height = self.rect.get().height as u32;
+        let mut width = self.rect.get().width as u32;
+        let mut height = self.rect.get().height as u32;
         //get image data in form of [Color] slice
         let image_data = self.image.clone().into_inner().into_data();//mut
         
@@ -167,6 +169,13 @@ impl Canvas {
                                                              "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
                                                              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
                                                              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
+                                                             "grayscale"       => self.gray2rgba(image::imageops::colorops::grayscale(&imgbuf),
+                                                                                            1.2,1.2,1.2),
+                                                             "resize"          => { width = a as u32;
+                                                                                    height = b as u32;
+                                                                                    self.image.borrow_mut().clear();
+                                                                 image::imageops::resize(&imgbuf,a as u32,b as u32,image::FilterType::Nearest)
+                                                                 },
                                                                              _ => imgbuf,
          });
         
@@ -192,6 +201,44 @@ impl Canvas {
         image.image(0,0,width,height,&new_slice[..]);
         
     }
+
+/// convert grayscale image to rgba format
+    fn gray2rgba (&self, 
+                    grayimage: image::ImageBuffer<image::Luma<u8>, Vec<u8>>,
+                    r_factor : f32,
+                    g_factor : f32,
+                    b_factor : f32
+                    )
+                    -> image::ImageBuffer<image::Rgba<u8>, Vec<u8>> {
+        let mut r: u8 ;
+        let mut g: u8 ;
+        let mut b: u8 ;
+        let mut a: u8 ;
+        let mut new_buffer = Vec::new();
+        let width = grayimage.width();
+        let height = grayimage.height();
+        
+        for luma in image::ImageBuffer::into_raw (grayimage) {
+            
+            if luma == 255 {
+                r=255;
+                g=255;
+                b=255;
+            }else{
+            r = (luma as f32 / r_factor) as u8;
+            g = (luma as f32 / g_factor) as u8;
+            b = (luma as f32 / b_factor) as u8;
+            }
+            a = 255;
+            new_buffer.push(b);
+            new_buffer.push(g);
+            new_buffer.push(r);
+            new_buffer.push(a);
+            
+        }
+        let imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, new_buffer).unwrap();
+            imgbuf
+    }
         
     
     pub fn on_right_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
@@ -203,6 +250,18 @@ impl Canvas {
             right_click_callback(self, point);
         }
     }
+    
+    pub fn on_clear_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
+        *self.clear_click_callback.borrow_mut() = Some(Arc::new(func));
+        self
+    }
+
+    pub fn emit_clear_click(&self, point: Point) {
+        if let Some(ref clear_click_callback) = *self.clear_click_callback.borrow() {
+            clear_click_callback(self, point);
+        }
+    }
+
 }
 
 impl Click for Canvas {
@@ -262,6 +321,12 @@ impl Widget for Canvas {
                         *redraw = true;
                         }
                     if middle_button {println!("Middle_button");}
+                    //mouse is moving without clicking, emit clear previous click position
+                    if !right_button && !left_button && !middle_button {
+                        let click_point= Point{x:0,y:0};
+                        self.emit_clear_click(click_point);
+                    } 
+                     
                     }
                 }
             _ => if cfg!(feature = "debug"){println!("{:?}", event)} else {()}, 

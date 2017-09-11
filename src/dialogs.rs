@@ -84,9 +84,9 @@ pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
     }
 }
 
-pub fn new_dialog() -> Option<String> {
+pub fn new_dialog(title: &str) -> Option<String> {
     //Dialog to input dimensions of new image
-    let mut new_window = Window::new(Rect::new(200, 300, 320, 200), "New file");
+    let mut new_window = Window::new(Rect::new(200, 300, 320, 200), title);
 
     let x = 10;
     let mut y = 10;

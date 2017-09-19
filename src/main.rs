@@ -30,17 +30,17 @@ use std::collections::HashMap;
 use std::path::{Path,PathBuf};
 use std::fs;
 
-//use std::borrow::Borrow;
-//use std::borrow::BorrowMut;
-
 mod dialogs;
 use dialogs::{dialog,popup,new_dialog};
 
-mod canvas;
-use canvas::{Canvas};
-
 mod palette;
 use palette::Palette;
+
+mod addons;
+use addons::{AddOnsToOrbimage,AddOnsToOrbclient};
+
+mod canvas;
+use canvas::{Canvas};
 
 //structure to store tools properties 
 struct Property{
@@ -703,6 +703,28 @@ fn main() {
         }
     }
 
+    match ToolbarIcon::from_path("smooth_circle.png") {
+        Ok(item) => {
+            let ntools_clone = ntools.clone();
+            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            item.position(x, y)
+                 .text("Smooth edges circular shape".to_owned())
+                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               property_set(&ntools_clone["brush"],"Shape",3);
+                               
+                               //toggle shape in toolbar2
+                               unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
+                               });
+            window.add(&item);
+            toolbar2_obj.push(item.clone());
+            
+            x += item.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
     match ToolbarIcon::from_path("block.png") {
         Ok(item) => {
             let ntools_clone = ntools.clone();
@@ -917,6 +939,20 @@ fn main() {
         edit.position(50, 0).size(32, 16);
 
     //Menu entries for edit
+    
+    {
+            let action = Action::new("Undo");
+            
+            let canvas_clone = canvas.clone();
+            
+            action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.undo();
+                              });
+            edit.add(&action);
+    }
+
+    edit.add(&Separator::new());
+
     {
             let action = Action::new("Select");
             
@@ -1249,7 +1285,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.16, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.18, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }
@@ -1288,6 +1324,8 @@ fn main() {
             let size = size_bar.clone().value.get();
             let buffer_clone = buffer.clone();
             let swatch_clone = swatch.clone();
+            
+            canvas.undo_save(); //prepare for undo
             
             let mut selection_clone = selection.clone();
             
@@ -1359,7 +1397,7 @@ fn main() {
                                                         point.y,&mut *window_clone)}
                                             {
                                                         selection_clone = selection;
-                                                        println!("{:?}",selection_clone);
+                                                        println!("Select:{:?} not fully implemented yet",selection_clone);
                                                         //*bf = image.copy_selection(selection_clone.x,selection_clone.y,selection_clone.width,selection_clone.height);
                                                         
                                              }
@@ -1399,11 +1437,11 @@ fn main() {
 }
 
 //Helper functions
-
+/*
 fn test (widget: Arc<orbtk::ColorSwatch>, window: &mut orbtk::Window) {
     window.add(&widget);
 }
-
+*/
 
 ///Load an image from path if exists, otherwise create new empty canvas
 fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  
@@ -1477,7 +1515,8 @@ fn visible_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>, v: bool) {
     }
 }
 
-//  to be added directly to orbclient ?
+/*MOVED TO FILE addons.rs
+//  or added directly to orbclient ?
 trait AddOnsToOrbimage {
         fn fill(&mut self, x: i32 , y: i32, color: Color);
         fn flood_fill4(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
@@ -1673,17 +1712,24 @@ impl AddOnsToOrbimage for orbimage::Image {
     }
 
     fn smooth_circle (&mut self, x: i32, y:i32, size: u32, color: Color) {
-        let mut sb= orbimage::Image::from_color(2*size, 2*size, Color::rgba(255,255,255,0));
+        //let mut sb= orbimage::Image::from_color(2*size, 2*size, Color::rgba(255,255,255,0));
+        let sb = orbimage::Image::from_path("smooth_circle_yellow.png").unwrap();
+        
         let r = color.r();
         let g = color.g();
         let b = color.b();
         let mut a = color.a();
         
+        /*
         for n in 0..size {
-            sb.circle(size as i32 , size as i32 , -((size -n) as i32), Color::rgba(r,g,b,20));
-            self.paste_selection(x,y,20,sb.clone());
+            //sb.circle(size as i32 , size as i32 , ((size -n) as i32), Color::rgba(r,g,b,(2*n) as u8));
+            sb.pixel(n as i32,n as i32, Color::rgba(r,g,b,(4*n)as u8)); //Does NOT work as intended!!
+            //sb.pixel(n as i32,n as i32, Color::rgba(r,g,b,(4*n)as u8));
         }
-        
+        */
+        //self.paste_selection(x,y,80,sb);
+        self.image(x,y,sb.width(),sb.height(),sb.data());
+        //println!("{:?}",sb.data());
         
     }
 
@@ -2014,3 +2060,5 @@ impl AddOnsToOrbclient for orbclient::Window{
     }
 }
 
+
+*/

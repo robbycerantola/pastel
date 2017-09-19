@@ -17,10 +17,12 @@ use orbtk::widgets::Widget;
 use std::slice;
 use std::io::Error;
 
+use AddOnsToOrbimage;
 
 pub struct Canvas {
     pub rect: Cell<Rect>,
     pub image: RefCell<orbimage::Image>,
+    pub undo_image: RefCell<orbimage::Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
@@ -38,6 +40,7 @@ impl Canvas {
     pub fn from_image(image: orbimage::Image) -> Arc<Self> {
         Arc::new(Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
+            undo_image: RefCell::new(orbimage::Image::new(image.width(),image.height())),
             image: RefCell::new(image),
             click_callback: RefCell::new(None),
             right_click_callback: RefCell::new(None),
@@ -95,6 +98,9 @@ impl Canvas {
     }
 
     pub fn clear(&self){
+        //first prepare for undo 
+        self.undo_save();
+        
        let mut image = self.image.borrow_mut();
        //image.clear();
        image.set(Color::rgba(255, 255, 255,255));
@@ -150,6 +156,9 @@ impl Canvas {
 
     ///apply some transformations to entire canvas
     pub fn transformation(&self, cod: &str, a: i32, b:i32){
+        //first prepare for undo 
+        self.undo_save();
+        
         //using image::imageops library
         let mut width = self.rect.get().width as u32;
         let mut height = self.rect.get().height as u32;
@@ -261,7 +270,27 @@ impl Canvas {
             clear_click_callback(self, point);
         }
     }
+    
+    /// simple undo 
+    pub fn undo(&self) {
+        let mut image = self.image.borrow_mut();
+        let undo_image = self.undo_image.borrow_mut();
+        *image=undo_image.clone();
+    }
 
+    /// save image state to be used if undo is required
+    pub fn undo_save(&self) {
+        //copy current image to undo_image
+        let image = self.image.borrow_mut();
+        let mut undo_image = self.undo_image.borrow_mut();
+        *undo_image=image.clone();
+    }
+
+    ///wrapper for image fill
+    pub fn fill (&mut self, x: i32 , y: i32, color: Color){
+        let mut image = self.image.borrow_mut();
+        image.fill(x,y,color);
+    }
 }
 
 impl Click for Canvas {

@@ -287,7 +287,7 @@ impl Canvas {
     }
 
     ///wrapper for image fill
-    pub fn fill (&mut self, x: i32 , y: i32, color: Color){
+    pub fn fill (&self, x: i32 , y: i32, color: Color){
         let mut image = self.image.borrow_mut();
         image.fill(x,y,color);
     }

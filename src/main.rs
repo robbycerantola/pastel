@@ -40,7 +40,7 @@ mod addons;
 use addons::{AddOnsToOrbimage,AddOnsToOrbclient};
 
 mod canvas;
-use canvas::{Canvas};
+use canvas::Canvas;
 
 //structure to store tools properties 
 struct Property{
@@ -95,7 +95,7 @@ fn main() {
         Some(path) => {
                 home_dir.push_str(path.to_str().unwrap());
                 home_dir.push_str("/");
-                if cfg!(feature = "debug"){println!("Home path:{}", home_dir);}                        
+                if cfg!(feature = "debug"){println!("Home path:{}", home_dir);}
                 },
         None => println!("Impossible to get your home dir!"),
     }
@@ -1259,8 +1259,8 @@ fn main() {
                         
                           });
         menupalette.add(&action);
-}
- menupalette.add(&Separator::new());
+    }
+    menupalette.add(&Separator::new());
 
      {
         let action = Action::new("Reset");
@@ -1324,16 +1324,15 @@ fn main() {
             let size = size_bar.clone().value.get();
             let buffer_clone = buffer.clone();
             let swatch_clone = swatch.clone();
-            
-            canvas.undo_save(); //prepare for undo
-            
+            let u = tool.clone().text.get();
+                                    
             let mut selection_clone = selection.clone();
             
             {
                 let mut prev_opt = click.borrow_mut();
                 let mut bf = buffer_clone.borrow_mut();
                 
-                    let mut image = canvas.image.borrow_mut();
+                    //let mut image = canvas.image.borrow_mut();
                     //let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
                     //let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
                     //let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
@@ -1344,25 +1343,26 @@ fn main() {
                     //tools that dont need prev_position
                     match tool.clone().text.get().as_ref() {
                         
-                        "pen"  => image.pixel(point.x, point.y, color),
-                        "brush"=> { 
+                        "pen"  => canvas.image.borrow_mut().pixel(point.x, point.y, color),
+                        "brush"=> {
                                     match property_get(&ntools.clone()["brush"],"Shape") {
-                                           Some(0) => image.circle(point.x, point.y,-size,
+                                           Some(0) => canvas.image.borrow_mut().circle(point.x, point.y,-size,
                                                         color),
-                                           Some(1) => image.rect(point.x ,point.y,size as u32, size as u32,
+                                           Some(1) => canvas.image.borrow_mut().rect(point.x ,point.y,size as u32, size as u32,
                                                         color),
-                                           Some(2) => image.paste_selection(point.x,point.y,
+                                           Some(2) => canvas.image.borrow_mut().paste_selection(point.x,point.y,
                                                         a.clone(), bf.clone()),
-                                           Some(3) => image.smooth_circle(point.x,point.y,
+                                           Some(3) => canvas.image.borrow_mut().smooth_circle(point.x,point.y,
                                                         size as u32, color),
                                     None | Some(_) => println!("no Shape match!"),
                                         }
                                     },
-                        "fill" => image.fill(point.x, point.y,color),
-                    "rectangle" => {
+                        "fill" => {canvas.undo_save(); //prepare for undo
+                                    canvas.fill(point.x, point.y,color);},
+                    "rectangle" => {canvas.undo_save();
                                     let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
                                     unsafe{
-                                            image.interact_rect(point.x,
+                                            canvas.image.borrow_mut().interact_rect(point.x,
                                                         point.y,
                                                         color,
                                                         filled == 1,
@@ -1370,9 +1370,10 @@ fn main() {
                                                         );
                                         }
                                     },
-                    "polyline" => {let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
+                    "polyline" => {canvas.undo_save();
+                                    let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
                                     unsafe{
-                                            image.interact_line(point.x,
+                                            canvas.image.borrow_mut().interact_line(point.x,
                                                         point.y,
                                                         color,
                                                         width,
@@ -1380,11 +1381,12 @@ fn main() {
                                                         );
                                         }   
                                     },
-                        "copy" =>  {
+                        "copy" =>  {let mut image = canvas.image.borrow_mut();
+                                    
                                     if let Some(selection) = unsafe{image.select_rect(point.x,
                                                         point.y,&mut *window_clone)}
-                                            {
-                                             *bf = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
+                                            {                                             
+                                            *bf = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
                                              //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
                                              let newcanvas= Canvas::from_image(bf.clone());
                                              let path = "/tmp/pastel_copy_buffer.png".to_string();
@@ -1393,16 +1395,17 @@ fn main() {
                                             }
                                         },
                        "marquee"=> {
-                                    if let Some(selection) = unsafe{image.select_rect(point.x,
+                                    if let Some(selection) = unsafe{canvas.image.borrow_mut().select_rect(point.x,
                                                         point.y,&mut *window_clone)}
                                             {
                                                         selection_clone = selection;
                                                         println!("Select:{:?} not fully implemented yet",selection_clone);
-                                                        //*bf = image.copy_selection(selection_clone.x,selection_clone.y,selection_clone.width,selection_clone.height);
+                                                        //*bf = canvas.image.borrow_mut().copy_selection(selection_clone.x,selection_clone.y,selection_clone.width,selection_clone.height);
                                                         
                                              }
                                         },
-                        "paste" => image.paste_selection(point.x,point.y, a.clone(), bf.clone()),
+                        "paste" => {canvas.undo_save();
+                                    canvas.image.borrow_mut().paste_selection(point.x,point.y, a.clone(), bf.clone());},
                               _ => (),
                     }
                 
@@ -1411,13 +1414,13 @@ fn main() {
 
                     match tool.clone().text.get().as_ref() {
                         "line"  => {
-                                    image.line(prev_position.x,
+                                    canvas.image.borrow_mut().line(prev_position.x,
                                                 prev_position.y,
                                                 point.x,
                                                 point.y,
                                                 color);
                                    },
-                        "circle"=> image.circle(prev_position.x, prev_position.y,
+                        "circle"=> canvas.image.borrow_mut().circle(prev_position.x, prev_position.y,
                                                 (((point.x-prev_position.x)^2+
                                                 (point.y-prev_position.y)^2) as f64).sqrt() as i32,
                                                  color),
@@ -1428,6 +1431,7 @@ fn main() {
                     *prev_opt = Some(point);     
                 } else {
                     *prev_opt = Some(point);
+                    if u == "line" || u =="pen" || u =="brush" {canvas.undo_save();} //prepare for undo
                 }
             }
         });

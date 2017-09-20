@@ -181,8 +181,8 @@ impl Canvas {
                                                              "resize"          => { width = a as u32;
                                                                                     height = b as u32;
                                                                                     self.image.borrow_mut().clear();
-                                                                 image::imageops::resize(&imgbuf,a as u32,b as u32,image::FilterType::Nearest)
-                                                                 },
+                                                                                    image::imageops::resize(&imgbuf,a as u32,b as u32,image::FilterType::Nearest)
+                                                                                    },
                                                                              _ => imgbuf,
          });
         
@@ -364,7 +364,14 @@ impl Widget for Canvas {
                     } 
                      
                     }
+                },
+             // Ctrl+z    
+            Event::Text {c} => {
+                if c == 'z' {
+                    self.undo();
+                    *redraw = true;
                 }
+            },
             _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {()}, 
         }
 

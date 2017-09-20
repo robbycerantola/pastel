@@ -135,7 +135,7 @@ fn main() {
     ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
     ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Filled",1)]);
-    ntools.insert("circle",vec![Property::new("Opacity",100)]);
+    ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Filled",0)]);
 
     //use invisible Label for storing current active tool
     let tool = Label::new();
@@ -657,7 +657,48 @@ fn main() {
                                //get previous settings
                                size_bar_clone.visible.set(false);
                                size_label_clone.visible.set(false);
-                               let o = property_get(&ntools_clone["polyline"],"Opacity").unwrap();
+                               let o = property_get(&ntools_clone["rectangle"],"Opacity").unwrap();
+                               trans_bar_clone.value.set(o);
+                               trans_label_clone.text(format!("Opacity: {}%",o));
+                               
+                               //toggle tool in toolbar
+                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               //make invisible toolbar2
+                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               //make toolbar3 visible
+                               unsafe{(&mut *toolbar3_clone).visible(true);}
+                               });
+            window.add(&image);
+            toolbar_obj.push(image.clone());
+
+            x += image.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
+    match ToolbarIcon::from_path("hollow_circle.png") {
+        Ok(image) => {
+            image.position(x, y)                
+                 .text("Draws circles".to_owned());
+            let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            let size_label_clone = size_label.clone();
+            let trans_bar_clone = trans_bar.clone();
+            let trans_label_clone = trans_label.clone();
+            let ntools_clone = ntools.clone();
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
+            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               //set current tool
+                               tool_clone.text.set("circle".to_owned());
+                               
+                               //get previous settings
+                               size_bar_clone.visible.set(false);
+                               size_label_clone.visible.set(false);
+                               let o = property_get(&ntools_clone["circle"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
@@ -785,7 +826,7 @@ fn main() {
                  .text("Not filled".to_owned()) 
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                property_set(&ntools_clone["rectangle"],"Filled",0);
-                               
+                               property_set(&ntools_clone["circle"],"Filled",0);
                                //toggle item in toolbar3
                                //toolbar3_clone.toggle(); //does not work properly !!
                                unsafe{(&mut *toolbar3_clone).toggle();}  
@@ -809,7 +850,7 @@ fn main() {
                  .text("Filled".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                property_set(&ntools_clone["rectangle"],"Filled",1);
-                               
+                               property_set(&ntools_clone["circle"],"Filled",1);
                                //toggle item in toolbar3  
                                //toolbar3_clone.toggle();
                                unsafe{(&mut *toolbar3_clone).toggle();}  
@@ -1285,7 +1326,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.18, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.19, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         help.add(&action);
     }
@@ -1307,11 +1348,9 @@ fn main() {
     canvas
         .position(0, CANVASOFFSET) 
         .on_right_click(move |_ , point:Point|{
-            // right click clears last cursor position 
-               // let mut ck=click_pos_clone.borrow_mut();
                 if cfg!(feature = "debug"){
-                println!("Right click not implemented yet");}
-               // *ck = None;
+                    println!("Right click not implemented yet");
+                }
                 })
         .on_clear_click(move |_ , point:Point|{
             // clears last cursor position 
@@ -1332,7 +1371,6 @@ fn main() {
                 let mut prev_opt = click.borrow_mut();
                 let mut bf = buffer_clone.borrow_mut();
                 
-                    //let mut image = canvas.image.borrow_mut();
                     //let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
                     //let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
                     //let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
@@ -1357,8 +1395,7 @@ fn main() {
                                     None | Some(_) => println!("no Shape match!"),
                                         }
                                     },
-                        "fill" => {canvas.undo_save(); //prepare for undo
-                                    canvas.fill(point.x, point.y,color);},
+                        "fill" => canvas.fill(point.x, point.y,color),
                     "rectangle" => {canvas.undo_save();
                                     let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
                                     unsafe{
@@ -1404,8 +1441,20 @@ fn main() {
                                                         
                                              }
                                         },
-                        "paste" => {canvas.undo_save();
-                                    canvas.image.borrow_mut().paste_selection(point.x,point.y, a.clone(), bf.clone());},
+                        "paste" => canvas.paste_selection(point.x,point.y, a.clone(), bf.clone()),
+                        
+                        "circle" => {canvas.undo_save();
+                                    let filled = property_get(&ntools.clone()["circle"],"Filled").unwrap();
+                                    unsafe{
+                                            canvas.image.borrow_mut().interact_circle(point.x,
+                                                        point.y,
+                                                        color,
+                                                        filled == 1,
+                                                        &mut *window_clone
+                                                        );
+                                        }
+                                    },
+                        
                               _ => (),
                     }
                 
@@ -1413,17 +1462,14 @@ fn main() {
                 if let Some(prev_position) = *prev_opt {
 
                     match tool.clone().text.get().as_ref() {
-                        "line"  => {
+                        "line" => {
                                     canvas.image.borrow_mut().line(prev_position.x,
                                                 prev_position.y,
                                                 point.x,
                                                 point.y,
                                                 color);
                                    },
-                        "circle"=> canvas.image.borrow_mut().circle(prev_position.x, prev_position.y,
-                                                (((point.x-prev_position.x)^2+
-                                                (point.y-prev_position.y)^2) as f64).sqrt() as i32,
-                                                 color),
+
 
                               _ => (),          
                     }
@@ -1441,11 +1487,6 @@ fn main() {
 }
 
 //Helper functions
-/*
-fn test (widget: Arc<orbtk::ColorSwatch>, window: &mut orbtk::Window) {
-    window.add(&widget);
-}
-*/
 
 ///Load an image from path if exists, otherwise create new empty canvas
 fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  
@@ -1519,550 +1560,3 @@ fn visible_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>, v: bool) {
     }
 }
 
-/*MOVED TO FILE addons.rs
-//  or added directly to orbclient ?
-trait AddOnsToOrbimage {
-        fn fill(&mut self, x: i32 , y: i32, color: Color);
-        fn flood_fill4(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
-        fn flood_fill_scanline(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
-        fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
-        fn pixcol(&self, x:i32, y:i32) -> Color;
-        fn pixraw(&self, x:i32, y:i32) -> u32;
-        fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
-        fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, window: &mut orbtk::Window);
-        fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
-        fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
-        fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
-        fn smooth_circle (&mut self, x: i32, y:i32, size: u32, color: Color);
-    }
-
-impl AddOnsToOrbimage for orbimage::Image {
-    ///return rgba color of image pixel at position (x,y)
-    fn pixcol(&self, x:i32, y:i32) -> Color {
-        let p = self.width()as i32 * y + x;
-        let rgba = self.data()[p as usize];
-        rgba
-    }
-    
-    fn pixraw (&self, x:i32, y:i32) -> u32 {
-        self.pixcol(x,y).data 
-    }
-    ///wrapper for flood fill 
-    fn fill(&mut self, x: i32, y: i32 , color: Color) {
-        //get current pixel color 
-        let rgba = self.pixcol(x,y);
-        //self.flood_fill4(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
-        //println!("Old color {}", rgba.data);
-        self.flood_fill_scanline(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
-    }
-
-    /*Recursive 4-way floodfill works with transparency but be aware of stack overflow !! 
-    credits to http://lodev.org/cgtutor/floodfill.html
-    Added stacker crate to mitigate overflow issue , does it work also for Redox?
-    */
-    fn flood_fill4(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32) {
-        //stacker::maybe_grow(32 * 1024, 1024 * 1024, || {
-        
-        if x >= 0 && x < self.width()as i32 && y >= 0 && y < self.height() as i32 
-            && self.pixcol(x,y).data == old_color && self.pixcol(x,y).data != new_color {
-            
-            self.pixel(x,y, Color{data:new_color});
-            
-            self.flood_fill4(x+1,y,new_color,old_color);
-            self.flood_fill4(x-1,y,new_color,old_color);
-            self.flood_fill4(x,y+1,new_color,old_color);
-            self.flood_fill4(x,y-1,new_color,old_color);
-        }
-        //});
-    }
-    
-    ///stack friendly and fast floodfill algorithm that works with transparency too 
-    fn flood_fill_scanline( &mut self, x:i32, y:i32, new_color: u32, old_color:u32) {
-        if old_color == new_color {
-            return;
-        }
-        if self.pixcol(x,y).data  != old_color  {
-            return;
-        }
-        
-        let w = self.width() as i32;
-        let h = self.height() as i32;
-        
-        //draw current scanline from start position to the right
-        let mut x1 = x;
-        
-        while x1 < w && self.pixcol(x1,y).data  == old_color  {
-            self.pixel(x1,y,Color{data:new_color});
-            x1 +=1;
-        } 
-        //get resulted color because of transparency and use this for comparison 
-        let res_color = self.pixcol(x,y).data;
-        
-        //draw current scanline from start position to the left
-        x1 = x -1;
-        
-        while x1 >= 0 && self.pixcol(x1,y).data  == old_color  {
-            self.pixel(x1,y,Color{data:new_color});
-            x1 += -1;
-          }
-        
-        //test for new scanlines above
-        x1 = x;
-        
-        while x1 < w && self.pixcol(x1,y).data  == res_color  { 
-            if y > 0 && self.pixcol(x1,y-1).data  == old_color  {
-              self.flood_fill_scanline(x1, y - 1, new_color, old_color);
-            }
-            x1 += 1;
-          }
-        x1 = x - 1;
-        while x1 >= 0 && self.pixcol(x1,y).data == res_color {
-            if y > 0 && self.pixcol(x1,y - 1).data  == old_color  {
-              self.flood_fill_scanline(x1, y - 1, new_color, old_color);
-            }
-            x1 += -1;
-          }
-         
-         //test for new scanlines below
-        x1 = x;
-        while x1 < w && self.pixcol(x1,y).data == res_color  {
-            //println!("Test below {} {} ", self.pixcol(x1,y).data,old_color);
-            if y < (h - 1) && self.pixcol(x1,y + 1).data == old_color {
-                self.flood_fill_scanline(x1, y + 1, new_color, old_color);
-            }
-            x1 +=1;
-        }
-        x1 = x - 1;
-        while x1 >= 0 && self.pixcol(x1,y).data == res_color {
-            if y < (h - 1) && self.pixcol(x1,y + 1).data == old_color {
-                self.flood_fill_scanline(x1, y + 1, new_color, old_color);
-            }
-            x1 += -1;
-        }
-    }
-
-    fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32) {
-        if x >= 1 && x < self.width()as i32 && y >= 0 && y < self.height() as i32 
-            && self.pixcol(x,y).data == old_color && self.pixcol(x,y).data != new_color {
-           
-           let mut x1=x; 
-           loop {
-                if x1>=0 && x1< self.width() as i32 && self.pixcol(x1,y).data == old_color{
-                    self.pixel(x1,y, Color{data:new_color});
-                    x1 +=1;
-                } else {break}  
-            }
-           x1=x-1; 
-           loop {
-                if x1>=0 && x1< self.width() as i32 && self.pixcol(x1,y).data == old_color{
-                    self.pixel(x1,y, Color{data:new_color});
-                    x1 +=-1;
-                } else {break}  
-            }
-            self.flood_fill_line(x,y+1,new_color,old_color);
-            self.flood_fill_line(x,y-1,new_color,old_color);
-        }
-    }
-
-    ///crop new image from current image (copy) tranforming pure white into transparent
-    fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
-       
-        //let data = self.data();
-        let mut vec = vec![];
-        let mut col : Color;
-        
-        for y1 in y..y+h as i32 {
-            for x1 in x..x+w as i32 {
-                col=self.pixcol(x1,y1);
-                if col.r()==255 && col.g()==255 && col.b()==255 {
-                    col = Color::rgba(0,0,0,0);
-                }
-                vec.push(col);
-            }
-        }
-        //println!("buffer {:?}",&vec);
-        orbimage::Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap()
-    }
-
-    ///draws an image into current image starting at x,y (paste)
-    fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image, ){
-        
-        let w = buffer.width() as i32;
-        let h = buffer.height() as i32;
-        let xc=x-w/2; //center buffer at cursor 
-        let yc=y-h/2;
-        let data = buffer.into_data();
-        let mut i:usize = 0;
-        let mut r;
-        let mut g;
-        let mut b;
-        let mut a;
-        let x1:i32;
-        let y1:i32;
-        
-        for y1 in yc..yc+h {
-            for x1 in xc..xc+w {
-                if i < data.len(){
-                    r = data[i].r();
-                    g = data[i].g();
-                    b = data[i].b();
-                    a = data[i].a();
-                    if a != 0 {a = opacity}
-                    self.pixel(x1,y1,Color::rgba(r,g,b,a));
-                }
-                i += 1;
-            }
-        }
-    }
-
-    fn smooth_circle (&mut self, x: i32, y:i32, size: u32, color: Color) {
-        //let mut sb= orbimage::Image::from_color(2*size, 2*size, Color::rgba(255,255,255,0));
-        let sb = orbimage::Image::from_path("smooth_circle_yellow.png").unwrap();
-        
-        let r = color.r();
-        let g = color.g();
-        let b = color.b();
-        let mut a = color.a();
-        
-        /*
-        for n in 0..size {
-            //sb.circle(size as i32 , size as i32 , ((size -n) as i32), Color::rgba(r,g,b,(2*n) as u8));
-            sb.pixel(n as i32,n as i32, Color::rgba(r,g,b,(4*n)as u8)); //Does NOT work as intended!!
-            //sb.pixel(n as i32,n as i32, Color::rgba(r,g,b,(4*n)as u8));
-        }
-        */
-        //self.paste_selection(x,y,80,sb);
-        self.image(x,y,sb.width(),sb.height(),sb.data());
-        //println!("{:?}",sb.data());
-        
-    }
-
-    /// interactive selection (rectangle)  
-    fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect> {
-    
-         //gets events from orbclient and render helping lines directly into orbclient window 
-         let mut orbclient = window.inner.borrow_mut();
-         let mut lx = 0;
-         let mut ly = 0;
-         let mut w = false;
-        'events: loop{
-            for event in orbclient.events() { 
-                match event.to_option() {
-                    EventOption::Key(key_event) => {println!("{:?}",key_event); break 'events},
-                    EventOption::Quit(_quit_event) => break 'events,
-                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
-                    EventOption::Mouse(evt) => {
-                                                if evt.y < CANVASOFFSET{
-                                                    break 'events;
-                                                    
-                                                };
-                                                if w {
-                                                    orbclient.rect_marquee(x,
-                                                    y+CANVASOFFSET,
-                                                    lx,
-                                                    ly+CANVASOFFSET,
-                                                    orbtk::Color::rgba(100, 100, 100, 0));
-                                                }
-                                                w=true;
-                                                
-                                                orbclient.rect_marquee(x,
-                                                y+CANVASOFFSET,
-                                                evt.x,
-                                                evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 0));
-                                                lx=evt.x;
-                                                ly=evt.y-CANVASOFFSET;
-                                                
-                                                orbclient.sync();
-                                                   
-                                                },
-                    EventOption::Button(btn) => {if btn.left {
-                                                    let dx=lx-x;
-                                                    let dy=ly-y;
-                                                    return Some(Rect::new(x,y,dx as u32, dy as u32))
-                                                    }
-                                                
-                                                if btn.right{
-                                                        break 'events;
-                                                        //TODO show menu with actions upon selection
-                                                    }
-                                                },
-                    event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
-                                    else{ ()}
-                }
-          }
-        }
-      None  
-    }
-
-
-    /// draws interactive rectangle 
-    fn interact_rect(&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) {
-    
-         //gets events from orbclient and render helping lines directly into orbclient window 
-         let mut orbclient = window.inner.borrow_mut();
-         let mut lx = 0;
-         let mut ly = 0;
-         let mut w = false;
-        'events: loop{
-            for event in orbclient.events() { 
-                match event.to_option() {
-                    EventOption::Key(key_event) => {println!("{:?}",key_event); break 'events;},
-                    EventOption::Quit(_quit_event) => break 'events,
-                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
-                    EventOption::Mouse(evt) => {
-                                                if evt.y < CANVASOFFSET{
-                                                    break 'events
-                                                };
-                                                if w {
-                                                    orbclient.rect_marquee(x,
-                                                    y+CANVASOFFSET,
-                                                    lx,
-                                                    ly+CANVASOFFSET,
-                                                    orbtk::Color::rgba(100, 100, 100, 0));
-                                                }
-                                                w=true;
-                                                
-                                                orbclient.rect_marquee(x,
-                                                y+CANVASOFFSET,
-                                                evt.x,
-                                                evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 0));
-                                                lx=evt.x;
-                                                ly=evt.y-CANVASOFFSET;
-                                                
-                                                orbclient.sync();
-                                                   
-                                                },
-                    EventOption::Button(btn) => {if btn.left {
-                                                    if filled {
-                                                        let dx=lx-x;
-                                                        let dy=ly-y;
-                                                        if dx >0 && dy>0 {
-                                                            self.rect(x ,y,dx as u32, dy as u32 ,color);
-                                                        }
-                                                        if dx<0 && dy > 0 {
-                                                            self.rect(x+dx ,y ,-dx as u32, dy as u32, color);
-                                                        }
-                                                        if dx<0 && dy <0 {
-                                                            self.rect(x+dx ,y+dy ,-dx as u32, -dy as u32, color);
-                                                        }
-                                                        if dx>0 && dy <0 {
-                                                            self.rect(x ,y+dy ,dx as u32, (-dy) as u32, color);
-                                                        }
-                                                        break 'events
-                                                    } else {
-                                                        self.line(x,y,lx,y,color);
-                                                        self.line(lx,y,lx,ly,color);
-                                                        self.line(lx,ly,x,ly,color);
-                                                        self.line(x,ly,x,y,color);
-                                                        break 'events
-                                                    }
-                                                }
-                                                if btn.right{
-                                                        break 'events
-                                                    }
-                                                },
-                    event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
-                                    else{ ()}
-                }
-          }
-        }
-        
-    }
-    
-    /// draws interactive polyline 
-    fn interact_line(&mut self, x: i32 , y: i32, color: Color, width: i32, window: &mut orbtk::Window) {
-    
-         //gets events from orbclient and render helping lines directly into orbclient window 
-         let mut orbclient = window.inner.borrow_mut();
-         let mut lx =0;
-         let mut ly =0;
-         let mut ox = x;
-         let mut oy = y;
-         let mut w = false;
-        'events: loop{
-            for event in orbclient.events() { 
-                match event.to_option() {
-                    EventOption::Key(key_event) => break 'events,
-                    EventOption::Quit(_quit_event) => break 'events,
-                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet.."),
-                    EventOption::Mouse(evt) => {
-                                                if evt.y < CANVASOFFSET{
-                                                    break 'events
-                                                };
-                                                if w {
-                                                    orbclient.ant_line(ox,
-                                                    oy+CANVASOFFSET,
-                                                    lx,
-                                                    ly+CANVASOFFSET,
-                                                    orbtk::Color::rgba(100, 100, 100, 0));//alfa has to be 0 for trick to work
-                                                }
-                                                w=true;
-                                                lx=evt.x;
-                                                ly=evt.y-CANVASOFFSET;
-                                                 
-                                                orbclient.ant_line(ox,
-                                                oy+CANVASOFFSET,
-                                                evt.x,
-                                                evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 0));//alfa has to be 0 for trick to work
-                                                
-                                                orbclient.sync();
-                                                
-                                                     
-                                                },
-                    EventOption::Button(btn) => {
-                                                    if btn.left {
-                                                        //quick and dirty workaround to trace thick lines
-                                                        //TODO implement new line method to deal with thickness properly
-                                                        for d in 0..width {
-                                                            self.line(ox+d ,oy,lx+d, ly ,color); //update image
-                                                            orbclient.line(ox+d ,oy+CANVASOFFSET,lx+d, ly+CANVASOFFSET ,color); //update preview 
-                                                        }
-                                                        orbclient.sync();
-                                                        ox=lx;
-                                                        oy=ly;
-                                                        w =false;
-                                                    }
-                                                    if btn.right{
-                                                        break 'events
-                                                    }
-                                                },
-                    event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
-                                    else{ ()}
-                }
-          }
-        }
-        
-    }
-/* fix moved to mainstream orbclient 0.3.9 
-    fn mycircle(&mut self, x0: i32, y0: i32, radius: i32, color: Color) {
-        let mut x = radius.abs();
-        let mut y = 0;
-        let mut err = -radius.abs();
-        
-        match radius {
-            radius if radius > 0 => {
-                err = 0;
-                while x >= y {
-                    self.pixel(x0 - x, y0 + y, color);
-                    self.pixel(x0 + x, y0 + y, color);
-                    self.pixel(x0 - y, y0 + x, color);
-                    self.pixel(x0 + y, y0 + x, color);
-                    self.pixel(x0 - x, y0 - y, color);
-                    self.pixel(x0 + x, y0 - y, color);
-                    self.pixel(x0 - y, y0 - x, color);
-                    self.pixel(x0 + y, y0 - x, color);
-                
-                    y += 1;
-                    err += 1 + 2*y;
-                    if 2*(err-x) + 1 > 0 {
-                        x -= 1;
-                        err += 1 - 2*x;
-                    }
-                }      
-            },
-            
-            radius if radius < 0 => {
-                while x >= y {
-                    let lasty = y;
-                    err +=y;
-                    y +=1;
-                    err += y;
-                    self.line4points(x0,y0,x,lasty,color);
-                    if err >=0 {
-                        if x != lasty{
-                           self.line4points(x0,y0,lasty,x,color);
-                        }
-                        err -= x;
-                        x -= 1;
-                        err -= x;
-                    }
-                }
-
-                },
-                     _ => {
-                            self.pixel(x0, y0, color);
-                            
-                        },
-        }
-    }
-
-    fn line4points(&mut self, x0: i32, y0: i32, x: i32, y: i32, color: Color){
-        //self.line(x0 - x, y0 + y, (x+x0), y0 + y, color);
-        self.rect(x0 - x, y0 + y, x as u32 * 2 + 1, 1, color);
-        if y != 0 {
-            //self.line(x0 - x, y0 - y, (x+x0), y0-y , color);
-            self.rect(x0 - x, y0 - y, x as u32 * 2 + 1, 1, color);
-        }
-    }
-*/
-}
-
-trait AddOnsToOrbclient {
-    fn pixcol(&self, x:i32, y:i32) -> Color;
-    fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
-    fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
-}
-
-impl AddOnsToOrbclient for orbclient::Window{
-    ///gets pixel Color at x,y
-    fn pixcol(&self, x:i32, y:i32) -> Color {
-        let p = self.width()as i32 * y + x;
-        let rgba = self.data()[p as usize];
-        rgba
-    }
-    
-    /// Draws ant_line - - -   
-    fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
-        let mut x = argx1;
-        let mut y = argy1;
-                
-        let dx = if argx1 > argx2 { argx1 - argx2 } else { argx2 - argx1 };
-        let dy = if argy1 > argy2 { argy1 - argy2 } else { argy2 - argy1 };
-
-        let sx = if argx1 < argx2 { 1 } else { -1 };
-        let sy = if argy1 < argy2 { 1 } else { -1 };
-
-        let mut err = if dx > dy { dx } else {-dy} / 2;
-        let mut err_tolerance;
-
-        let mut old_color : orbtk::Color ;
-        let mut ct = 0;
-
-        loop {
-            if ct == 0 {
-            old_color = self.pixcol(x,y);
-            // rgb bitwise xor between old and new pixel color
-            // New faster implementation xor-ing 32 bit internal color data   
-            // Attention :trick does not work as intended xor-ing entire 32bit color data, if new color alfa > 0!!
-            self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)}); 
-            }
-            
-            if x == argx2 && y == argy2 { break };
-
-            err_tolerance = 2 * err;
-
-            if err_tolerance > -dx { err -= dy; x += sx; }
-            if err_tolerance < dy { err += dx; y += sy; }
-            
-            if ct<3 {ct += 1;}  
-            else {ct = 0;}            
-        }
-        //self.sync();
-        
-    }
-    
-    ///draws rectangular selection marquee
-    fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
-        self.ant_line(argx1,argy1,argx2,argy1,color);
-        self.ant_line(argx2,argy1,argx2,argy2,color);
-        self.ant_line(argx2,argy2,argx1,argy2,color);
-        self.ant_line(argx1,argy2,argx1,argy1,color);
-        //self.sync();
-    }
-}
-
-
-*/

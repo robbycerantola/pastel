@@ -19,6 +19,7 @@ pub trait AddOnsToOrbimage {
         fn pixraw(&self, x:i32, y:i32) -> u32;
         fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
         fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, window: &mut orbtk::Window);
+        fn interact_circle(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
         fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
         fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
         fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
@@ -359,6 +360,72 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
         
     }
+    /// draws interactive circle 
+    fn interact_circle(&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) {
+    
+         //gets events from orbclient and render helping lines directly into orbclient window 
+         let mut orbclient = window.inner.borrow_mut();
+         let mut lx = 0;
+         let mut ly = 0;
+         let mut w = false;
+        'events: loop{
+            for event in orbclient.events() { 
+                match event.to_option() {
+                    EventOption::Key(key_event) => {println!("Event:{:?}",key_event); break 'events;},
+                    EventOption::Quit(_quit_event) => break 'events,
+                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
+                    EventOption::Mouse(evt) => {
+                                                if evt.y < CANVASOFFSET{
+                                                    break 'events
+                                                };
+                                                if w {
+                                                    orbclient.ant_line(x,
+                                                    y+CANVASOFFSET,
+                                                    lx,
+                                                    ly+CANVASOFFSET,
+                                                    orbtk::Color::rgba(100, 100, 100, 0));
+                                                }
+                                                w=true;
+                                                
+                                                orbclient.ant_line(x,
+                                                y+CANVASOFFSET,
+                                                evt.x,
+                                                evt.y,
+                                                orbtk::Color::rgba(100, 100, 100, 0));
+                                                lx=evt.x;
+                                                ly=evt.y-CANVASOFFSET;
+                                                
+                                                orbclient.sync();
+                                                   
+                                                },
+                    EventOption::Button(btn) => {if btn.left {
+                                                   let dx=lx-x;
+                                                   let dy=ly-y;
+                                                   let mut r = dx.pow(2)+dy.pow(2);
+                                                   r = ((r as f64).sqrt()) as i32;
+                                                   if filled {
+                                                        
+                                                            self.circle(x ,y, -r ,color);
+                                                        
+                                                        break 'events
+                                                    } else {
+                                                        self.circle(x,y,r,color);
+                                                        
+                                                        break 'events
+                                                    }
+                                                }
+                                                if btn.right{
+                                                        break 'events
+                                                    }
+                                                },
+                    event_option => if cfg!(feature = "debug"){println!("Option: {:?}", event_option)}
+                                    else{ ()}
+                }
+          }
+        }
+        
+    }
+
     
     /// draws interactive polyline 
     fn interact_line(&mut self, x: i32 , y: i32, color: Color, width: i32, window: &mut orbtk::Window) {

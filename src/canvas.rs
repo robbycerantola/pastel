@@ -3,11 +3,9 @@
 use image;
 use orbtk;
 use orbclient::{Color, Renderer};
-//use orbtk::{Color, Renderer};
 use orbimage;
 use std::cell::{Cell, RefCell};
 use std::path::Path;
-//use std::fs::File;
 use std::sync::Arc;
 use orbtk::event::Event;
 use orbtk::point::Point;
@@ -22,7 +20,7 @@ use AddOnsToOrbimage;
 pub struct Canvas {
     pub rect: Cell<Rect>,
     pub image: RefCell<orbimage::Image>,
-    pub undo_image: RefCell<orbimage::Image>,
+    undo_image: RefCell<orbimage::Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
@@ -105,7 +103,7 @@ impl Canvas {
        //image.clear();
        image.set(Color::rgba(255, 255, 255,255));
     }
-    
+/*    
     ///draws image into curent canvas starting at x,y (paste)
     pub fn paste_selection (&self, x: i32, y:i32,buffer: orbimage::Image){
         let mut image = self.image.borrow_mut();
@@ -126,7 +124,7 @@ impl Canvas {
             }
         }
     }
-    
+*/
 
     //crop new image from curent canvas (copy)
     pub fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
@@ -286,11 +284,20 @@ impl Canvas {
         *undo_image=image.clone();
     }
 
-    ///wrapper for image fill
+    ///wrapper for filling an image within a canvas
     pub fn fill (&self, x: i32 , y: i32, color: Color){
+        self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.fill(x,y,color);
     }
+    
+    /// wrapper for paste_selection
+    pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image, ){
+        self.undo_save();  //save state for undo
+        let mut image = self.image.borrow_mut();
+        image.paste_selection(x,y,opacity,buffer);
+    }
+
 }
 
 impl Click for Canvas {
@@ -358,7 +365,7 @@ impl Widget for Canvas {
                      
                     }
                 }
-            _ => if cfg!(feature = "debug"){println!("{:?}", event)} else {()}, 
+            _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {()}, 
         }
 
         focused

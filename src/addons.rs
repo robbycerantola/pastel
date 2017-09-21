@@ -365,9 +365,11 @@ impl AddOnsToOrbimage for orbimage::Image {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
-         let mut lx = 0;
-         let mut ly = 0;
          let mut w = false;
+         let mut dx = 0_i32;
+         let mut dy = 0_i32;
+         let mut r = 0_i32;
+         let mut r_old = 0_i32;
         'events: loop{
             for event in orbclient.events() { 
                 match event.to_option() {
@@ -379,47 +381,31 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     break 'events
                                                 };
                                                 if w {
-                                                    orbclient.ant_line(x,
-                                                    y+CANVASOFFSET,
-                                                    lx,
-                                                    ly+CANVASOFFSET,
-                                                    orbtk::Color::rgba(100, 100, 100, 0));
+                                                    orbclient.circle_marquee(x, y+CANVASOFFSET, r_old, orbtk::Color::rgba(100, 100, 100, 0)); 
                                                 }
                                                 w=true;
+                                                r = dx.pow(2)+dy.pow(2);
+                                                r = ((r as f64).sqrt()) as i32;
+                                                r_old = r;
                                                 
-                                                orbclient.ant_line(x,
-                                                y+CANVASOFFSET,
-                                                evt.x,
-                                                evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 0));
-                                                lx=evt.x;
-                                                ly=evt.y-CANVASOFFSET;
-                                                
+                                                orbclient.circle_marquee(x, y+CANVASOFFSET, r, orbtk::Color::rgba(100, 100, 100, 0)); 
                                                 orbclient.sync();
-                                                   
+
+                                                dx=evt.x-x;
+                                                dy=evt.y-y-CANVASOFFSET;
                                                 },
-                    EventOption::Button(btn) => {if btn.left {
-                                                   let dx=lx-x;
-                                                   let dy=ly-y;
-                                                   let mut r = dx.pow(2)+dy.pow(2);
-                                                   r = ((r as f64).sqrt()) as i32;
-                                                   if filled {
-                                                        
-                                                            self.circle(x ,y, -r ,color);
-                                                        
-                                                        break 'events
-                                                    } else {
-                                                        self.circle(x,y,r,color);
-                                                        
-                                                        break 'events
-                                                    }
+                    EventOption::Button(btn) => {
+                                                if btn.left {
+                                                    if filled { r = -r;}
+                                                    self.circle(x, y, r, color);
+                                                    break 'events 
                                                 }
                                                 if btn.right{
-                                                        break 'events
+                                                    break 'events
                                                     }
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("Option: {:?}", event_option)}
-                                    else{ ()}
+                                    else{()}
                 }
           }
         }
@@ -560,14 +546,17 @@ pub trait AddOnsToOrbclient {
     fn pixcol(&self, x:i32, y:i32) -> Color;
     fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
     fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
+    fn circle_marquee(&mut self, x0: i32, y0: i32 , radius: i32 , color: Color);
 }
 
 impl AddOnsToOrbclient for orbclient::Window{
-    ///gets pixel Color at x,y
+    ///gets pixel Color at x,y safely
     fn pixcol(&self, x:i32, y:i32) -> Color {
-        let p = self.width()as i32 * y + x;
-        let rgba = self.data()[p as usize];
-        rgba
+        let p = (self.width()as i32 * y + x) as usize;
+        if p < self.data().len() {
+            let rgba = self.data()[p];
+            return rgba
+        }else { return Color::rgba(0,0,0,0)}
     }
     
     /// Draws ant_line - - -   
@@ -618,5 +607,38 @@ impl AddOnsToOrbclient for orbclient::Window{
         self.ant_line(argx1,argy2,argx1,argy1,color);
         //self.sync();
     }
+
+    fn circle_marquee(&mut self, x0: i32, y0: i32 , radius: i32 , color: Color) {
+        let mut x = radius.abs();
+        let mut y = 0;
+        let mut err = 0;
+        let mut old_color : orbtk::Color ;
+        while x >= y {
+            old_color = self.pixcol(x0 - x, y0+ y);
+            self.pixel(x0 - x, y0 + y, Color{data: (&old_color.data ^ &color.data)});
+            old_color = self.pixcol(x0 + x, y0+ y);
+            self.pixel(x0 + x, y0 + y, Color{data: (&old_color.data ^ &color.data)});
+            old_color = self.pixcol(x0 - y, y0+ x);
+            self.pixel(x0 - y, y0 + x, Color{data: (&old_color.data ^ &color.data)});
+            old_color = self.pixcol(x0 + y, y0+ x);
+            self.pixel(x0 + y, y0 + x, Color{data: (&old_color.data ^ &color.data)});
+            old_color = self.pixcol(x0 - x, y0 - y);
+            self.pixel(x0 - x, y0 - y, Color{data: (&old_color.data ^ &color.data)});
+            old_color = self.pixcol(x0 + x, y0 - y);
+            self.pixel(x0 + x, y0 - y, Color{data: (&old_color.data ^ &color.data)});
+            old_color = self.pixcol(x0 - y, y0 - x);
+            self.pixel(x0 - y, y0 - x, Color{data: (&old_color.data ^ &color.data)});
+            old_color = self.pixcol(x0 + y, y0 -x);
+            self.pixel(x0 + y, y0 - x, Color{data: (&old_color.data ^ &color.data)});
+        
+            y += 1;
+            err += 1 + 2*y;
+            if 2*(err-x) + 1 > 0 {
+                x -= 1;
+                err += 1 - 2*x;
+            }
+        } 
+    }
+
 }
 

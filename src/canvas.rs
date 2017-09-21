@@ -103,35 +103,12 @@ impl Canvas {
        //image.clear();
        image.set(Color::rgba(255, 255, 255,255));
     }
-/*    
-    ///draws image into curent canvas starting at x,y (paste)
-    pub fn paste_selection (&self, x: i32, y:i32,buffer: orbimage::Image){
-        let mut image = self.image.borrow_mut();
-        
-        let w = buffer.width() as i32;
-        let h = buffer.height() as i32;
-        let data = buffer.into_data();
-        let mut i:usize = 0;
-        let x1:i32;
-        let y1:i32;
-        
-        for y1 in y..y+h {
-            for x1 in x..x+w {
-                if i < data.len(){
-                    image.pixel(x1,y1,data[i]);
-                }
-                i += 1;
-            }
-        }
-    }
-*/
 
-    //crop new image from curent canvas (copy)
+    ///crop new image from curent canvas (copy)
     pub fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
         let image = self.image.borrow();
         let data = image.data();
         let mut vec = vec![];
-        
         
         for y1 in y..y+h as i32 {
             for x1 in x..x+w as i32 {
@@ -149,8 +126,6 @@ impl Canvas {
         let rgba = image.data()[p as usize];
         rgba
     }
-
-
 
     ///apply some transformations to entire canvas
     pub fn transformation(&self, cod: &str, a: i32, b:i32){
@@ -332,15 +307,6 @@ impl Widget for Canvas {
 
     fn event(&self, event: Event, focused: bool, redraw: &mut bool) -> bool {
         match event {
-         /*   Event::Mouse { point, left_button, .. } => {
-                let rect = self.rect.get();
-                if rect.contains(point) && left_button {
-                    let click_point: Point = point - rect.point();
-                    self.emit_click(click_point);
-                    *redraw = true;
-                }
-            }*/
-            
             Event::Mouse {point, right_button, left_button, middle_button, ..} => {
                 let rect = self.rect.get();
                 if rect.contains(point) {
@@ -365,7 +331,7 @@ impl Widget for Canvas {
                      
                     }
                 },
-             // Ctrl+z    
+             // Ctrl+z => Undo   
             Event::Text {c} => {
                 if c == 'z' {
                     self.undo();

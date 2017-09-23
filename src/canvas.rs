@@ -338,9 +338,14 @@ impl Canvas {
     
         /// paste internal copy buffer into canvas
     pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8){
-        self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.paste_selection(x, y, opacity, self.copy_buffer.borrow().clone());
+    }
+        /// wrapper interactive paste
+    pub fn interact_paste (&self, x: i32, y:i32, opacity: u8, window: &mut orbtk::Window){
+        let mut image = self.image.borrow_mut();
+        image.interact_paste(x, y, opacity, self.copy_buffer.borrow().clone(), window);
+        
     }
     
     /// wrapper for interactive circle

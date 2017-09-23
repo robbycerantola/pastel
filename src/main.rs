@@ -140,6 +140,8 @@ fn main() {
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
     ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Filled",1)]);
     ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Filled",0)]);
+    ntools.insert("paste",vec![Property::new("Opacity",100)]);
+    ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key' 
 
     //use invisible Label for storing current active tool
     let tool = Label::new();
@@ -1045,7 +1047,7 @@ fn main() {
         let ntools_clone = ntools.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         property_set(&ntools_clone["brush"],"Shape",2);
-                        tool_clone.text.set("brush".to_owned());
+                        tool_clone.text.set("paste".to_owned());
                           });
         menuedit.add(&action);
     }
@@ -1358,7 +1360,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.20, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.21, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1477,8 +1479,8 @@ fn main() {
                                                     */
                                          }
                                     },
-                    "paste" => //canvas.paste_selection(point.x,point.y, a.clone(), bf.clone()),
-                                canvas.paste_buffer(point.x,point.y, a.clone()),
+                    "paste" => //canvas.paste_buffer(point.x,point.y, a.clone()),
+                                unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)},
                     "circle" => {
                                     canvas.undo_save();
                                     let filled = property_get(&ntools.clone()["circle"],"Filled").unwrap();

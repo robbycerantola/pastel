@@ -18,6 +18,7 @@ pub trait AddOnsToOrbimage {
         fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
         fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, window: &mut orbtk::Window);
         fn interact_circle(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
+        fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut orbtk::Window);
         fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
         fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
         fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
@@ -403,6 +404,58 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("Option: {:?}", event_option)}
                                     else{()}
+                }
+          }
+        }
+        
+    }
+
+    /// interactive paste 
+    fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut orbtk::Window) {
+    
+         //gets events from orbclient and render helping lines directly into orbclient window 
+         let mut orbclient = window.inner.borrow_mut();
+         let mut w = true;
+         let width = buffer.width();
+         let height = buffer.height();
+         let mut x = x;
+         let mut y = y;
+         let data = buffer.into_data(); //&buffer.clone().into_data()
+        'events: loop{
+            if w {
+                    orbclient.image(x, y + CANVASOFFSET, width, height, &data);
+                    orbclient.sync();
+                    w = false;
+                }
+            for event in orbclient.events() { 
+                
+                match event.to_option() {
+                    EventOption::Key(key_event) => {println!("Event:{:?}",key_event); break 'events},
+                    EventOption::Quit(_quit_event) => break 'events,
+                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
+                    EventOption::Mouse(evt) => {
+                                                if evt.y < CANVASOFFSET{
+                                                    break 'events
+                                                };
+                                                orbclient.image(evt.x, evt.y, width, height, &data); 
+                                                x = evt.x;
+                                                y = evt.y;
+                                                orbclient.sync();
+                                                break 'events;
+                                                },
+                    EventOption::Button(btn) => {
+                                                if btn.left {
+                                                    self.image(x, y , width, height, &data);
+                                                    
+                                                    break 'events 
+                                                }
+                                                if btn.right{
+                                                    break 'events
+                                                    }
+                                                },
+                    event_option => if cfg!(feature = "debug"){println!("Option: {:?}", event_option)}
+                                    else{()},
+                            _ => ()
                 }
           }
         }

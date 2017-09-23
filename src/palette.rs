@@ -1,9 +1,8 @@
 extern crate orbtk;
 
-use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
-            ControlKnob,Toolbar, ToolbarIcon, Rect, Separator,
-            TextBox, Window, Renderer, ColorSwatch}; //Toolbar
-use orbtk::traits::{Click, Place, Text};  //Border, Enter
+use orbtk::{Color,  Point, ProgressBar,
+             Rect, Window,  ColorSwatch}; //Toolbar,Action, Button, Image, Label, Menu,ControlKnob,Toolbar, ToolbarIcon, Separator,TextBox,Renderer,
+use orbtk::traits::{Click, Place};  //Border, Enter, Text
 use std;
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;

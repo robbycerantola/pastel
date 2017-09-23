@@ -2,9 +2,7 @@ extern crate orbtk;
 extern crate orbimage;
 extern crate orbclient;
 
-use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
-            ControlKnob,Toolbar, ToolbarIcon, Rect, Separator,
-            TextBox, Window,InnerWindow, Renderer, ColorSwatch};
+use orbtk::{Color, Rect, Renderer}; //Action, Button, Image, Label, Menu, Point, ProgressBar,ControlKnob,Toolbar, ToolbarIcon,Separator,TextBox, Window,InnerWindow,, ColorSwatch
 use orbclient::EventOption;
 
 use CANVASOFFSET;
@@ -27,7 +25,7 @@ pub trait AddOnsToOrbimage {
     }
 
 impl AddOnsToOrbimage for orbimage::Image {
-    ///return rgba color of image pixel at position (x,y)
+    ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very quick.
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = self.width()as i32 * y + x;
         let rgba = self.data()[p as usize];
@@ -174,7 +172,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         orbimage::Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap()
     }
 
-    ///draws an image into current image starting at x,y (paste)
+    ///draws an image into current image starting at x,y (paste) with transparency
     fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image, ){
         
         let w = buffer.width() as i32;
@@ -270,12 +268,12 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     let dx=lx-x;
                                                     let dy=ly-y;
                                                     return Some(Rect::new(x,y,dx as u32, dy as u32))
-                                                    }
+                                                }
                                                 
                                                 if btn.right{
-                                                        break 'events;
-                                                        //TODO show menu with actions upon selection
-                                                    }
+                                                              break 'events;
+                                                            //TODO show menu with actions upon selection
+                                                }
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
                                     else{ ()}
@@ -284,7 +282,6 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
       None  
     }
-
 
     /// draws interactive rectangle 
     fn interact_rect(&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) {
@@ -373,7 +370,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         'events: loop{
             for event in orbclient.events() { 
                 match event.to_option() {
-                    EventOption::Key(key_event) => {println!("Event:{:?}",key_event); break 'events;},
+                    EventOption::Key(key_event) => {println!("Event:{:?}",key_event); break 'events},
                     EventOption::Quit(_quit_event) => break 'events,
                     EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
                     EventOption::Mouse(evt) => {

@@ -21,6 +21,7 @@ pub struct Canvas {
     pub rect: Cell<Rect>,
     pub image: RefCell<orbimage::Image>,
     undo_image: RefCell<orbimage::Image>,
+    pub copy_buffer: RefCell<orbimage::Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
@@ -40,6 +41,7 @@ impl Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             undo_image: RefCell::new(orbimage::Image::new(image.width(),image.height())),
             image: RefCell::new(image),
+            copy_buffer: RefCell::new(orbimage::Image::new(0,0)),
             click_callback: RefCell::new(None),
             right_click_callback: RefCell::new(None),
             clear_click_callback: RefCell::new(None)
@@ -104,6 +106,7 @@ impl Canvas {
        image.set(Color::rgba(255, 255, 255,255));
     }
 
+/*
     ///crop new image from curent canvas (copy)
     pub fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
         let image = self.image.borrow();
@@ -118,7 +121,7 @@ impl Canvas {
         //println!("len {} w*h {}",vec.len(), w*h);
         orbimage::Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap()
     }
-    
+   
     ///return rgba color of pixel at canvas position (x,y)
     pub fn pixcol(&self, x:i32, y:i32) -> Color {
         let image = self.image.borrow();
@@ -126,18 +129,81 @@ impl Canvas {
         let rgba = image.data()[p as usize];
         rgba
     }
+*/
 
     ///apply some transformations to entire canvas
     pub fn transformation(&self, cod: &str, a: i32, b:i32){
         //first prepare for undo 
         self.undo_save();
-        
-        //using image::imageops library
+     
         let mut width = self.rect.get().width as u32;
         let mut height = self.rect.get().height as u32;
         //get image data in form of [Color] slice
-        let image_data = self.image.clone().into_inner().into_data();//mut
+        let image_data = self.image.clone().into_inner().into_data();
+        let new_slice = self.trans_from_slice(image_data,width,height,cod,a,b);
+        let mut image = self.image.borrow_mut();
         
+        if cod == "resize" {
+            width = a as u32;
+            height = b as u32;
+        }
+        
+        if cod == "rotate90" {
+            image.clear();
+            image.image(0, 0, height, width, &new_slice[..]);
+        }else{
+            image.image(0, 0, width, height, &new_slice[..]);
+        }
+        
+    }
+
+    ///apply some transformations to canvas selection (in place)
+    pub fn trans_selection(&self, selection: Rect, cod: &str, a: i32, b:i32){
+        //dirty hack: get rid of marquee by undoing
+        //self.undo();
+        
+        //first prepare for undo 
+        self.undo_save();
+        
+        let mut width = selection.width;
+        let mut height = selection.height;
+        let x = selection.x;
+        let y = selection.y;
+        let mut image = self.image.borrow_mut();
+        let image_selection = image.copy_selection(x, y, width, height);
+        let new_image = self.trans_image(image_selection, cod,a,b);
+        //clear only under selection
+        image.rect(x,y,width,height,Color::rgba(255,255,255,255)); 
+        
+        if cod == "resize" {
+            width = a as u32;
+            height = b as u32;
+        }
+        
+        if cod == "rotate90" {
+            image.image(x, y, height, width, &new_image[..]);
+        }else{
+            image.image(x,y, width, height, &new_image[..]);
+        }
+    }
+
+
+    /// apply some transformation to an image 
+    pub fn trans_image (&self, image_selection: orbimage::Image, cod: &str, a: i32, b: i32) -> Vec<Color> {
+        let width = image_selection.width() as u32;
+        let height = image_selection.height() as u32;
+        //get image data in form of [Color] slice
+        let image_data = image_selection.into_data();
+        //apply transformation to slice
+        let new_slice = self.trans_from_slice(image_data,width,height,cod,a,b);
+        //here only return new_slice instead of render because of borrowing issue 
+        new_slice
+    }
+
+    /// apply some transformation to an image slice
+    fn trans_from_slice (&self, image_data: Box<[Color]>, width: u32, height: u32, cod: &str, a: i32, b:i32) -> Vec<Color> {
+        //let mut width = width;
+        //let mut height = height;
         let image_buffer = unsafe {
             slice::from_raw_parts(image_data.as_ptr() as *const u8, 4 * image_data.len())
         };
@@ -149,12 +215,13 @@ impl Canvas {
                                                              "unsharpen"       => image::imageops::unsharpen(&imgbuf,5.1,10),
                                                              "flip_vertical"   => image::imageops::flip_vertical(&imgbuf),
                                                              "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
+                                                             "rotate90"        => image::imageops::rotate90(&imgbuf),
                                                              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
                                                              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
                                                              "grayscale"       => self.gray2rgba(image::imageops::colorops::grayscale(&imgbuf),
                                                                                             1.2,1.2,1.2),
-                                                             "resize"          => { width = a as u32;
-                                                                                    height = b as u32;
+                                                             "resize"          => { //width = a as u32;
+                                                                                    //height = b as u32;
                                                                                     self.image.borrow_mut().clear();
                                                                                     image::imageops::resize(&imgbuf,a as u32,b as u32,image::FilterType::Nearest)
                                                                                     },
@@ -177,12 +244,8 @@ impl Canvas {
             new_slice.push(orbtk::Color::rgba(b, g, r, a)); //taking care of wird bug
             i += 4;
         }
-        
-        let mut image = self.image.borrow_mut();
-        //image.clear();
-        image.image(0,0,width,height,&new_slice[..]);
-        
-    }
+        new_slice
+    } 
 
 /// convert grayscale image to rgba format
     fn gray2rgba (&self, 
@@ -266,13 +329,26 @@ impl Canvas {
         image.fill(x,y,color);
     }
     
-    /// wrapper for paste_selection
-    pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image, ){
+    /// wrapper for paste_selection (paste an external image)
+    pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, newimage: orbimage::Image, ){
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
-        image.paste_selection(x,y,opacity,buffer);
+        image.paste_selection(x,y,opacity,newimage);
     }
-
+    
+        /// paste internal copy buffer into canvas
+    pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8){
+        self.undo_save();  //save state for undo
+        let mut image = self.image.borrow_mut();
+        image.paste_selection(x, y, opacity, self.copy_buffer.borrow().clone());
+    }
+    
+    /// wrapper for interactive circle
+    pub fn interact_circle (&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) {
+        self.undo_save();  //save state for undo
+        let mut image = self.image.borrow_mut();
+        image.interact_circle(x,y,color,filled,window);
+    }
 }
 
 impl Click for Canvas {
@@ -337,7 +413,12 @@ impl Widget for Canvas {
                     self.undo();
                     *redraw = true;
                 }
+                if c == 'v' {
+                    self.paste_buffer( 100,100,100,);
+                    *redraw = true;
+                }
             },
+
             _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {()}, 
         }
 

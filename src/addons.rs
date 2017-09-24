@@ -16,13 +16,14 @@ pub trait AddOnsToOrbimage {
         fn pixcol(&self, x:i32, y:i32) -> Color;
         fn pixraw(&self, x:i32, y:i32) -> u32;
         fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
-        fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, window: &mut orbtk::Window);
+        fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut orbtk::Window);
         fn interact_circle(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
         fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut orbtk::Window);
         fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
         fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
-        fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
-        fn smooth_circle (&mut self, x: i32, y:i32, size: u32, color: Color);
+        fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
+        fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
+        fn wu_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color);
     }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -153,10 +154,96 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
     }
 
+    /// draws antialiased line
+     //adapted from https://rosettacode.org/wiki/Xiaolin_Wu's_line_algorithm#C.23   
+    fn wu_line (&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
+        let mut x0 = x0 as f64;
+        let mut y0 = y0 as f64;
+        let mut x1 = x1 as f64;
+        let mut y1 = y1 as f64;
+        let r = color.r();
+        let g = color.g();
+        let b = color.b();
+        let a = color.a() as f64;
+        
+        fn ipart (x: f64) -> i32 {
+            x.trunc() as i32
+        }
+        fn round (x: f64) -> i32 {
+            ipart(x+0.5) as i32
+        }
+        fn fpart (x: f64) -> f64 {
+            if x <0.0 { return 1.0-(x-x.floor());}
+            x-x.floor() 
+        }
+        fn rfpart(x: f64) -> f64 {
+            1.0-fpart(x)
+        }
+        fn chkalpha (mut alpha :f64) -> u8 {
+             if alpha > 255.0 { alpha = 255.0};
+             if alpha < 0.0 {alpha = 0.0};
+             alpha as u8
+        }
+        
+        let steep :bool = (y1-y0).abs() > (x1-x0).abs();
+        let mut temp;
+        if steep {
+            temp = x0; x0 = y0; y0 = temp;
+            temp = x1; x1 = y1; y1 = temp;
+        }
+        if x0 > x1 {
+            temp = x0; x0 = x1; x1 = temp;
+            temp = y0; y0 = y1; y1 = temp;
+        }
+        let dx = x1 -x0;
+        let dy = y1- y0;
+        let gradient = dy/dx;
+        
+        let mut xend: f64 = (x0 as f64).round() ;
+        let mut yend: f64 = y0 + gradient * (xend - x0);
+        let mut xgap: f64 = rfpart(x0+0.5);
+        let xpixel1 = xend as i32;
+        let ypixel1 = (ipart (yend)) as i32;
+        
+        if steep {
+            self.pixel(ypixel1, xpixel1, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
+            self.pixel(ypixel1+1, xpixel1, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
+        }else{
+            self.pixel(xpixel1, ypixel1, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
+            self.pixel(xpixel1+1, ypixel1, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
+        }
+        let mut intery :f64 = yend + gradient;
+        xend = x1.round();
+        yend = y1 + gradient * (xend-x1);
+        xgap = fpart(x1 + 0.5);
+        let xpixel2 = xend as i32;
+        let ypixel2 = ipart(yend) as i32;
+        if steep {
+            self.pixel(ypixel2, xpixel2, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
+            self.pixel(ypixel2+1, xpixel2, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
+        }else{
+            self.pixel(xpixel2, ypixel2, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
+            self.pixel(xpixel2+1, ypixel2, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
+        }
+        if steep {
+            for x in (xpixel1+1)..(xpixel2) {
+                self.pixel(ipart(intery) as i32 , x, Color::rgba(r,g,b,chkalpha(a*rfpart(intery))));
+                self.pixel(ipart(intery) as i32 + 1, x, Color::rgba(r,g,b,chkalpha(a*fpart(intery))));
+                intery += gradient;
+            }
+        }else{
+            for x in (xpixel1+1)..(xpixel2) {
+                self.pixel(x, ipart(intery) as i32, Color::rgba(r,g,b,chkalpha(a*rfpart(intery))));
+                self.pixel(x, ipart(intery) as i32 + 1, Color::rgba(r,g,b,chkalpha(a*fpart(intery))));
+                intery += gradient;
+            } 
+        }           
+    }
+    
+
     ///crop new image from current image (copy) tranforming pure white into transparent
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
-       
-        //let data = self.data();
+
         let mut vec = vec![];
         let mut col : Color;
         
@@ -203,7 +290,8 @@ impl AddOnsToOrbimage for orbimage::Image {
             }
         }
     }
-
+    
+    //experimental smooth brush : work in progress....
     fn smooth_circle (&mut self, x: i32, y:i32, size: u32, color: Color) {
         //let mut sb= orbimage::Image::from_color(2*size, 2*size, Color::rgba(255,255,255,0));
         let sb = orbimage::Image::from_path("smooth_circle_yellow.png").unwrap();
@@ -237,13 +325,12 @@ impl AddOnsToOrbimage for orbimage::Image {
         'events: loop{
             for event in orbclient.events() { 
                 match event.to_option() {
-                    EventOption::Key(key_event) => {println!("{:?}",key_event); break 'events},
-                    EventOption::Quit(_quit_event) => break 'events,
-                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
-                    EventOption::Mouse(evt) => {
+                   EventOption::Key(key_event) => {println!("{:?}",key_event); break 'events},
+                EventOption::Quit(_quit_event) => break 'events,
+             EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
+                       EventOption::Mouse(evt) => {
                                                 if evt.y < CANVASOFFSET{
                                                     break 'events;
-                                                    
                                                 };
                                                 if w {
                                                     orbclient.rect_marquee(x,
@@ -263,25 +350,24 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 ly=evt.y-CANVASOFFSET;
                                                 
                                                 orbclient.sync();
-                                                   
                                                 },
                     EventOption::Button(btn) => {if btn.left {
                                                     let dx=lx-x;
                                                     let dy=ly-y;
                                                     return Some(Rect::new(x,y,dx as u32, dy as u32))
                                                 }
-                                                
                                                 if btn.right{
                                                               break 'events;
                                                             //TODO show menu with actions upon selection
                                                 }
                                                 },
-                    event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
-                                    else{ ()}
+                                event_option => if cfg!(feature = "debug"){
+                                                    println!("{:?}", event_option)
+                                                }else{ ()}
                 }
           }
         }
-      None  
+        None  
     }
 
     /// draws interactive rectangle 
@@ -418,8 +504,8 @@ impl AddOnsToOrbimage for orbimage::Image {
          let mut w = true;
          let width = buffer.width();
          let height = buffer.height();
-         let mut x = x;
-         let mut y = y;
+         let x = x;
+         let y = y;
          let data = buffer.into_data(); //&buffer.clone().into_data()
         'events: loop{
             if w {
@@ -438,8 +524,8 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     break 'events
                                                 };
                                                 orbclient.image(evt.x, evt.y, width, height, &data); 
-                                                x = evt.x;
-                                                y = evt.y;
+                                                //x = evt.x;
+                                                //y = evt.y;
                                                 orbclient.sync();
                                                 break 'events;
                                                 },
@@ -454,8 +540,8 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     }
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("Option: {:?}", event_option)}
-                                    else{()},
-                            _ => ()
+                                    else{()}
+                            
                 }
           }
         }
@@ -464,7 +550,7 @@ impl AddOnsToOrbimage for orbimage::Image {
 
     
     /// draws interactive polyline 
-    fn interact_line(&mut self, x: i32 , y: i32, color: Color, width: i32, window: &mut orbtk::Window) {
+    fn interact_line(&mut self, x: i32 , y: i32, color: Color, width: i32, antialias: bool, window: &mut orbtk::Window) {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -509,7 +595,12 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                         //quick and dirty workaround to trace thick lines
                                                         //TODO implement new line method to deal with thickness properly
                                                         for d in 0..width {
-                                                            self.line(ox+d ,oy,lx+d, ly ,color); //update image
+                                                            if antialias {
+                                                                self.wu_line(ox+d ,oy,lx+d, ly ,color);
+                                                            }else{
+                                                                self.line(ox+d ,oy,lx+d, ly ,color); //update image
+                                                            }
+                                                            
                                                             orbclient.line(ox+d ,oy+CANVASOFFSET,lx+d, ly+CANVASOFFSET ,color); //update preview 
                                                         }
                                                         orbclient.sync();

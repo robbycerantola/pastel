@@ -134,11 +134,11 @@ fn main() {
     //create new tool with some properties and initial values
     let mut ntools = HashMap::new();
     ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
-    ntools.insert("line",vec![Property::new("Opacity",100)]);
-    ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100)]); 
+    ntools.insert("line",vec![Property::new("Opacity",100),Property::new("Antialias",1)]);
+    ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100),Property::new("Antialias",1)]); 
     ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
-    ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Filled",1)]);
+    ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Filled",0)]);
     ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Filled",0)]);
     ntools.insert("paste",vec![Property::new("Opacity",100)]);
     ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key' 
@@ -1360,7 +1360,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.21, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.22, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1377,7 +1377,7 @@ fn main() {
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
     let window_clone = &mut window as *mut Window;
     let click_pos_clone = click_pos.clone();
-    //let mut selection_clone = selection.clone();
+
     canvas
         .position(0, CANVASOFFSET) 
         .on_right_click(move |_ , point:Point|{
@@ -1397,7 +1397,7 @@ fn main() {
             //let buffer_clone = buffer.clone();
             let swatch_clone = swatch.clone();
             let u = tool.clone().text.get();
-            let mut selection_clone = selection.clone();
+            let selection_clone = selection.clone();
             {
                 let mut prev_opt = click.borrow_mut();
                 //let mut bf = buffer_clone.borrow_mut();
@@ -1440,17 +1440,20 @@ fn main() {
                                                     );
                                 }
                                },
-                "polyline" => {canvas.undo_save();
+                "polyline" => { 
+                                canvas.undo_save();
                                 let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
+                                let antialias = property_get(&ntools.clone()["polyline"],"Antialias").unwrap();
                                 unsafe{
                                         canvas.image.borrow_mut().interact_line(point.x,
                                                     point.y,
                                                     color,
                                                     width,
+                                                    antialias == 1,
                                                     &mut *window_clone
                                                     );
-                                    }   
-                                },
+                                }
+                               },
                     "copy" =>  {
                                     let mut image = canvas.image.borrow_mut();
                                     if let Some(selection) = unsafe { 
@@ -1500,12 +1503,21 @@ fn main() {
                 //tools that need prev_position to work
                 if let Some(prev_position) = *prev_opt {
                     match tool.clone().text.get().as_ref() {
-                        "line" => {
-                                    canvas.image.borrow_mut().line(prev_position.x,
-                                                prev_position.y,
-                                                point.x,
-                                                point.y,
-                                                color);
+                        "line" => { 
+                                    let antialias = property_get(&ntools.clone()["line"],"Antialias").unwrap();
+                                    if antialias == 1 {
+                                        canvas.image.borrow_mut().wu_line(prev_position.x,
+                                            prev_position.y,
+                                            point.x,
+                                            point.y,
+                                            color);
+                                    }else{
+                                        canvas.image.borrow_mut().line(prev_position.x,
+                                            prev_position.y,
+                                            point.x,
+                                            point.y,
+                                            color);
+                                        }
                                    },
                               _ => (),          
                     }

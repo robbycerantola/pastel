@@ -55,6 +55,7 @@ impl Canvas {
     pub fn save(&self, filename: &String) -> Result <i32, Error>{
         let width = self.rect.get().width as u32;
         let height = self.rect.get().height as u32;
+        
         //get image data in form of [Color] slice
         let image_data = self.image.clone().into_inner().into_data();
 
@@ -64,7 +65,7 @@ impl Canvas {
         };
         //let () = image_buffer;
         //To save corectly the image with image::save_buffer
-        // we have to switch r with b but dont know why!
+        // we have to take care of correct byte order (rgba <-> abgr)
         let mut new_image_buffer = Vec::new();
         let mut i = 0;
         while i <= image_buffer.len() - 4 {
@@ -209,23 +210,24 @@ impl Canvas {
         };
                 
         let imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, image_buffer.to_vec()).unwrap();
-        let vec_image_buffer:Vec<u8> = image::ImageBuffer::into_raw ( match cod.as_ref() {
+        let vec_image_buffer:Vec<u8> = image::ImageBuffer::into_raw ( 
+            match cod.as_ref() {
             
-                                                             "blur"            => image::imageops::blur(&imgbuf,5.1),
-                                                             "unsharpen"       => image::imageops::unsharpen(&imgbuf,5.1,10),
-                                                             "flip_vertical"   => image::imageops::flip_vertical(&imgbuf),
-                                                             "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
-                                                             "rotate90"        => image::imageops::rotate90(&imgbuf),
-                                                             "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
-                                                             "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
-                                                             "grayscale"       => self.gray2rgba(image::imageops::colorops::grayscale(&imgbuf),
-                                                                                            1.2,1.2,1.2),
-                                                             "resize"          => { //width = a as u32;
-                                                                                    //height = b as u32;
-                                                                                    self.image.borrow_mut().clear();
-                                                                                    image::imageops::resize(&imgbuf,a as u32,b as u32,image::FilterType::Nearest)
-                                                                                    },
-                                                                             _ => imgbuf,
+             "blur"            => image::imageops::blur(&imgbuf,5.1),
+             "unsharpen"       => image::imageops::unsharpen(&imgbuf,5.1,10),
+             "flip_vertical"   => image::imageops::flip_vertical(&imgbuf),
+             "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
+             "rotate90"        => image::imageops::rotate90(&imgbuf),
+             "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
+             "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
+             "grayscale"       => self.gray2rgba(image::imageops::colorops::grayscale(&imgbuf),
+                                            1.2,1.2,1.2),
+             "resize"          => { //width = a as u32;
+                                    //height = b as u32;
+                                    self.image.borrow_mut().clear();
+                                    image::imageops::resize(&imgbuf,a as u32,b as u32,image::FilterType::Nearest)
+                                    },
+                             _ => imgbuf,
          });
         
         //convert rgba 8u image buffer back into Color slice
@@ -241,13 +243,13 @@ impl Canvas {
             g = vec_image_buffer[i+1];
             b = vec_image_buffer[i+2];
             a = vec_image_buffer[i+3];
-            new_slice.push(orbtk::Color::rgba(b, g, r, a)); //taking care of wird bug
+            new_slice.push(orbtk::Color::rgba(b, g, r, a)); //taking care of byte order
             i += 4;
         }
         new_slice
     } 
 
-/// convert grayscale image to rgba format
+/// convert grayscale format image to rgba format
     fn gray2rgba (&self, 
                     grayimage: image::ImageBuffer<image::Luma<u8>, Vec<u8>>,
                     r_factor : f32,
@@ -279,7 +281,6 @@ impl Canvas {
             new_buffer.push(g);
             new_buffer.push(r);
             new_buffer.push(a);
-            
         }
         let imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, new_buffer).unwrap();
             imgbuf

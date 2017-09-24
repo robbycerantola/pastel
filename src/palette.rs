@@ -261,7 +261,7 @@ impl Palette {
             Ok(file) => file,
         };
         let mut payload = String::new();
-        let mut colors :Vec<u8> = Vec::new();
+        let colors :Vec<u8>;// = Vec::new();
         match file.read_to_string(&mut payload) {
             Err(why) => return Err(why) ,// panic!("couldn't read {}: {}", display,why),
             Ok(_) => {

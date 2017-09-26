@@ -42,6 +42,9 @@ use addons::AddOnsToOrbimage;
 mod canvas;
 use canvas::Canvas;
 
+// undo stack depth
+const UNDODEPTH :usize = 10;
+
 //structure to store tools properties 
 struct Property{
     name: CloneCell<String>,
@@ -141,7 +144,8 @@ fn main() {
     ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Filled",0)]);
     ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Filled",0)]);
     ntools.insert("paste",vec![Property::new("Opacity",100)]);
-    ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key' 
+    ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key'
+    ntools.insert("polygon",vec![Property::new("Opacity",100),Property::new("Sides",6),Property::new("Antialias",1)]); 
 
     //use invisible Label for storing current active tool
     let tool = Label::new();
@@ -986,7 +990,7 @@ fn main() {
     //Menu entries for edit
     
     {
-        let action = Action::new("Undo");
+        let action = Action::new("Undo     Ctrl+Z");
         let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.undo();
@@ -1120,7 +1124,7 @@ fn main() {
         let action = Action::new("Polyline");
         let tool_clone = tool.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-
+                            
                             tool_clone.text.set("polyline".to_owned());
                         });
         menutools.add(&action);
@@ -1161,7 +1165,24 @@ fn main() {
                         });
         menutools.add(&action);
     }
-    
+ 
+    {
+        let action = Action::new("Polygon");
+        let tool_clone = tool.clone();
+        let ntools_clone = ntools.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            match dialog("Regular polygon", "sides:","3") {
+                            Some(response) => {
+                                property_set(&ntools_clone["polygon"],"Sides",response.parse::<i32>().unwrap());
+                                tool_clone.text.set("polygon".to_owned());
+                            },
+                        
+                            None => {println!("Cancelled");},
+                        }
+                            
+                        });
+        menutools.add(&action);
+    }    
 
     //Menu image
     let menuimage = Menu::new("Image");
@@ -1360,7 +1381,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.22, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.23, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1410,7 +1431,6 @@ fn main() {
                 
                 //tools that dont need prev_position
                 match tool.clone().text.get().as_ref() {
-                    
                     "pen"  => canvas.image.borrow_mut().pixel(point.x, point.y, color),
                     "brush"=> {
                                 match property_get(&ntools.clone()["brush"],"Shape") {
@@ -1418,9 +1438,7 @@ fn main() {
                                                     color),
                                     Some(1) => canvas.image.borrow_mut().rect(point.x ,point.y,size as u32, size as u32,
                                                     color),
-                                    Some(2) => //canvas.image.borrow_mut().paste_selection(point.x,point.y,
-                                               //     a.clone(), bf.clone()),
-                                               canvas.paste_buffer(point.x,point.y,
+                                    Some(2) => canvas.paste_buffer(point.x,point.y,
                                                     a.clone()),
                                     Some(3) => canvas.image.borrow_mut().smooth_circle(point.x,point.y,
                                                     size as u32, color),
@@ -1460,7 +1478,6 @@ fn main() {
                                                                 image.select_rect(point.x,
                                                                     point.y,&mut *window_clone)
                                                              } {
-                                         //*bf = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
                                          *canvas.copy_buffer.borrow_mut() = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
                                          //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
                                          let newcanvas= Canvas::from_image(canvas.copy_buffer.borrow().clone());
@@ -1474,28 +1491,43 @@ fn main() {
                                                     point.y,&mut *window_clone)}
                                         {
                                                     *selection_clone.borrow_mut()= Some(selection);
-                                                    //image.rect(selection.x, selection.y, selection.width, selection.height, orbtk::Color::rgba(100, 000, 000, 100));
-                                                    /*let image_selection = image.copy_selection(selection.x, selection.y, selection.width, selection.height);
-                                                    let new_image = canvas.trans_image(image_selection, "blur",0,0);
-                                                    //draw slice into canvas at position x y 
-                                                    image.image(selection.x, selection.y, selection.width, selection.height, &new_image[..]);
-                                                    */
                                          }
                                     },
                     "paste" => //canvas.paste_buffer(point.x,point.y, a.clone()),
                                 unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)},
-                    "circle" => {
+                   "circle" => {
                                     canvas.undo_save();
+                                    let mut image = canvas.image.borrow_mut();
                                     let filled = property_get(&ntools.clone()["circle"],"Filled").unwrap();
-                                    unsafe{
-                                        canvas.image.borrow_mut().interact_circle(point.x,
+                                     
+                                    if let Some((r,angle)) = unsafe {image.interact_circle(point.x,
                                                     point.y,
                                                     color,
                                                     filled == 1,
                                                     &mut *window_clone
-                                                    );
-                                    }
+                                                    )}
+                                    {
+                                        //image.polygon(point.x,point.y,r,56,color,true);
+                                        image.circle(point.x, point.y, r, color);
+                                 }                             
                                 },
+                    "polygon" => {
+                                    let sides = property_get(&ntools.clone()["polygon"],"Sides").unwrap();
+                                    canvas.undo_save();
+                                    let mut image = canvas.image.borrow_mut();
+                                    if let Some((r,angle)) = unsafe{
+                                     image.interact_circle(point.x,
+                                                    point.y,
+                                                    color,
+                                                    false,
+                                                    &mut *window_clone
+                                                    )}
+                                    {
+                                        image.polygon(point.x,point.y,r,sides as u32, angle, color,true);
+                                        
+                                 }                             
+                                },
+                                
                     
                            _ => (),
                     }
@@ -1534,6 +1566,9 @@ fn main() {
 }
 
 //Helper functions
+fn test<T: Into<Option<i32>>> ( antialiased: T) {
+    let antialiased = antialiased.into().unwrap_or(0);
+}
 
 ///Load an image from path if exists, otherwise create new empty canvas
 fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  
@@ -1553,9 +1588,6 @@ fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {
 
 ///load pastel_copy_buffer if exists
 fn load_buffer(path: &str) -> orbimage::Image {
-    
-    //let path="/tmp/pastel_copy_buffer.png".to_string();
-    
     if cfg!(feature = "debug"){print!("Loading copy buffer from:  {} .....", path);}
     match orbimage::Image::from_path(path.to_string()) {
         Ok(image) => {

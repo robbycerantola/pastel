@@ -17,10 +17,13 @@ use std::io::Error;
 
 use AddOnsToOrbimage;
 
+use UNDODEPTH;
+
 pub struct Canvas {
     pub rect: Cell<Rect>,
     pub image: RefCell<orbimage::Image>,
     undo_image: RefCell<orbimage::Image>,
+    newundo_image: RefCell<Vec<orbimage::Image>>,
     pub copy_buffer: RefCell<orbimage::Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
@@ -40,6 +43,7 @@ impl Canvas {
         Arc::new(Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             undo_image: RefCell::new(orbimage::Image::new(image.width(),image.height())),
+            newundo_image: RefCell::new(vec!(orbimage::Image::new(image.width(),image.height()))),
             image: RefCell::new(image),
             copy_buffer: RefCell::new(orbimage::Image::new(0,0)),
             click_callback: RefCell::new(None),
@@ -307,12 +311,13 @@ impl Canvas {
             clear_click_callback(self, point);
         }
     }
-    
+/*
     /// simple undo 
     pub fn undo(&self) {
         let mut image = self.image.borrow_mut();
         let undo_image = self.undo_image.borrow_mut();
         *image=undo_image.clone();
+        
     }
 
     /// save image state to be used if undo is required
@@ -321,6 +326,28 @@ impl Canvas {
         let image = self.image.borrow_mut();
         let mut undo_image = self.undo_image.borrow_mut();
         *undo_image=image.clone();
+        
+    }
+*/
+    /// save image state to undo stack 
+    pub fn undo_save(&self) {
+        let image = self.image.borrow_mut();
+        self.newundo_image.borrow_mut().push(image.clone());
+        // prevents undo stack to grow too much!!
+        if self.newundo_image.borrow_mut().len() > UNDODEPTH {
+            self.newundo_image.borrow_mut().remove(0);
+        }
+    }
+
+    /// retrive image from undo stack
+    pub fn undo (&self) {
+        let mut newundo_image = self.newundo_image.borrow_mut();
+        let l = newundo_image.len();
+        if l > 1 {
+            let mut image = self.image.borrow_mut();
+            *image=newundo_image[l-1].clone();
+            newundo_image.pop();
+        }
     }
 
     ///wrapper for filling an image within a canvas

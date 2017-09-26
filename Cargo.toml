@@ -2,7 +2,7 @@
 name = "pastel"
 description = "Simple bitmap editor for Redox OS"
 repository = "https://github.com/pastel.git"
-version = "0.0.22"
+version = "0.0.23"
 keywords = ["orbital", "redox", "editor", "graphics"]
 authors = ["Robby <robbycerantola@gmail.com>"]
 

@@ -4,27 +4,31 @@ extern crate orbclient;
 
 use orbtk::{Color, Rect, Renderer}; //Action, Button, Image, Label, Menu, Point, ProgressBar,ControlKnob,Toolbar, ToolbarIcon,Separator,TextBox, Window,InnerWindow,, ColorSwatch
 use orbclient::EventOption;
+use std::f32::consts::PI;
+
 
 use CANVASOFFSET;
 
-//  to be added directly to orbclient ?
+//  which ones to be added directly to orbclient ?
 pub trait AddOnsToOrbimage {
-        fn fill(&mut self, x: i32 , y: i32, color: Color);
-        fn flood_fill4(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
-        fn flood_fill_scanline(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
-        fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
-        fn pixcol(&self, x:i32, y:i32) -> Color;
-        fn pixraw(&self, x:i32, y:i32) -> u32;
-        fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
-        fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut orbtk::Window);
-        fn interact_circle(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
-        fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut orbtk::Window);
-        fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
-        fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
-        fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
-        fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
-        fn wu_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color);
-    }
+    fn fill(&mut self, x: i32 , y: i32, color: Color);
+    fn flood_fill4(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
+    fn flood_fill_scanline(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
+    fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
+    fn pixcol(&self, x:i32, y:i32) -> Color;
+    fn pixraw(&self, x:i32, y:i32) -> u32;
+    fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
+    fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut orbtk::Window);
+    fn interact_circle(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window) -> Option<(i32,f32)>;
+    fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut orbtk::Window);
+    fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
+    fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
+    fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
+    fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
+    fn wu_line(&mut self, x0: i32, y0: i32, rx1: i32, y1: i32, color: Color);
+    fn polygon(&mut self, x: i32, y: i32, r: i32, sides: u32, angle: f32,color: Color, antialias: bool);
+    
+}
 
 impl AddOnsToOrbimage for orbimage::Image {
     ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very quick.
@@ -157,6 +161,7 @@ impl AddOnsToOrbimage for orbimage::Image {
     /// draws antialiased line
      //adapted from https://rosettacode.org/wiki/Xiaolin_Wu's_line_algorithm#C.23   
     fn wu_line (&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
+        
         let mut x0 = x0 as f64;
         let mut y0 = y0 as f64;
         let mut x1 = x1 as f64;
@@ -240,6 +245,33 @@ impl AddOnsToOrbimage for orbimage::Image {
         }           
     }
     
+    ///Draws a regular polygon
+    fn polygon(&mut self, x0: i32, y0: i32, r: i32, sides: u32, angle: f32, color: Color, antialias: bool ) {
+        let mut x:Vec<i32> = Vec::new();
+        let mut y:Vec<i32> = Vec::new();
+        let i :usize = 0;
+        let sides = sides as usize;
+        //find vertices
+        for i in 0..sides+1 {
+            let t :f32 =angle + 2.0*PI* i as f32 /sides as f32;
+            x.push((r as f32 * t.cos()) as i32 + x0);
+            y.push((r as f32 * t.sin()) as i32 + y0);
+        }
+        
+        if antialias {
+        for i in 0..sides {
+            self.wu_line(x[i],y[i],x[i+1],y[i+1],color);
+        }
+        self.wu_line(x[sides],y[sides],x[0],y[0],color);    
+        }else{
+        for i in 0..sides-1 {
+            self.line(x[i],y[i],x[i+1],y[i+1],color);
+        }
+        self.line(x[sides],y[sides],x[0],y[0],color);
+        }
+            
+            
+    }
 
     ///crop new image from current image (copy) tranforming pure white into transparent
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
@@ -444,8 +476,8 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
         
     }
-    /// draws interactive circle 
-    fn interact_circle(&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) {
+    /// by drawing an interactive circle in preview window , return a tuple with radius and cursor angular position  
+    fn interact_circle(&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) -> Option<(i32,f32)>{
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -480,9 +512,12 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 },
                     EventOption::Button(btn) => {
                                                 if btn.left {
-                                                    if filled { r = -r;}
-                                                    self.circle(x, y, r, color);
-                                                    break 'events 
+                                                    //if filled { r = -r;}
+                                                    //self.circle(x, y, r, color);
+                                                    let angle = (dx as f32/r as f32).asin();
+                                                    println!("{}",angle);
+                                                    return Some((r,angle))
+                                                    //break 'events 
                                                 }
                                                 if btn.right{
                                                     break 'events
@@ -493,7 +528,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                 }
           }
         }
-        
+        None
     }
 
     /// interactive paste 

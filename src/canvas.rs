@@ -311,7 +311,7 @@ impl Canvas {
             clear_click_callback(self, point);
         }
     }
-/*
+/* 
     /// simple undo 
     pub fn undo(&self) {
         let mut image = self.image.borrow_mut();
@@ -377,10 +377,10 @@ impl Canvas {
     }
     
     /// wrapper for interactive circle
-    pub fn interact_circle (&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) {
+    pub fn interact_circle (&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
-        image.interact_circle(x,y,color,filled,window);
+        image.interact_circle(x,y,color,window);
     }
 }
 

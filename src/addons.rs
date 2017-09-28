@@ -17,9 +17,9 @@ pub trait AddOnsToOrbimage {
     fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
     fn pixcol(&self, x:i32, y:i32) -> Color;
     fn pixraw(&self, x:i32, y:i32) -> u32;
-    fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window);
+    fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, width: i32, window: &mut orbtk::Window);
     fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut orbtk::Window);
-    fn interact_circle(&mut self, x: i32 , y: i32, color: Color, filled: bool, window: &mut orbtk::Window) -> Option<(i32,f32)>;
+    fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) -> Option<(i32,f32)>;
     fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut orbtk::Window);
     fn select_rect(&mut self, x: i32 , y: i32, window: &mut orbtk::Window) ->Option<Rect>;
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
@@ -353,6 +353,8 @@ impl AddOnsToOrbimage for orbimage::Image {
          let mut orbclient = window.inner.borrow_mut();
          let mut lx = 0;
          let mut ly = 0;
+         let mut x = x;
+         let mut y = y;
          let mut w = false;
         'events: loop{
             for event in orbclient.events() { 
@@ -369,7 +371,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     y+CANVASOFFSET,
                                                     lx,
                                                     ly+CANVASOFFSET,
-                                                    orbtk::Color::rgba(100, 100, 100, 0));
+                                                    orbtk::Color::rgba(100, 100, 100, 0),3);
                                                 }
                                                 w=true;
                                                 
@@ -377,15 +379,25 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 y+CANVASOFFSET,
                                                 evt.x,
                                                 evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 0));
+                                                orbtk::Color::rgba(100, 100, 100, 0),3);
                                                 lx=evt.x;
                                                 ly=evt.y-CANVASOFFSET;
                                                 
                                                 orbclient.sync();
                                                 },
                     EventOption::Button(btn) => {if btn.left {
+                                                    
+                                                    if lx < x {
+                                                        let tmp =x; x= lx; lx = tmp;
+                                                    } 
+                                                    
+                                                    if ly < y {
+                                                        let tmp = y; y=ly; ly= tmp;
+                                                    }
+                                                    
                                                     let dx=lx-x;
                                                     let dy=ly-y;
+                                                    //println!("{} {} {} {}",x,y,dx,dy);
                                                     return Some(Rect::new(x,y,dx as u32, dy as u32))
                                                 }
                                                 if btn.right{
@@ -403,7 +415,7 @@ impl AddOnsToOrbimage for orbimage::Image {
     }
 
     /// draws interactive rectangle 
-    fn interact_rect(&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) {
+    fn interact_rect(&mut self, x: i32 , y: i32, color: Color,filled:bool, width: i32, window: &mut orbtk::Window) {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -425,7 +437,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     y+CANVASOFFSET,
                                                     lx,
                                                     ly+CANVASOFFSET,
-                                                    orbtk::Color::rgba(100, 100, 100, 0));
+                                                    orbtk::Color::rgba(100, 100, 100, 0),0);
                                                 }
                                                 w=true;
                                                 
@@ -433,7 +445,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 y+CANVASOFFSET,
                                                 evt.x,
                                                 evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 0));
+                                                orbtk::Color::rgba(100, 100, 100, 0),0);
                                                 lx=evt.x;
                                                 ly=evt.y-CANVASOFFSET;
                                                 
@@ -458,10 +470,12 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                         }
                                                         break 'events
                                                     } else {
-                                                        self.line(x,y,lx,y,color);
-                                                        self.line(lx,y,lx,ly,color);
-                                                        self.line(lx,ly,x,ly,color);
-                                                        self.line(x,ly,x,y,color);
+                                                        for i in 0..width {
+                                                            self.line(x-i,y-i,lx+i,y-i,color);
+                                                            self.line(lx+i,y-i,lx+i,ly+i,color);
+                                                            self.line(lx+i,ly+i,x-i,ly+i,color);
+                                                            self.line(x-i,ly+i,x-i,y-i,color);
+                                                        }
                                                         break 'events
                                                     }
                                                 }
@@ -477,7 +491,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         
     }
     /// by drawing an interactive circle in preview window , return a tuple with radius and cursor angular position  
-    fn interact_circle(&mut self, x: i32 , y: i32, color: Color,filled:bool, window: &mut orbtk::Window) -> Option<(i32,f32)>{
+    fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) -> Option<(i32,f32)>{
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -512,10 +526,9 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 },
                     EventOption::Button(btn) => {
                                                 if btn.left {
-                                                    //if filled { r = -r;}
-                                                    //self.circle(x, y, r, color);
+                                                    
                                                     let angle = (dx as f32/r as f32).asin();
-                                                    println!("{}",angle);
+                                                    
                                                     return Some((r,angle))
                                                     //break 'events 
                                                 }
@@ -541,10 +554,10 @@ impl AddOnsToOrbimage for orbimage::Image {
          let height = buffer.height();
          let x = x;
          let y = y;
-         let data = buffer.into_data(); //&buffer.clone().into_data()
+         let data = buffer.clone().into_data(); //&buffer.clone().into_data()
         'events: loop{
             if w {
-                    orbclient.image(x, y + CANVASOFFSET, width, height, &data);
+                    orbclient.image(x - (width/2) as i32, y + CANVASOFFSET -(height/2) as i32, width, height, &data);
                     orbclient.sync();
                     w = false;
                 }
@@ -558,16 +571,16 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 if evt.y < CANVASOFFSET{
                                                     break 'events
                                                 };
-                                                orbclient.image(evt.x, evt.y, width, height, &data); 
+                                                //orbclient.image(evt.x , evt.y, width, height, &data); 
                                                 //x = evt.x;
                                                 //y = evt.y;
-                                                orbclient.sync();
+                                                //orbclient.sync();
                                                 break 'events;
                                                 },
                     EventOption::Button(btn) => {
                                                 if btn.left {
-                                                    self.image(x, y , width, height, &data);
-                                                    
+                                                    //self.image(x, y , width, height, &data); //without transparency
+                                                    self.paste_selection(x, y , opacity, buffer);
                                                     break 'events 
                                                 }
                                                 if btn.right{
@@ -609,7 +622,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     oy+CANVASOFFSET,
                                                     lx,
                                                     ly+CANVASOFFSET,
-                                                    orbtk::Color::rgba(100, 100, 100, 0));//alfa has to be 0 for trick to work
+                                                    orbtk::Color::rgba(100, 100, 100, 0),3);//alfa has to be 0 for trick to work
                                                 }
                                                 w=true;
                                                 lx=evt.x;
@@ -619,7 +632,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 oy+CANVASOFFSET,
                                                 evt.x,
                                                 evt.y,
-                                                orbtk::Color::rgba(100, 100, 100, 0));//alfa has to be 0 for trick to work
+                                                orbtk::Color::rgba(100, 100, 100, 0),3);//alfa has to be 0 for trick to work
                                                 
                                                 orbclient.sync();
                                                 
@@ -720,9 +733,10 @@ impl AddOnsToOrbimage for orbimage::Image {
 
 pub trait AddOnsToOrbclient {
     fn pixcol(&self, x:i32, y:i32) -> Color;
-    fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
-    fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
+    fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color, style: i32);
+    fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color, style: i32);
     fn circle_marquee(&mut self, x0: i32, y0: i32 , radius: i32 , color: Color);
+    fn rect_hollow(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color);
 }
 
 impl AddOnsToOrbclient for orbclient::Window{
@@ -736,7 +750,7 @@ impl AddOnsToOrbclient for orbclient::Window{
     }
     
     /// Draws ant_line - - -   
-    fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
+    fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color, style: i32) {
         let mut x = argx1;
         let mut y = argy1;
                 
@@ -757,7 +771,7 @@ impl AddOnsToOrbclient for orbclient::Window{
             old_color = self.pixcol(x,y);
             // rgb bitwise xor between old and new pixel color
             // New faster implementation xor-ing 32 bit internal color data   
-            // Attention :trick does not work as intended xor-ing entire 32bit color data, if new color alfa > 0!!
+            // Attention :trick does not work as intended xor-ing entire 32bit color data, if new color alpha > 0!!
             self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)}); 
             }
             
@@ -768,7 +782,7 @@ impl AddOnsToOrbclient for orbclient::Window{
             if err_tolerance > -dx { err -= dy; x += sx; }
             if err_tolerance < dy { err += dx; y += sy; }
             
-            if ct<3 {ct += 1;}  
+            if ct<style {ct += 1;}   //3
             else {ct = 0;}            
         }
         //self.sync();
@@ -776,12 +790,20 @@ impl AddOnsToOrbclient for orbclient::Window{
     }
     
     ///draws rectangular selection marquee
-    fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
-        self.ant_line(argx1,argy1,argx2,argy1,color);
-        self.ant_line(argx2,argy1,argx2,argy2,color);
-        self.ant_line(argx2,argy2,argx1,argy2,color);
-        self.ant_line(argx1,argy2,argx1,argy1,color);
+    fn rect_marquee(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color, style: i32) {
+        self.ant_line(argx1,argy1,argx2,argy1,color,style);
+        self.ant_line(argx2,argy1,argx2,argy2,color,style);
+        self.ant_line(argx2,argy2,argx1,argy2,color,style);
+        self.ant_line(argx1,argy2,argx1,argy1,color,style);
         //self.sync();
+    }
+    
+    ///draws hollow rectangle
+    fn rect_hollow(&mut self , argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
+        self.line(argx1,argy1,argx2,argy1,color);
+        self.line(argx2,argy1,argx2,argy2,color);
+        self.line(argx2,argy2,argx1,argy2,color);
+        self.line(argx1,argy2,argx1,argy1,color);
     }
 
     fn circle_marquee(&mut self, x0: i32, y0: i32 , radius: i32 , color: Color) {

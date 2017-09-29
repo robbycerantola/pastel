@@ -1,5 +1,3 @@
-//extern crate orbtk;
-//extern crate orbimage;
 extern crate orbclient;
 
 use orbtk::{ Button, Label, Point,  Rect,

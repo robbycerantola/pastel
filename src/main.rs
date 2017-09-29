@@ -1081,7 +1081,7 @@ fn main() {
     menuedit.add(&Separator::new());
 
     {
-        let action = Action::new("Copy");
+        let action = Action::new("Copy     Ctrl+C");
         let tool_clone = tool.clone();
         let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
@@ -1092,13 +1092,13 @@ fn main() {
     }
     
     {
-        let action = Action::new("Paste");
+        let action = Action::new("Paste    Ctrl+V");
         let tool_clone = tool.clone();
         let ntools_clone = ntools.clone();
         let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         *canvas_clone.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
-                        property_set(&ntools_clone["brush"],"Shape",2);
+                        //property_set(&ntools_clone["brush"],"Shape",2);
                         tool_clone.text.set("paste".to_owned());
                           });
         menuedit.add(&action);
@@ -1243,7 +1243,6 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        //canvas_clone.transformation("blur",0,0);
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
                              height: canvas_clone.rect.get().height-1}),"blur",0,0);
@@ -1470,9 +1469,25 @@ fn main() {
     let click_pos_clone = click_pos.clone();
     let selection_clone = selection.clone();
     let marquee_clone = marquee.clone();
-
+    let tool_clone = tool.clone();
+    
     canvas
-        .position(0, CANVASOFFSET) 
+        .position(0, CANVASOFFSET)
+        .on_shortcut(move |canvas: &Canvas, key: char| {
+            if cfg!(feature = "debug"){
+                println!("Emited {}",key);
+            }
+            if key == 'v' {
+                tool_clone.text.set("paste".to_owned());
+                canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+                    y: (canvas.rect.get().height/2) as i32});
+            }
+            if key == 'c' {
+                tool_clone.text.set("copy".to_owned());
+                canvas.emit_click(Point{x: 0, y: 0});
+            }
+            
+            }) 
         .on_right_click(move |_ , point:Point|{
                 if cfg!(feature = "debug"){
                     println!("Right click not implemented yet");
@@ -1483,6 +1498,7 @@ fn main() {
                 let mut ck=click_pos_clone.borrow_mut();
                 *ck = None;
                 })
+
         .on_click(move |canvas: &Canvas, point: Point| {
 
             let click = click_pos.clone();
@@ -1597,12 +1613,14 @@ fn main() {
                                                     &mut *window_clone
                                                     )}
                                     {
-                                        //image.polygon(point.x,point.y,r,56,color,true);
-                                        if filled == 1 {radius = -r;                                        
-                                        }else{radius=r;}
-                                        for i in 0..width {
-                                            image.circle(point.x, point.y, radius+i, color);
+                                        if filled == 1 {
+                                            radius = -r;
+                                            image.circle(point.x, point.y, radius, color);
+                                        }else{
+                                            radius=r;
+                                            image.wu_circle(point.x, point.y, radius, color);
                                         }
+                                        
                                  }                             
                                 },
                     "polygon" => {
@@ -1613,7 +1631,6 @@ fn main() {
                                      image.interact_circle(point.x,
                                                     point.y,
                                                     color,
-                                                    
                                                     &mut *window_clone
                                                     )}
                                     {

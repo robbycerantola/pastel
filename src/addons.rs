@@ -25,7 +25,8 @@ pub trait AddOnsToOrbimage {
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
     fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
     fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
-    fn wu_line(&mut self, x0: i32, y0: i32, rx1: i32, y1: i32, color: Color);
+    fn wu_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color);
+    fn wu_circle(&mut self, x0: i32, y0: i32, radius: i32, color: Color);
     fn polygon(&mut self, x: i32, y: i32, r: i32, sides: u32, angle: f32,color: Color, antialias: bool);
     
 }
@@ -243,6 +244,54 @@ impl AddOnsToOrbimage for orbimage::Image {
                 intery += gradient;
             } 
         }           
+    }
+
+    ///Draws antialiased circle
+    fn wu_circle (&mut self, x0: i32, y0: i32, radius: i32, color: Color){
+        let r = color.r();
+        let g = color.g();
+        let b = color.b();
+        let a = color.a();
+        let mut y =0;
+        let mut x = radius;
+        let mut d =0_f64;
+        
+        self.pixel (x0+x,y0+y,color);
+        self.pixel (x0-x,y0-y,color);
+        self.pixel (x0+y,y0-x,color);
+        self.pixel (x0-y,y0+x,color);
+        
+        while x > y {
+            let di = dist(radius,y);
+            if di < d { x -= 1;}
+            let col = Color::rgba(r,g,b,(a as f64*(1.0-di)) as u8);
+            let col2 = Color::rgba(r,g,b,(a as f64*di) as u8);
+            
+            self.pixel(x0+x, y0+y, col);
+            self.pixel(x0+x-1, y0+y, col2);//-
+            self.pixel(x0-x, y0+y, col);
+            self.pixel(x0-x+1, y0+y, col2);//+
+            self.pixel(x0+x, y0-y, col);
+            self.pixel(x0+x-1, y0-y, col2);//-
+            self.pixel(x0-x, y0-y, col);
+            self.pixel(x0-x+1, y0-y, col2);//+
+            
+            self.pixel(x0+y, y0+x, col);
+            self.pixel(x0+y, y0+x-1, col2);
+            self.pixel(x0-y, y0+x, col);
+            self.pixel(x0-y, y0+x-1, col2);
+            self.pixel(x0+y, y0-x, col);
+            self.pixel(x0+y, y0-x+1, col2);
+            self.pixel(x0-y, y0-x, col);
+            self.pixel(x0-y, y0-x+1, col2);
+            d = di;
+            y += 1;
+        }
+        
+        fn dist(r: i32, y: i32) -> f64{
+            let x :f64 = ((r*r-y*y)as f64).sqrt();
+            x.ceil()-x
+        }
     }
     
     ///Draws a regular polygon
@@ -571,10 +620,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 if evt.y < CANVASOFFSET{
                                                     break 'events
                                                 };
-                                                //orbclient.image(evt.x , evt.y, width, height, &data); 
-                                                //x = evt.x;
-                                                //y = evt.y;
-                                                //orbclient.sync();
+
                                                 break 'events;
                                                 },
                     EventOption::Button(btn) => {
@@ -589,13 +635,11 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("Option: {:?}", event_option)}
                                     else{()}
-                            
                 }
           }
         }
         
     }
-
     
     /// draws interactive polyline 
     fn interact_line(&mut self, x: i32 , y: i32, color: Color, width: i32, antialias: bool, window: &mut orbtk::Window) {
@@ -635,13 +679,11 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 orbtk::Color::rgba(100, 100, 100, 0),3);//alfa has to be 0 for trick to work
                                                 
                                                 orbclient.sync();
-                                                
-                                                     
                                                 },
                     EventOption::Button(btn) => {
                                                     if btn.left {
                                                         //quick and dirty workaround to trace thick lines
-                                                        //TODO implement new line method to deal with thickness properly
+                                                        //#TODO implement new line method to deal with thickness properly
                                                         for d in 0..width {
                                                             if antialias {
                                                                 self.wu_line(ox+d ,oy,lx+d, ly ,color);

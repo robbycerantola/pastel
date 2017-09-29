@@ -28,6 +28,7 @@ pub struct Canvas {
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
+    shortcut_callback: RefCell<Option<Arc<Fn(&Canvas, char)>>>,
 }
 
 impl Canvas {
@@ -48,7 +49,8 @@ impl Canvas {
             copy_buffer: RefCell::new(orbimage::Image::new(0,0)),
             click_callback: RefCell::new(None),
             right_click_callback: RefCell::new(None),
-            clear_click_callback: RefCell::new(None)
+            clear_click_callback: RefCell::new(None),
+            shortcut_callback:RefCell::new(None), 
         })
     }
 
@@ -311,6 +313,17 @@ impl Canvas {
             clear_click_callback(self, point);
         }
     }
+    
+    pub fn on_shortcut<T: Fn(&Self, char) + 'static>(&self, func: T) -> &Self {
+        *self.shortcut_callback.borrow_mut() = Some(Arc::new(func));
+        self
+    }
+    
+    pub fn emit_shortcut(&self, c: char) {
+        if let Some(ref shortcut_callback) = *self.shortcut_callback.borrow() {
+            shortcut_callback(self, c);
+        }
+    }
 /* 
     /// simple undo 
     pub fn undo(&self) {
@@ -446,9 +459,11 @@ impl Widget for Canvas {
                     self.undo();
                     *redraw = true;
                 }
-                if c == 'v' {
-                    self.paste_buffer( 100,100,100,);
-                    *redraw = true;
+                if ['v','c','x'].contains(&c) {
+                    //self.paste_buffer( 100,100,100,);
+                    //*redraw = true;
+                    self.emit_shortcut(c);
+                    
                 }
             },
 

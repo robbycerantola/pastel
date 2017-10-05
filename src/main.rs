@@ -3,7 +3,7 @@ simple image editor in Rust for Redox
 */
 
 #![allow(dead_code)]
-#![allow(unused_imports)]
+//#![allow(unused_imports)]
 #![allow(unused_variables)]
 
 extern crate orbtk;
@@ -17,8 +17,6 @@ use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
 use orbtk::dialogs::FileDialog;
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use orbtk::cell::CloneCell;
-
-//use orbclient::EventOption;
 
 use std::rc::Rc;
 use std::cell::{Cell, RefCell}; //, RefMut
@@ -37,7 +35,7 @@ mod palette;
 use palette::Palette;
 
 mod addons;
-use addons::{AddOnsToOrbimage,AddOnsToOrbclient};
+use addons::AddOnsToOrbimage;
 
 mod canvas;
 use canvas::Canvas;
@@ -105,7 +103,7 @@ fn main() {
     }
 
     //canvas default size
-    let mut size = MySize{x: 1024, y:500};    
+    let mut size = MySize{x: 1024, y:500};
 
     let filename;          //FIXME change filename type to Box so we can update
 
@@ -158,7 +156,7 @@ fn main() {
     //if pastel_copy_buffer.png exists load it into canvas copy_buffer
     //for copy/paste between instances 
     //let buffer: Rc<RefCell<orbimage::Image>> = Rc::new(RefCell::new(load_buffer("/tmp/pastel_copy_buffer.png")));
-    //*canvas.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
+    *canvas.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
     
     //implement GUI
     
@@ -208,25 +206,26 @@ fn main() {
     window.add(&red_label);
     
     {
-    red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
-    let swatch_clone = swatch.clone();
-    let green_bar_clone_r = green_bar.clone();
-    let blue_bar_clone_r = blue_bar.clone();
-    red_bar
-        .position(x+48, y)
-        .size(256, 16)
-        .on_click(move |red_bar: &ProgressBar, point: Point| {
-                      let progress = point.x * 100 / red_bar.rect.get().width as i32;
-                      red_label.text.set(format!("R: {}%", progress));
-                      red_bar.value.set(progress);
-                      //refresh color swatch
-                      let r = (progress as f32 * 2.56) as u8;
-                      let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
-                      let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
-                      
-                      swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
-                  });
-    window.add(&red_bar);
+        red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
+        let swatch_clone = swatch.clone();
+        let green_bar_clone_r = green_bar.clone();
+        let blue_bar_clone_r = blue_bar.clone();
+        let red_label = red_label.clone();
+        red_bar
+            .position(x+48, y)
+            .size(256, 16)
+            .on_click(move |red_bar: &ProgressBar, point: Point| {
+                          let progress = point.x * 100 / red_bar.rect.get().width as i32;
+                          red_label.text.set(format!("R: {}%", progress));
+                          red_bar.value.set(progress);
+                          //refresh color swatch
+                          let r = (progress as f32 * 2.56) as u8;
+                          let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
+                          let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
+                          
+                          swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
+                      });
+        window.add(&red_bar);
     }
     y += red_bar.rect.get().height as i32 + 2;
 
@@ -236,24 +235,25 @@ fn main() {
     window.add(&green_label);
 
     {
-    green_bar.fg.set(orbtk::Color::rgb(0,255,0));
-    let swatch_clone = swatch.clone();
-    let red_bar_clone_g = red_bar.clone();
-    let blue_bar_clone_g = blue_bar.clone();
-    green_bar
-        .position(x+48, y)
-        .size(256, 16)
-        .on_click(move |green_bar: &ProgressBar, point: Point| {
-                      let progress = point.x * 100 / green_bar.rect.get().width as i32;
-                      green_label.text.set(format!("G: {}%", progress ));
-                      green_bar.value.set(progress);
-                      //refresh color swatch
-                      let g = (progress as f32 * 2.56) as u8;
-                      let r = (red_bar_clone_g.value.get() as f32 * 2.56) as u8;
-                      let b = (blue_bar_clone_g.value.get() as f32 * 2.56) as u8;
-                      swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
-                  });
-    window.add(&green_bar);
+        green_bar.fg.set(orbtk::Color::rgb(0,255,0));
+        let swatch_clone = swatch.clone();
+        let red_bar_clone_g = red_bar.clone();
+        let blue_bar_clone_g = blue_bar.clone();
+        let green_label = green_label.clone();
+        green_bar
+            .position(x+48, y)
+            .size(256, 16)
+            .on_click(move |green_bar: &ProgressBar, point: Point| {
+                          let progress = point.x * 100 / green_bar.rect.get().width as i32;
+                          green_label.text.set(format!("G: {}%", progress ));
+                          green_bar.value.set(progress);
+                          //refresh color swatch
+                          let g = (progress as f32 * 2.56) as u8;
+                          let r = (red_bar_clone_g.value.get() as f32 * 2.56) as u8;
+                          let b = (blue_bar_clone_g.value.get() as f32 * 2.56) as u8;
+                          swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
+                      });
+        window.add(&green_bar);
     }
     y += green_bar.rect.get().height as i32 + 2;
 
@@ -263,26 +263,27 @@ fn main() {
     window.add(&blue_label);
     
     {
-    blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
-    let swatch_clone = swatch.clone();
-    let green_bar_clone_b = green_bar.clone();
-    let red_bar_clone_b = red_bar.clone();
-    blue_bar
-        .position(x+48, y)
-        .size(256, 16)
-        .on_click(move |blue_bar: &ProgressBar, point: Point| {
-                      let progress = point.x * 100 / blue_bar.rect.get().width as i32;
-                      blue_label.text.set(format!("B: {}%", progress));
-                      blue_bar.value.set(progress);
-                      //refresh color swatch
-                      let b = (progress as f32 * 2.56) as u8;
-                      let r = (red_bar_clone_b.value.get() as f32 * 2.56) as u8;
-                      let g = (green_bar_clone_b.value.get() as f32 * 2.56) as u8;
-                      //swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
-                      swatch_clone.color(orbtk::Color::rgb(r,g,b));
-                      
-                  });
-    window.add(&blue_bar);
+        blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
+        let swatch_clone = swatch.clone();
+        let green_bar_clone_b = green_bar.clone();
+        let red_bar_clone_b = red_bar.clone();
+        let blue_label = blue_label.clone();
+        blue_bar
+            .position(x+48, y)
+            .size(256, 16)
+            .on_click(move |blue_bar: &ProgressBar, point: Point| {
+                          let progress = point.x * 100 / blue_bar.rect.get().width as i32;
+                          blue_label.text.set(format!("B: {}%", progress));
+                          blue_bar.value.set(progress);
+                          //refresh color swatch
+                          let b = (progress as f32 * 2.56) as u8;
+                          let r = (red_bar_clone_b.value.get() as f32 * 2.56) as u8;
+                          let g = (green_bar_clone_b.value.get() as f32 * 2.56) as u8;
+                          //swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
+                          swatch_clone.color(orbtk::Color::rgb(r,g,b));
+                          
+                      });
+        window.add(&blue_bar);
     }
     y += blue_bar.rect.get().height as i32 + 10;
     
@@ -348,7 +349,7 @@ fn main() {
     window.add(&trans_bar);
     
 /*
-    // tool Volume nob
+    // tool Volume knob
     let volume_label = Label::new();
     volume_label.text("Volume: 1").position(x+380, 90).size(128, 16);
     //size_label.fg.set(orbtk::Color::rgb(0,0,255));
@@ -376,7 +377,8 @@ fn main() {
 */
 
     // create a new palette at x,y,width,height linked to swatch 
-    let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar,green_bar,blue_bar );
+    let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar,
+                            green_bar,blue_bar, red_label, green_label, blue_label);
     // show on window the standard palette
     palette.prepare(&window);
     
@@ -964,13 +966,13 @@ fn main() {
     }
 
     {
-        let action = Action::new("Open");
-        let home_dir_clone = home_dir.clone();
-        action.on_click(move |_action: &Action, _point: Point| {
-            //match dialog("Open", "path:",&home_dir_clone[..]) {
-              let mut f = FileDialog::new();
-                f.path=PathBuf::from(home_dir_clone.to_owned());
-              match f.exec() {
+    let action = Action::new("Open");
+    let home_dir_clone = home_dir.clone();
+    action.on_click(move |_action: &Action, _point: Point| {
+        //match dialog("Open", "path:",&home_dir_clone[..]) {
+            let mut f = FileDialog::new();
+            f.path=PathBuf::from(home_dir_clone.to_owned());
+            match f.exec() {
                 Some(response) => {
                                     println!("Open {:?} ", response);
                                     let path: &str ;//="";
@@ -985,7 +987,7 @@ fn main() {
                                                 .spawn()
                                                 .expect("Command executed with failing error code");
                                     },
-                None => println!("Cancelled"),
+                        None => println!("Cancelled"),
             }
         });
         menufile.add(&action);
@@ -1450,7 +1452,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.24, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.25, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1477,27 +1479,34 @@ fn main() {
             if cfg!(feature = "debug"){
                 println!("Emited {}",key);
             }
-            if key == 'v' {
-                tool_clone.text.set("paste".to_owned());
-                canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+            match key {
+            'v' => {
+                    tool_clone.text.set("paste".to_owned());
+                    canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
                     y: (canvas.rect.get().height/2) as i32});
-            }
-            if key == 'c' {
-                tool_clone.text.set("copy".to_owned());
-                canvas.emit_click(Point{x: 0, y: 0});
+                    canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+                    y: (canvas.rect.get().height/2) as i32});
+                   },
+            'c' => {
+                    tool_clone.text.set("copy".to_owned());
+                    canvas.emit_click(Point{x: 0, y: 0});
+                   },
+              _ => (),
             }
             
-            }) 
+        })
+         
         .on_right_click(move |_ , point:Point|{
-                if cfg!(feature = "debug"){
-                    println!("Right click not implemented yet");
-                }
-                })
-        .on_clear_click(move |_ , point:Point|{
+            if cfg!(feature = "debug"){
+                println!("Right click at {:?} not implemented yet",point);
+            }
+        })
+        
+        .on_clear_click(move |_ , _point:Point|{
             // clears last cursor position 
-                let mut ck=click_pos_clone.borrow_mut();
-                *ck = None;
-                })
+            let mut ck=click_pos_clone.borrow_mut();
+            *ck = None;
+        })
 
         .on_click(move |canvas: &Canvas, point: Point| {
 

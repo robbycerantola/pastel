@@ -1,14 +1,10 @@
-extern crate orbtk;
-
-use orbtk::{Color,  Point, ProgressBar,
-             Rect, Window,  ColorSwatch}; //Toolbar,Action, Button, Image, Label, Menu,ControlKnob,Toolbar, ToolbarIcon, Separator,TextBox,Renderer,
+use orbtk::{Color,  Point, ProgressBar, Rect, Window,  ColorSwatch, Label}; //Toolbar,Action, Button, Image, Label, Menu,ControlKnob,Toolbar, ToolbarIcon, Separator,TextBox,Renderer,
 use orbtk::traits::{Click, Place};  //Border, Enter, Text
-use std;
+
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 use std::io::Error;
 use std::path::{Path, PathBuf};
-
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -21,21 +17,29 @@ pub struct Palette {
     pub swatches : RefCell<Vec<Color>>,
     pub objects : RefCell<Vec<Arc<ColorSwatch>>>,
     rect : Cell<Rect>,
-    current_swatch: RefCell<std::sync::Arc<orbtk::ColorSwatch>> ,
+    current_swatch: RefCell<Arc<ColorSwatch>> ,
     pub order: Cell<usize>,
-    pub red_bar: RefCell<Arc<orbtk::ProgressBar>>,
-    pub green_bar: RefCell<Arc<orbtk::ProgressBar>>,
-    pub blue_bar: RefCell<Arc<orbtk::ProgressBar>>,
+    pub red_bar: RefCell<Arc<ProgressBar>>,
+    pub green_bar: RefCell<Arc<ProgressBar>>,
+    pub blue_bar: RefCell<Arc<ProgressBar>>,
+    pub red_label: RefCell<Arc<Label>>,
+    pub green_label: RefCell<Arc<Label>>,
+    pub blue_label: RefCell<Arc<Label>>,
+    
 }
 
 
 impl Palette {
 
     pub fn new (x: i32, y:i32, width:u32, height:u32, 
-                swatch: std::sync::Arc<orbtk::ColorSwatch>,
+                swatch: Arc<ColorSwatch>,
                  red_bar: Arc<ProgressBar>,
                  green_bar: Arc<ProgressBar>,
-                 blue_bar: Arc<ProgressBar> ) ->Arc<Self> {
+                 blue_bar: Arc<ProgressBar>,
+                 red_label: Arc<Label>,
+                 green_label: Arc<Label>,
+                 blue_label: Arc<Label>,
+                  ) ->Arc<Self> {
 
        Arc::new(Palette {
             swatches : RefCell::new(Vec::new()),
@@ -46,12 +50,15 @@ impl Palette {
             red_bar: RefCell::new(red_bar),
             green_bar: RefCell::new(green_bar),
             blue_bar: RefCell::new(blue_bar),
+            red_label: RefCell::new(red_label),
+            green_label: RefCell::new(green_label),
+            blue_label: RefCell::new(blue_label),
         })
     }
     
     pub fn prepare (&self,  window: &Window) {
                  
-        let mut s: std::sync::Arc<orbtk::ColorSwatch>;
+        let mut s: Arc<ColorSwatch>;
         let mut x: i32;
         let mut y: i32;
                 
@@ -108,14 +115,25 @@ impl Palette {
             let red_bar_clone = self.red_bar.clone();
             let green_bar_clone = self.green_bar.clone();
             let blue_bar_clone = self.blue_bar.clone();
+            let red_label_clone = self.red_label.clone();
+            let green_label_clone = self.green_label.clone();
+            let blue_label_clone = self.blue_label.clone();
             
             //on click change current color 
             let swatch_clone = self.current_swatch.clone();
             s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
                 swatch_clone.borrow().color(s_clone.read());  //color
-                red_bar_clone.borrow().value.set((s_clone.read().r() as f32 /2.55) as i32);
-                green_bar_clone.borrow().value.set((s_clone.read().g() as f32 /2.55) as i32);
-                blue_bar_clone.borrow().value.set((s_clone.read().b() as f32 /2.55) as i32);
+                
+                let r = (s_clone.read().r() as f32 /2.55) as i32;
+                let g = (s_clone.read().g() as f32 /2.55) as i32;
+                let b = (s_clone.read().b() as f32 /2.55) as i32;
+                red_bar_clone.borrow().value.set(r);
+                green_bar_clone.borrow().value.set(g);
+                blue_bar_clone.borrow().value.set(b);
+                red_label_clone.borrow_mut().text.set(format!("R: {}%", r));
+                green_label_clone.borrow_mut().text.set(format!("G: {}%", g));
+                blue_label_clone.borrow_mut().text.set(format!("B: {}%", b));
+                
             });
         
             id = window.add(&s);
@@ -164,14 +182,24 @@ impl Palette {
         let red_bar_clone = self.red_bar.clone();
         let green_bar_clone = self.green_bar.clone();
         let blue_bar_clone = self.blue_bar.clone();
+        let red_label_clone = self.red_label.clone();
+        let green_label_clone = self.green_label.clone();
+        let blue_label_clone = self.blue_label.clone();
          
         s.on_click(move |_swatch: &ColorSwatch, _point: Point| {
             
             swatch_clone.borrow_mut().color(s_clone.read());
             
-            red_bar_clone.borrow_mut().value.set((s_clone.read().r() as f32 /2.55) as i32);
-            green_bar_clone.borrow_mut().value.set((s_clone.read().g() as f32 /2.55) as i32);
-            blue_bar_clone.borrow_mut().value.set((s_clone.read().b() as f32 /2.55) as i32);
+            let r = (s_clone.read().r() as f32 /2.55) as i32;
+            let g = (s_clone.read().g() as f32 /2.55) as i32;
+            let b = (s_clone.read().b() as f32 /2.55) as i32;
+            red_bar_clone.borrow_mut().value.set(r);
+            green_bar_clone.borrow_mut().value.set(g);
+            blue_bar_clone.borrow_mut().value.set(b);
+            red_label_clone.borrow_mut().text.set(format!("R: {}%", r));
+            green_label_clone.borrow_mut().text.set(format!("G: {}%", g));
+            blue_label_clone.borrow_mut().text.set(format!("B: {}%", b));
+            
             
         });
         

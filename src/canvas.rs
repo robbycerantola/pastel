@@ -1,17 +1,18 @@
 //canvas widget based on image widget
 
 use image;
-use orbtk;
 use orbclient::{Color, Renderer};
-use orbimage;
-use std::cell::{Cell, RefCell};
-use std::path::Path;
-use std::sync::Arc;
+use orbimage::Image;
+use orbtk::Window;
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
 use orbtk::traits::{Click, Place};
 use orbtk::widgets::Widget;
+
+use std::cell::{Cell, RefCell};
+use std::path::Path;
+use std::sync::Arc;
 use std::slice;
 use std::io::Error;
 
@@ -21,10 +22,9 @@ use UNDODEPTH;
 
 pub struct Canvas {
     pub rect: Cell<Rect>,
-    pub image: RefCell<orbimage::Image>,
-    undo_image: RefCell<orbimage::Image>,
-    newundo_image: RefCell<Vec<orbimage::Image>>,
-    pub copy_buffer: RefCell<orbimage::Image>,
+    pub image: RefCell<Image>,
+    newundo_image: RefCell<Vec<Image>>,
+    pub copy_buffer: RefCell<Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
@@ -33,20 +33,19 @@ pub struct Canvas {
 
 impl Canvas {
     pub fn new(width: u32, height: u32) -> Arc<Self> {
-        Self::from_image(orbimage::Image::new(width, height))
+        Self::from_image(Image::new(width, height))
     }
 
     pub fn from_color(width: u32, height: u32, color: Color) -> Arc<Self> {
-        Self::from_image(orbimage::Image::from_color(width, height, color))
+        Self::from_image(Image::from_color(width, height, color))
     }
 
-    pub fn from_image(image: orbimage::Image) -> Arc<Self> {
+    pub fn from_image(image: Image) -> Arc<Self> {
         Arc::new(Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
-            undo_image: RefCell::new(orbimage::Image::new(image.width(),image.height())),
-            newundo_image: RefCell::new(vec!(orbimage::Image::new(image.width(),image.height()))),
+            newundo_image: RefCell::new(vec!(Image::new(image.width(),image.height()))),
             image: RefCell::new(image),
-            copy_buffer: RefCell::new(orbimage::Image::new(0,0)),
+            copy_buffer: RefCell::new(Image::new(0,0)),
             click_callback: RefCell::new(None),
             right_click_callback: RefCell::new(None),
             clear_click_callback: RefCell::new(None),
@@ -55,7 +54,7 @@ impl Canvas {
     }
 
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Arc<Self>, String> {
-        Ok(Self::from_image(orbimage::Image::from_path(path)?))
+        Ok(Self::from_image(Image::from_path(path)?))
     }
     
     pub fn save(&self, filename: &String) -> Result <i32, Error>{
@@ -115,7 +114,7 @@ impl Canvas {
 
 /*
     ///crop new image from curent canvas (copy)
-    pub fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
+    pub fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> Image {
         let image = self.image.borrow();
         let data = image.data();
         let mut vec = vec![];
@@ -126,7 +125,7 @@ impl Canvas {
             }
         }
         //println!("len {} w*h {}",vec.len(), w*h);
-        orbimage::Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap()
+        Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap()
     }
    
     ///return rgba color of pixel at canvas position (x,y)
@@ -196,7 +195,7 @@ impl Canvas {
 
 
     /// apply some transformation to an image 
-    pub fn trans_image (&self, image_selection: orbimage::Image, cod: &str, a: i32, b: i32) -> Vec<Color> {
+    pub fn trans_image (&self, image_selection: Image, cod: &str, a: i32, b: i32) -> Vec<Color> {
         let width = image_selection.width() as u32;
         let height = image_selection.height() as u32;
         //get image data in form of [Color] slice
@@ -224,6 +223,7 @@ impl Canvas {
              "flip_vertical"   => image::imageops::flip_vertical(&imgbuf),
              "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
              "rotate90"        => image::imageops::rotate90(&imgbuf),
+       //      "rotate"          => raster::transform::rotate(&mut imgbuf,45,Color::rgba(0,0,0,0)),
              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
              "grayscale"       => self.gray2rgba(image::imageops::colorops::grayscale(&imgbuf),
@@ -249,7 +249,7 @@ impl Canvas {
             g = vec_image_buffer[i+1];
             b = vec_image_buffer[i+2];
             a = vec_image_buffer[i+3];
-            new_slice.push(orbtk::Color::rgba(b, g, r, a)); //taking care of byte order
+            new_slice.push(Color::rgba(b, g, r, a)); //taking care of byte order
             i += 4;
         }
         new_slice
@@ -371,7 +371,7 @@ impl Canvas {
     }
     
     /// wrapper for paste_selection (paste an external image)
-    pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, newimage: orbimage::Image, ){
+    pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, newimage: Image, ){
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.paste_selection(x,y,opacity,newimage);
@@ -383,14 +383,14 @@ impl Canvas {
         image.paste_selection(x, y, opacity, self.copy_buffer.borrow().clone());
     }
         /// wrapper interactive paste
-    pub fn interact_paste (&self, x: i32, y:i32, opacity: u8, window: &mut orbtk::Window){
+    pub fn interact_paste (&self, x: i32, y:i32, opacity: u8, window: &mut Window){
         let mut image = self.image.borrow_mut();
         image.interact_paste(x, y, opacity, self.copy_buffer.borrow().clone(), window);
         
     }
     
     /// wrapper for interactive circle
-    pub fn interact_circle (&mut self, x: i32 , y: i32, color: Color, window: &mut orbtk::Window) {
+    pub fn interact_circle (&mut self, x: i32 , y: i32, color: Color, window: &mut Window) {
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.interact_circle(x,y,color,window);
@@ -450,9 +450,8 @@ impl Widget for Canvas {
                         let click_point= Point{x:0,y:0};
                         self.emit_clear_click(click_point);
                     } 
-                     
-                    }
-                },
+                }
+            },
              // Ctrl+z => Undo   
             Event::Text {c} => {
                 if c == 'z' {
@@ -460,16 +459,11 @@ impl Widget for Canvas {
                     *redraw = true;
                 }
                 if ['v','c','x'].contains(&c) {
-                    //self.paste_buffer( 100,100,100,);
-                    //*redraw = true;
                     self.emit_shortcut(c);
-                    
                 }
             },
-
             _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {()}, 
         }
-
         focused
     }
 

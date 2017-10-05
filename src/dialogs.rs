@@ -1,9 +1,6 @@
-extern crate orbclient;
-
-use orbtk::{ Button, Label, Point,  Rect,
-            TextBox, Window}; //Color, Action,ControlKnob, Image, Menu, ProgressBar, Separator, Renderer
+use orbclient::WindowFlag;
+use orbtk::{ Button, Label, Point,  Rect, TextBox, Window}; //Color, Action,ControlKnob, Image, Menu, ProgressBar, Separator, Renderer
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
-
 
 //dialog window
 pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
@@ -197,7 +194,7 @@ pub fn new_dialog(title: &str) -> Option<String> {
 pub fn popup(title: &str, text: &str) {
             
     let mut new_window = Window::new_flags(Rect::new(200, 200, 300, 100),
-                                    title,&[orbclient::WindowFlag::Resizable,orbclient::WindowFlag::Async ]);
+                                    title,&[WindowFlag::Resizable,WindowFlag::Async ]);
     let x = 10;
     let mut y = 10;
 

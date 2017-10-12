@@ -3,7 +3,7 @@ simple image editor in Rust for Redox
 */
 
 #![allow(dead_code)]
-#![allow(unused_imports)]
+//#![allow(unused_imports)]
 #![allow(unused_variables)]
 
 extern crate orbtk;
@@ -13,12 +13,10 @@ extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             Toolbar, ToolbarIcon, Rect, Separator,
-             Window, Renderer, ColorSwatch};  //TextBox,ControlKnob,InnerWindow,
+             Window, Renderer, ColorSwatch, Marquee};  //TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use orbtk::cell::CloneCell;
-
-//use orbclient::EventOption;
 
 use std::rc::Rc;
 use std::cell::{Cell, RefCell}; //, RefMut
@@ -76,6 +74,9 @@ struct MySize {
 //canvas position
 const CANVASOFFSET: i32 = 200;
 
+// undo stack depth
+const UNDODEPTH :usize = 10;
+
 fn main() {
 
     // deal with icons path under diferent os
@@ -102,7 +103,7 @@ fn main() {
     }
 
     //canvas default size
-    let mut size = MySize{x: 1024, y:500};    
+    let mut size = MySize{x: 1024, y:500};
 
     let filename;          //FIXME change filename type to Box so we can update
 
@@ -134,22 +135,23 @@ fn main() {
     //create new tool with some properties and initial values
     let mut ntools = HashMap::new();
     ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
-    ntools.insert("line",vec![Property::new("Opacity",100)]);
-    ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100)]); 
+    ntools.insert("line",vec![Property::new("Opacity",100),Property::new("Antialias",1)]);
+    ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100),Property::new("Antialias",1)]); 
     ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
-    ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Filled",1)]);
-    ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Filled",0)]);
+    ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
+    ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
     ntools.insert("paste",vec![Property::new("Opacity",100)]);
-    ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key' 
+    ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key'
+    ntools.insert("polygon",vec![Property::new("Opacity",100),Property::new("Sides",6),Property::new("Antialias",1)]); 
 
     //use invisible Label for storing current active tool
     let tool = Label::new();
     tool.text("pen");
     
     //define current selection
-    let selection :  Rc<RefCell<Option<Rect>>> = Rc::new(RefCell::new(Some(Rect::new(0,0,size.x,size.y))));  //Rect::new(0,0,0,0);
-    
+    //let selection :  Rc<RefCell<Option<Rect>>> = Rc::new(RefCell::new(Some(Rect::new(0,0,size.x,size.y))));  //Rect::new(0,0,0,0);
+    let selection :  Rc<RefCell<Option<Rect>>> = Rc::new(RefCell::new(None));
     
     //if pastel_copy_buffer.png exists load it into canvas copy_buffer
     //for copy/paste between instances 
@@ -183,6 +185,9 @@ fn main() {
     let mut win = Box::new(Window::from_inner(orb_window.take().unwrap()));
     */
     
+    //define marquee widget (visible selection rectangle)
+    let marquee = Marquee::new();
+    marquee.visible.set(false);
 
     // current color swatch 
     let swatch = ColorSwatch::new();
@@ -201,25 +206,26 @@ fn main() {
     window.add(&red_label);
     
     {
-    red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
-    let swatch_clone = swatch.clone();
-    let green_bar_clone_r = green_bar.clone();
-    let blue_bar_clone_r = blue_bar.clone();
-    red_bar
-        .position(x+48, y)
-        .size(256, 16)
-        .on_click(move |red_bar: &ProgressBar, point: Point| {
-                      let progress = point.x * 100 / red_bar.rect.get().width as i32;
-                      red_label.text.set(format!("R: {}%", progress));
-                      red_bar.value.set(progress);
-                      //refresh color swatch
-                      let r = (progress as f32 * 2.56) as u8;
-                      let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
-                      let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
-                      
-                      swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
-                  });
-    window.add(&red_bar);
+        red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
+        let swatch_clone = swatch.clone();
+        let green_bar_clone_r = green_bar.clone();
+        let blue_bar_clone_r = blue_bar.clone();
+        let red_label = red_label.clone();
+        red_bar
+            .position(x+48, y)
+            .size(256, 16)
+            .on_click(move |red_bar: &ProgressBar, point: Point| {
+                          let progress = point.x * 100 / red_bar.rect.get().width as i32;
+                          red_label.text.set(format!("R: {}%", progress));
+                          red_bar.value.set(progress);
+                          //refresh color swatch
+                          let r = (progress as f32 * 2.56) as u8;
+                          let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
+                          let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
+                          
+                          swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
+                      });
+        window.add(&red_bar);
     }
     y += red_bar.rect.get().height as i32 + 2;
 
@@ -229,24 +235,25 @@ fn main() {
     window.add(&green_label);
 
     {
-    green_bar.fg.set(orbtk::Color::rgb(0,255,0));
-    let swatch_clone = swatch.clone();
-    let red_bar_clone_g = red_bar.clone();
-    let blue_bar_clone_g = blue_bar.clone();
-    green_bar
-        .position(x+48, y)
-        .size(256, 16)
-        .on_click(move |green_bar: &ProgressBar, point: Point| {
-                      let progress = point.x * 100 / green_bar.rect.get().width as i32;
-                      green_label.text.set(format!("G: {}%", progress ));
-                      green_bar.value.set(progress);
-                      //refresh color swatch
-                      let g = (progress as f32 * 2.56) as u8;
-                      let r = (red_bar_clone_g.value.get() as f32 * 2.56) as u8;
-                      let b = (blue_bar_clone_g.value.get() as f32 * 2.56) as u8;
-                      swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
-                  });
-    window.add(&green_bar);
+        green_bar.fg.set(orbtk::Color::rgb(0,255,0));
+        let swatch_clone = swatch.clone();
+        let red_bar_clone_g = red_bar.clone();
+        let blue_bar_clone_g = blue_bar.clone();
+        let green_label = green_label.clone();
+        green_bar
+            .position(x+48, y)
+            .size(256, 16)
+            .on_click(move |green_bar: &ProgressBar, point: Point| {
+                          let progress = point.x * 100 / green_bar.rect.get().width as i32;
+                          green_label.text.set(format!("G: {}%", progress ));
+                          green_bar.value.set(progress);
+                          //refresh color swatch
+                          let g = (progress as f32 * 2.56) as u8;
+                          let r = (red_bar_clone_g.value.get() as f32 * 2.56) as u8;
+                          let b = (blue_bar_clone_g.value.get() as f32 * 2.56) as u8;
+                          swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
+                      });
+        window.add(&green_bar);
     }
     y += green_bar.rect.get().height as i32 + 2;
 
@@ -256,26 +263,27 @@ fn main() {
     window.add(&blue_label);
     
     {
-    blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
-    let swatch_clone = swatch.clone();
-    let green_bar_clone_b = green_bar.clone();
-    let red_bar_clone_b = red_bar.clone();
-    blue_bar
-        .position(x+48, y)
-        .size(256, 16)
-        .on_click(move |blue_bar: &ProgressBar, point: Point| {
-                      let progress = point.x * 100 / blue_bar.rect.get().width as i32;
-                      blue_label.text.set(format!("B: {}%", progress));
-                      blue_bar.value.set(progress);
-                      //refresh color swatch
-                      let b = (progress as f32 * 2.56) as u8;
-                      let r = (red_bar_clone_b.value.get() as f32 * 2.56) as u8;
-                      let g = (green_bar_clone_b.value.get() as f32 * 2.56) as u8;
-                      //swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
-                      swatch_clone.color(orbtk::Color::rgb(r,g,b));
-                      
-                  });
-    window.add(&blue_bar);
+        blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
+        let swatch_clone = swatch.clone();
+        let green_bar_clone_b = green_bar.clone();
+        let red_bar_clone_b = red_bar.clone();
+        let blue_label = blue_label.clone();
+        blue_bar
+            .position(x+48, y)
+            .size(256, 16)
+            .on_click(move |blue_bar: &ProgressBar, point: Point| {
+                          let progress = point.x * 100 / blue_bar.rect.get().width as i32;
+                          blue_label.text.set(format!("B: {}%", progress));
+                          blue_bar.value.set(progress);
+                          //refresh color swatch
+                          let b = (progress as f32 * 2.56) as u8;
+                          let r = (red_bar_clone_b.value.get() as f32 * 2.56) as u8;
+                          let g = (green_bar_clone_b.value.get() as f32 * 2.56) as u8;
+                          //swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
+                          swatch_clone.color(orbtk::Color::rgb(r,g,b));
+                          
+                      });
+        window.add(&blue_bar);
     }
     y += blue_bar.rect.get().height as i32 + 10;
     
@@ -341,7 +349,7 @@ fn main() {
     window.add(&trans_bar);
     
 /*
-    // tool Volume nob
+    // tool Volume knob
     let volume_label = Label::new();
     volume_label.text("Volume: 1").position(x+380, 90).size(128, 16);
     //size_label.fg.set(orbtk::Color::rgb(0,0,255));
@@ -369,7 +377,8 @@ fn main() {
 */
 
     // create a new palette at x,y,width,height linked to swatch 
-    let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar,green_bar,blue_bar );
+    let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar,
+                            green_bar,blue_bar, red_label, green_label, blue_label);
     // show on window the standard palette
     palette.prepare(&window);
     
@@ -392,10 +401,12 @@ fn main() {
     match Image::from_path( "pastel100.png" ) {
         Ok(image) => {
             image.position(900, 10);
+            /*
             image.on_click(move |_image: &Image, _point: Point| {
                                popup("Ciao",
                                   "Pastel is work in progress,\nplease be patient....");
                            });
+            */
             window.add(&image);
         }
         Err(err) => {
@@ -432,6 +443,8 @@ fn main() {
     let mut toolbar3 = Toolbar::new();
     
     let y = 25;
+
+
     match ToolbarIcon::from_path("pencil1.png") {
         Ok(image) => {
             image.position(x, y)
@@ -662,11 +675,14 @@ fn main() {
                                tool_clone.text.set("rectangle".to_owned());
                                
                                //get previous settings
-                               size_bar_clone.visible.set(false);
-                               size_label_clone.visible.set(false);
+                               size_bar_clone.visible.set(true);
+                               size_label_clone.visible.set(true);
                                let o = property_get(&ntools_clone["rectangle"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
+                               let w = property_get(&ntools_clone["rectangle"],"Size").unwrap();
+                               size_bar_clone.value.set(w);
+                               size_label_clone.text(format!("Size: {}",w));
                                
                                //toggle tool in toolbar
                                unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
@@ -719,7 +735,48 @@ fn main() {
             window.add(&image);
             toolbar_obj.push(image.clone());
 
-            //x += image.rect.get().width as i32 + 2;
+            x += image.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+
+    match ToolbarIcon::from_path("select.png") {
+        Ok(image) => {
+            image.position(x, y)
+                .text("Select canvas region".to_owned());
+                
+            let tool_clone = tool.clone();
+            let size_bar_clone = size_bar.clone();
+            //let trans_bar_clone = trans_bar.clone();
+            //let ntools_clone = ntools.clone();
+            let size_label_clone = size_label.clone();
+            let trans_label_clone = trans_label.clone();
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
+            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+                               tool_clone.text.set("marquee".to_owned());
+
+                               size_bar_clone.visible.set(false);
+                               size_label_clone.visible.set(false);
+
+                               //let o = property_get(&ntools_clone["marquee"],"Opacity").unwrap();
+                               //trans_bar_clone.value.set(o);
+                               //trans_label_clone.text(format!("Opacity: {}%",o));
+                               //toggle tool in toolbar TODO move into Toolbar
+                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               //make invisible toolbar2  TODO move into Toolbar
+                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               //make toolbar3 invisible
+                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                           });
+            
+            window.add(&image);
+            toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
+
+           // x += image.rect.get().width as i32 + 2;
         }
         Err(err) => {
             println!("Error loading toolbar element {}",err);
@@ -909,13 +966,13 @@ fn main() {
     }
 
     {
-        let action = Action::new("Open");
-        let home_dir_clone = home_dir.clone();
-        action.on_click(move |_action: &Action, _point: Point| {
-            //match dialog("Open", "path:",&home_dir_clone[..]) {
-              let mut f = FileDialog::new();
-                f.path=PathBuf::from(home_dir_clone.to_owned());
-              match f.exec() {
+    let action = Action::new("Open");
+    let home_dir_clone = home_dir.clone();
+    action.on_click(move |_action: &Action, _point: Point| {
+        //match dialog("Open", "path:",&home_dir_clone[..]) {
+            let mut f = FileDialog::new();
+            f.path=PathBuf::from(home_dir_clone.to_owned());
+            match f.exec() {
                 Some(response) => {
                                     println!("Open {:?} ", response);
                                     let path: &str ;//="";
@@ -930,7 +987,7 @@ fn main() {
                                                 .spawn()
                                                 .expect("Command executed with failing error code");
                                     },
-                None => println!("Cancelled"),
+                        None => println!("Cancelled"),
             }
         });
         menufile.add(&action);
@@ -986,7 +1043,7 @@ fn main() {
     //Menu entries for edit
     
     {
-        let action = Action::new("Undo");
+        let action = Action::new("Undo     Ctrl+Z");
         let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.undo();
@@ -1010,19 +1067,14 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         let size_clone = size.clone();
+        let marquee_clone = marquee.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         
-                        println!("{:?}",selection_clone);
-                        
-                        /*match selection_clone.borrow() {
-                            Some(_) => {
-                                        canvas_clone.undo();
-                                        *selection_clone.borrow_mut()=None;
-                                        },
-                            None    => (),
-                        }*/
-                        
-                        *selection_clone.borrow_mut()=Some(Rect{x:0, y:0, width:size_clone.x, height: size_clone.y});
+                        //println!("{:?}",selection_clone);
+                                                                       
+                        //*selection_clone.borrow_mut()=Some(Rect{x:0, y:0, width:size_clone.x, height: size_clone.y});
+                        *selection_clone.borrow_mut()=None;
+                        marquee_clone.visible.set(false);
                         
                         });
         menuedit.add(&action);
@@ -1031,22 +1083,24 @@ fn main() {
     menuedit.add(&Separator::new());
 
     {
-        let action = Action::new("Copy");
+        let action = Action::new("Copy     Ctrl+C");
         let tool_clone = tool.clone();
-        let selection_clone = selection.clone();
+        let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         tool_clone.text.set("copy".to_owned());
-                        
+                        canvas_clone.emit_click(Point{x:0,y:0}); //trigger buffer saving without clicking effectively on canvas
                           });
         menuedit.add(&action);
     }
     
     {
-        let action = Action::new("Paste");
+        let action = Action::new("Paste    Ctrl+V");
         let tool_clone = tool.clone();
         let ntools_clone = ntools.clone();
+        let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        property_set(&ntools_clone["brush"],"Shape",2);
+                        *canvas_clone.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
+                        //property_set(&ntools_clone["brush"],"Shape",2);
                         tool_clone.text.set("paste".to_owned());
                           });
         menuedit.add(&action);
@@ -1120,7 +1174,7 @@ fn main() {
         let action = Action::new("Polyline");
         let tool_clone = tool.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-
+                            
                             tool_clone.text.set("polyline".to_owned());
                         });
         menutools.add(&action);
@@ -1161,7 +1215,24 @@ fn main() {
                         });
         menutools.add(&action);
     }
-    
+ 
+    {
+        let action = Action::new("Polygon");
+        let tool_clone = tool.clone();
+        let ntools_clone = ntools.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            match dialog("Regular polygon", "sides:","3") {
+                            Some(response) => {
+                                property_set(&ntools_clone["polygon"],"Sides",response.parse::<i32>().unwrap());
+                                tool_clone.text.set("polygon".to_owned());
+                            },
+                        
+                            None => {println!("Cancelled");},
+                        }
+                            
+                        });
+        menutools.add(&action);
+    }    
 
     //Menu image
     let menuimage = Menu::new("Image");
@@ -1174,8 +1245,9 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        //canvas_clone.transformation("blur",0,0);
-                        canvas_clone.trans_selection(selection_clone.borrow().unwrap(),"blur",0,0);
+                        canvas_clone.trans_selection(selection_clone.borrow()
+                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                             height: canvas_clone.rect.get().height-1}),"blur",0,0);
                     });
         menuimage.add(&action);
     }
@@ -1185,7 +1257,9 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow().unwrap(),"unsharpen",0,0);
+                        canvas_clone.trans_selection(selection_clone.borrow()
+                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                             height: canvas_clone.rect.get().height-1}),"unsharpen",0,0);
                     });
         menuimage.add(&action);
     }
@@ -1195,7 +1269,9 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow().unwrap(),"flip_vertical",0,0);
+                        canvas_clone.trans_selection(selection_clone.borrow()
+                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                             height: canvas_clone.rect.get().height-1}),"flip_vertical",0,0);
                     });
         menuimage.add(&action);
     }
@@ -1205,7 +1281,9 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow().unwrap(),"flip_horizontal",0,0);
+                        canvas_clone.trans_selection(selection_clone.borrow()
+                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                             height: canvas_clone.rect.get().height-1}),"flip_horizontal",0,0);
                     });
         menuimage.add(&action);
     }
@@ -1214,8 +1292,18 @@ fn main() {
         let action = Action::new("Rotate 90");
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
+        let marquee_clone = marquee.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow().unwrap(),"rotate90",0,0);
+                        canvas_clone.trans_selection(selection_clone.borrow()
+                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                             height: canvas_clone.rect.get().height-1}),"rotate90",0,0);
+                        //rotate also selection
+                        let rect = selection_clone.borrow().unwrap();
+                        *selection_clone.borrow_mut() = Some(Rect{x:rect.x, y:rect.y, width: rect.height, height: rect.width});
+                        //and marquee
+                        marquee_clone.size(rect.height, rect.width);
+                            
+                        
                     });
         menuimage.add(&action);
     }
@@ -1225,7 +1313,9 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow().unwrap(),"brighten",0,0);
+                        canvas_clone.trans_selection(selection_clone.borrow()
+                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                             height: canvas_clone.rect.get().height-1}),"brighten",0,0);
                     });
         menuimage.add(&action);
     }
@@ -1235,7 +1325,9 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow().unwrap(),"darken",0,0);
+                        canvas_clone.trans_selection(selection_clone.borrow()
+                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                             height: canvas_clone.rect.get().height-1}),"darken",0,0);
                     });
         menuimage.add(&action);
     }
@@ -1360,7 +1452,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.21, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.25, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1377,19 +1469,45 @@ fn main() {
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
     let window_clone = &mut window as *mut Window;
     let click_pos_clone = click_pos.clone();
-    //let mut selection_clone = selection.clone();
+    let selection_clone = selection.clone();
+    let marquee_clone = marquee.clone();
+    let tool_clone = tool.clone();
+    
     canvas
-        .position(0, CANVASOFFSET) 
+        .position(0, CANVASOFFSET)
+        .on_shortcut(move |canvas: &Canvas, key: char| {
+            if cfg!(feature = "debug"){
+                println!("Emited {}",key);
+            }
+            match key {
+            'v' => {
+                    tool_clone.text.set("paste".to_owned());
+                    canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+                    y: (canvas.rect.get().height/2) as i32});
+                    canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+                    y: (canvas.rect.get().height/2) as i32});
+                   },
+            'c' => {
+                    tool_clone.text.set("copy".to_owned());
+                    canvas.emit_click(Point{x: 0, y: 0});
+                   },
+              _ => (),
+            }
+            
+        })
+         
         .on_right_click(move |_ , point:Point|{
-                if cfg!(feature = "debug"){
-                    println!("Right click not implemented yet");
-                }
-                })
-        .on_clear_click(move |_ , point:Point|{
+            if cfg!(feature = "debug"){
+                println!("Right click at {:?} not implemented yet",point);
+            }
+        })
+        
+        .on_clear_click(move |_ , _point:Point|{
             // clears last cursor position 
-                let mut ck=click_pos_clone.borrow_mut();
-                *ck = None;
-                })
+            let mut ck=click_pos_clone.borrow_mut();
+            *ck = None;
+        })
+
         .on_click(move |canvas: &Canvas, point: Point| {
 
             let click = click_pos.clone();
@@ -1397,7 +1515,8 @@ fn main() {
             //let buffer_clone = buffer.clone();
             let swatch_clone = swatch.clone();
             let u = tool.clone().text.get();
-            let mut selection_clone = selection.clone();
+            let selection_clone = selection_clone.clone();
+            
             {
                 let mut prev_opt = click.borrow_mut();
                 //let mut bf = buffer_clone.borrow_mut();
@@ -1410,7 +1529,6 @@ fn main() {
                 
                 //tools that dont need prev_position
                 match tool.clone().text.get().as_ref() {
-                    
                     "pen"  => canvas.image.borrow_mut().pixel(point.x, point.y, color),
                     "brush"=> {
                                 match property_get(&ntools.clone()["brush"],"Shape") {
@@ -1418,9 +1536,7 @@ fn main() {
                                                     color),
                                     Some(1) => canvas.image.borrow_mut().rect(point.x ,point.y,size as u32, size as u32,
                                                     color),
-                                    Some(2) => //canvas.image.borrow_mut().paste_selection(point.x,point.y,
-                                               //     a.clone(), bf.clone()),
-                                               canvas.paste_buffer(point.x,point.y,
+                                    Some(2) => canvas.paste_buffer(point.x,point.y,
                                                     a.clone()),
                                     Some(3) => canvas.image.borrow_mut().smooth_circle(point.x,point.y,
                                                     size as u32, color),
@@ -1431,68 +1547,107 @@ fn main() {
                "rectangle" => {                   
                                 canvas.undo_save();
                                 let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
+                                let width = property_get(&ntools.clone()["rectangle"],"Size").unwrap();
                                 unsafe{
                                     canvas.image.borrow_mut().interact_rect(point.x,
                                                     point.y,
                                                     color,
                                                     filled == 1,
+                                                    width,
                                                     &mut *window_clone
                                                     );
                                 }
                                },
-                "polyline" => {canvas.undo_save();
+                "polyline" => { 
+                                canvas.undo_save();
                                 let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
+                                let antialias = property_get(&ntools.clone()["polyline"],"Antialias").unwrap();
                                 unsafe{
                                         canvas.image.borrow_mut().interact_line(point.x,
                                                     point.y,
                                                     color,
                                                     width,
+                                                    antialias == 1,
                                                     &mut *window_clone
                                                     );
-                                    }   
-                                },
+                                }
+                               },
                     "copy" =>  {
                                     let mut image = canvas.image.borrow_mut();
-                                    if let Some(selection) = unsafe { 
+                                    match *selection_clone.borrow() {
+                                        Some(selection) => {
+                                             *canvas.copy_buffer.borrow_mut() = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
+                                             //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
+                                             let newcanvas= Canvas::from_image(canvas.copy_buffer.borrow().clone());
+                                             let path = "/tmp/pastel_copy_buffer.png".to_string();
+                                             if let Ok(_) = newcanvas.save(&path){}
+                                         },
+                                         None => if let Some(selection) = unsafe { 
                                                                 image.select_rect(point.x,
                                                                     point.y,&mut *window_clone)
                                                              } {
-                                         //*bf = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
                                          *canvas.copy_buffer.borrow_mut() = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
                                          //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
                                          let newcanvas= Canvas::from_image(canvas.copy_buffer.borrow().clone());
                                          let path = "/tmp/pastel_copy_buffer.png".to_string();
                                          if let Ok(_) = newcanvas.save(&path){}
+                                        },
                                     }
                                 },
-                   "marquee"=> {    canvas.undo_save();
+                   "marquee"=> {    marquee_clone.visible.set(false);
+                                    canvas.undo_save();
                                     let mut image = canvas.image.borrow_mut();
                                     if let Some(selection) = unsafe{image.select_rect(point.x,
                                                     point.y,&mut *window_clone)}
                                         {
-                                                    *selection_clone.borrow_mut()= Some(selection);
-                                                    //image.rect(selection.x, selection.y, selection.width, selection.height, orbtk::Color::rgba(100, 000, 000, 100));
-                                                    /*let image_selection = image.copy_selection(selection.x, selection.y, selection.width, selection.height);
-                                                    let new_image = canvas.trans_image(image_selection, "blur",0,0);
-                                                    //draw slice into canvas at position x y 
-                                                    image.image(selection.x, selection.y, selection.width, selection.height, &new_image[..]);
-                                                    */
-                                         }
+                                        *selection_clone.borrow_mut()= Some(selection);
+                                        marquee_clone.position(selection.x,selection.y+CANVASOFFSET)
+                                                    .size(selection.width,selection.height);
+                                        marquee_clone.visible.set(true);
+                                        }
                                     },
-                    "paste" => //canvas.paste_buffer(point.x,point.y, a.clone()),
-                                unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)},
-                    "circle" => {
+                    "paste" => {
+                                
+                                unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)};
+                                },
+                   "circle" => {
                                     canvas.undo_save();
+                                    let mut image = canvas.image.borrow_mut();
                                     let filled = property_get(&ntools.clone()["circle"],"Filled").unwrap();
-                                    unsafe{
-                                        canvas.image.borrow_mut().interact_circle(point.x,
+                                    let width = property_get(&ntools.clone()["circle"],"Size").unwrap();
+                                    let radius;
+                                    if let Some((r,angle)) = unsafe {image.interact_circle(point.x,
                                                     point.y,
                                                     color,
-                                                    filled == 1,
                                                     &mut *window_clone
-                                                    );
-                                    }
+                                                    )}
+                                    {
+                                        if filled == 1 {
+                                            radius = -r;
+                                            image.circle(point.x, point.y, radius, color);
+                                        }else{
+                                            radius=r;
+                                            image.wu_circle(point.x, point.y, radius, color);
+                                        }
+                                        
+                                 }                             
                                 },
+                    "polygon" => {
+                                    let sides = property_get(&ntools.clone()["polygon"],"Sides").unwrap();
+                                    canvas.undo_save();
+                                    let mut image = canvas.image.borrow_mut();
+                                    if let Some((r,angle)) = unsafe{
+                                     image.interact_circle(point.x,
+                                                    point.y,
+                                                    color,
+                                                    &mut *window_clone
+                                                    )}
+                                    {
+                                        image.polygon(point.x,point.y,r,sides as u32, angle, color,true);
+                                        
+                                 }                             
+                                },
+                                
                     
                            _ => (),
                     }
@@ -1500,12 +1655,21 @@ fn main() {
                 //tools that need prev_position to work
                 if let Some(prev_position) = *prev_opt {
                     match tool.clone().text.get().as_ref() {
-                        "line" => {
-                                    canvas.image.borrow_mut().line(prev_position.x,
-                                                prev_position.y,
-                                                point.x,
-                                                point.y,
-                                                color);
+                        "line" => { 
+                                    let antialias = property_get(&ntools.clone()["line"],"Antialias").unwrap();
+                                    if antialias == 1 {
+                                        canvas.image.borrow_mut().wu_line(prev_position.x,
+                                            prev_position.y,
+                                            point.x,
+                                            point.y,
+                                            color);
+                                    }else{
+                                        canvas.image.borrow_mut().line(prev_position.x,
+                                            prev_position.y,
+                                            point.x,
+                                            point.y,
+                                            color);
+                                        }
                                    },
                               _ => (),          
                     }
@@ -1518,10 +1682,33 @@ fn main() {
         });
         
     window.add(&canvas);
+    
+    window.add(&marquee);
     window.exec();
+    
+/*    
+    'event: while window.running.get() {
+            window.drain_events();
+            window.draw_if_needed();
+            window.drain_orbital_events();
+            //shows selection rectangle if needed
+            match *selection.borrow() {
+                Some(selection) => {
+                            window.inner.borrow_mut().rect(selection.x,selection.y+CANVASOFFSET,selection.width, selection.height, Color::rgba(200,0,0,100));
+                            //window.inner.borrow_mut().rect_marquee(selection.x,selection.y+CANVASOFFSET,selection.width as i32 +selection.x, selection.height as i32 +selection.y, Color::rgba(100,100,100,255));
+                            window.inner.borrow_mut().sync();
+                            },
+                None => (),
+            }
+            
+        }
+*/
 }
 
 //Helper functions
+fn test<T: Into<Option<i32>>> ( antialiased: T) {
+    let antialiased = antialiased.into().unwrap_or(0);
+}
 
 ///Load an image from path if exists, otherwise create new empty canvas
 fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  
@@ -1541,9 +1728,6 @@ fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {
 
 ///load pastel_copy_buffer if exists
 fn load_buffer(path: &str) -> orbimage::Image {
-    
-    //let path="/tmp/pastel_copy_buffer.png".to_string();
-    
     if cfg!(feature = "debug"){print!("Loading copy buffer from:  {} .....", path);}
     match orbimage::Image::from_path(path.to_string()) {
         Ok(image) => {

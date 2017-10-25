@@ -64,6 +64,7 @@ impl Palette {
                 
         //default part of colors to be inserted into palette, not customizable (16 colors VGA)
         let mut default = vec![
+                //Color::rgba(0,0,0,0),
                 Color::rgb(0,0,0),
                 Color::rgb(255,255,255),
                 Color::rgb(128,128,128),

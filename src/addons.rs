@@ -30,11 +30,20 @@ pub trait AddOnsToOrbimage {
 }
 
 impl AddOnsToOrbimage for orbimage::Image {
+/*
     ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very quick.
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = self.width()as i32 * y + x;
         let rgba = self.data()[p as usize];
         rgba
+    }
+*/
+    fn pixcol(&self, x:i32, y:i32) -> Color {
+        let p = (self.width()as i32 * y + x) as usize;
+        if p < self.data().len() {
+            let rgba = self.data()[p];
+            return rgba
+        }else { return Color::rgba(0,0,0,0)}
     }
     
     fn pixraw (&self, x:i32, y:i32) -> u32 {

@@ -77,6 +77,9 @@ const CANVASOFFSET: i32 = 200;
 // undo stack depth
 const UNDODEPTH :usize = 10;
 
+// enable disable help and status line
+const STATUSLINE :bool = true;
+
 fn main() {
 
     // deal with icons path under diferent os
@@ -184,6 +187,14 @@ fn main() {
     let mut orb_window = Some(InnerWindow::new(1130, 100, 300, 200, "Test floating window").unwrap());
     let mut win = Box::new(Window::from_inner(orb_window.take().unwrap()));
     */
+    
+    // define status line
+    let status = Label::new();
+    status.position(4, (window.height()-18) as i32)
+        .size(window.width(),16)
+        .text("Ready")
+        .visible.set(STATUSLINE);
+    
     
     //define marquee widget (visible selection rectangle)
     let marquee = Marquee::new();
@@ -452,6 +463,7 @@ fn main() {
                 .selected(true);
                 
             let tool_clone = tool.clone();
+            let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let trans_bar_clone = trans_bar.clone();
             let ntools_clone = ntools.clone();
@@ -462,7 +474,7 @@ fn main() {
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("pen".to_owned());
-
+                               status_clone.text("");
                                size_bar_clone.visible.set(false);
                                size_label_clone.visible.set(false);
 
@@ -492,6 +504,7 @@ fn main() {
             image.position(x, y)                
                  .text("Draw lines".to_owned());
             let tool_clone = tool.clone();
+            let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
@@ -503,7 +516,7 @@ fn main() {
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tool_clone.text.set("line".to_owned());
-                               
+                               status_clone.text("");
                                //get previous settings
                                size_bar_clone.visible.set(false);
                                size_label_clone.visible.set(false);
@@ -534,6 +547,7 @@ fn main() {
             image.position(x, y)
                  .text("Paint brush".to_owned());
             let tool_clone = tool.clone();
+            let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
@@ -544,6 +558,7 @@ fn main() {
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("brush".to_owned());
+                               status_clone.text("");
                                size_label_clone.visible.set(true);
                                size_bar_clone.visible.set(true);
                                //let v=tools_clone.get(&"brush").unwrap().size.get();
@@ -576,6 +591,7 @@ fn main() {
         Ok(item) => {
             
             let tool_clone = tool.clone();
+            let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
@@ -588,6 +604,7 @@ fn main() {
                  .text("Fill up area with color".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("fill".to_owned());
+                               status_clone.text("Filling...");
                                size_label_clone.visible.set(false);
                                size_bar_clone.visible.set(false);
                                
@@ -618,6 +635,7 @@ fn main() {
             image.position(x, y)                
                  .text("Draw polylines".to_owned());
             let tool_clone = tool.clone();
+            let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
@@ -629,7 +647,7 @@ fn main() {
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tool_clone.text.set("polyline".to_owned());
-                               
+                               status_clone.text("Drawing polylines..");
                                //get previous settings
                                size_bar_clone.visible.set(true);
                                size_label_clone.visible.set(true);
@@ -662,6 +680,7 @@ fn main() {
             image.position(x, y)                
                  .text("Draw rectangles".to_owned());
             let tool_clone = tool.clone();
+            let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
@@ -673,7 +692,7 @@ fn main() {
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tool_clone.text.set("rectangle".to_owned());
-                               
+                               status_clone.text("Drawing rectangles...");
                                //get previous settings
                                size_bar_clone.visible.set(true);
                                size_label_clone.visible.set(true);
@@ -706,6 +725,7 @@ fn main() {
             image.position(x, y)                
                  .text("Draws circles".to_owned());
             let tool_clone = tool.clone();
+            let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
@@ -717,7 +737,7 @@ fn main() {
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tool_clone.text.set("circle".to_owned());
-                               
+                               status_clone.text("Drawing circles...click on center, move cursor to set radius, click again.");
                                //get previous settings
                                size_bar_clone.visible.set(false);
                                size_label_clone.visible.set(false);
@@ -748,6 +768,7 @@ fn main() {
                 .text("Select canvas region".to_owned());
                 
             let tool_clone = tool.clone();
+            let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             //let trans_bar_clone = trans_bar.clone();
             //let ntools_clone = ntools.clone();
@@ -758,7 +779,7 @@ fn main() {
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("marquee".to_owned());
-
+                               status_clone.text("Selecting...");
                                size_bar_clone.visible.set(false);
                                size_label_clone.visible.set(false);
 
@@ -794,7 +815,6 @@ fn main() {
                  .text("Circular shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                property_set(&ntools_clone["brush"],"Shape",0);
-                               
                                //toggle shape in toolbar2
                                unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
                                });
@@ -1045,6 +1065,7 @@ fn main() {
     {
         let action = Action::new("Undo     Ctrl+Z");
         let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.undo();
                           });
@@ -1056,8 +1077,10 @@ fn main() {
     {
         let action = Action::new("Select");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         tool_clone.text.set("marquee".to_owned());
+                        status_clone.text("Selecting... (click on canvas, move cursor to define a rectangle than click again)");
                           });
         menuedit.add(&action);
     }
@@ -1068,6 +1091,7 @@ fn main() {
         let selection_clone = selection.clone();
         let size_clone = size.clone();
         let marquee_clone = marquee.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         
                         //println!("{:?}",selection_clone);
@@ -1086,9 +1110,11 @@ fn main() {
         let action = Action::new("Copy     Ctrl+C");
         let tool_clone = tool.clone();
         let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         tool_clone.text.set("copy".to_owned());
                         canvas_clone.emit_click(Point{x:0,y:0}); //trigger buffer saving without clicking effectively on canvas
+                        status_clone.text("Copying...");
                           });
         menuedit.add(&action);
     }
@@ -1098,10 +1124,12 @@ fn main() {
         let tool_clone = tool.clone();
         let ntools_clone = ntools.clone();
         let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         *canvas_clone.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
                         //property_set(&ntools_clone["brush"],"Shape",2);
                         tool_clone.text.set("paste".to_owned());
+                        status_clone.text("Pasting... (click on canvas, move cursor to refine the position than click again)");
                           });
         menuedit.add(&action);
     }
@@ -1113,6 +1141,7 @@ fn main() {
         let home_dir_clone = home_dir.clone();
         //let buffer_clone = buffer.clone();
         let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         let mut f= FileDialog::new();
                         f.title="Load Buffer from file".to_owned();
@@ -1129,10 +1158,12 @@ fn main() {
         menuedit.add(&action);
     }
     
+
     
     {
         let action = Action::new("Save Buffer");
         let home_dir_clone = home_dir.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         match dialog("Save Buffer", "path:",&home_dir_clone[..]) {
                             Some(response) => {
@@ -1144,18 +1175,75 @@ fn main() {
                         });
         menuedit.add(&action);
     }
+
+   // menuedit.add(&Separator::new());    
+
+
+    //Menu mask
+    let menumask = Menu::new("Mask");
+    menumask.position (90,0).size (36,16);
     
+    //Menu entries for mask
+    {
+        let action = Action::new("Edit          ");
+        let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.paint_on_mask();
+                        if canvas_clone.mask_flag() {
+                            _action.text("Back to canvas");
+                            status_clone.text("Paint in black & white (or greys) to define the mask, than click 'Mask -> Back to canvas' to use it");
+                        }else{
+                            status_clone.text("");
+                            _action.text("Edit");
+                        }
+                            
+                          });
+        menumask.add(&action);
+    }
+    
+    {
+        let action = Action::new("Clear");
+        let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.clear_mask();
+                          });
+        menumask.add(&action);
+    }
+
+    {
+        let action = Action::new("Disable");
+        let canvas_clone = canvas.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.enable_mask(false);
+                          });
+        menumask.add(&action);
+    }
+    
+    {
+        let action = Action::new("Enable");
+        let canvas_clone = canvas.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.enable_mask(true);
+                        
+                          });
+        menumask.add(&action);
+    }
+
 
     //Menu tool
     let menutools = Menu::new("Tools");
-    menutools.position(90, 0).size(48, 16);
+    menutools.position(130, 0).size(48, 16);
 
     //Menu entries for tools
     {
         let action = Action::new("Pen");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("pen".to_owned());
+                            status_clone.text("");
                         });
         menutools.add(&action);
     }
@@ -1163,9 +1251,11 @@ fn main() {
     {
         let action = Action::new("Line");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
 
                             tool_clone.text.set("line".to_owned());
+                            status_clone .text("");
                         });
         menutools.add(&action);
     }
@@ -1173,9 +1263,11 @@ fn main() {
     {
         let action = Action::new("Polyline");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             
                             tool_clone.text.set("polyline".to_owned());
+                            status_clone.text("");
                         });
         menutools.add(&action);
     }
@@ -1183,8 +1275,10 @@ fn main() {
     {
         let action = Action::new("Brush");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("brush".to_owned());
+                            status_clone.text("");
                         });
         menutools.add(&action);
     }
@@ -1192,8 +1286,10 @@ fn main() {
     {
         let action = Action::new("Fill");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("fill".to_owned());
+                            status_clone.text("");
                         });
         menutools.add(&action);
     }
@@ -1210,8 +1306,10 @@ fn main() {
     {
         let action = Action::new("Circle");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("circle".to_owned());
+                            status_clone.text("Drawing circles...");
                         });
         menutools.add(&action);
     }
@@ -1219,12 +1317,14 @@ fn main() {
     {
         let action = Action::new("Polygon");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         let ntools_clone = ntools.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             match dialog("Regular polygon", "sides:","3") {
                             Some(response) => {
                                 property_set(&ntools_clone["polygon"],"Sides",response.parse::<i32>().unwrap());
                                 tool_clone.text.set("polygon".to_owned());
+                                status_clone.text("Drawing regular poligons...");
                             },
                         
                             None => {println!("Cancelled");},
@@ -1232,11 +1332,11 @@ fn main() {
                             
                         });
         menutools.add(&action);
-    }    
+    }
 
     //Menu image
     let menuimage = Menu::new("Image");
-    menuimage.position (140,0).size (48,16);
+    menuimage.position (180,0).size (48,16);
     
     //Menu entries for image
     
@@ -1297,13 +1397,15 @@ fn main() {
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
                              height: canvas_clone.rect.get().height-1}),"rotate90",0,0);
-                        //rotate also selection
-                        let rect = selection_clone.borrow().unwrap();
-                        *selection_clone.borrow_mut() = Some(Rect{x:rect.x, y:rect.y, width: rect.height, height: rect.width});
-                        //and marquee
-                        marquee_clone.size(rect.height, rect.width);
-                            
-                        
+                        //rotate also selection if exists 
+                        let rect = selection_clone.borrow()
+                            .unwrap_or(Rect{x: 0, y: 0 , width: 0, height: 0});
+                        if rect.width >0 {
+                            *selection_clone.borrow_mut() = Some(Rect{x:rect.x, y:rect.y,
+                                width: rect.height, height: rect.width});
+                            //and marquee
+                            marquee_clone.size(rect.height, rect.width);
+                        }
                     });
         menuimage.add(&action);
     }
@@ -1332,7 +1434,18 @@ fn main() {
         menuimage.add(&action);
     }
     
-    menuimage.add(&Separator::new());
+    {
+        let action = Action::new("Invert");
+        let canvas_clone = canvas.clone();
+        let selection_clone = selection.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.trans_selection(selection_clone.borrow()
+                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                             height: canvas_clone.rect.get().height-1}),"invert",0,0);
+                    });
+        menuimage.add(&action);
+    }
+    //menuimage.add(&Separator::new());
 
     {
         let action = Action::new("Grayscale");
@@ -1374,7 +1487,7 @@ fn main() {
 
     //Menu palette
     let menupalette = Menu::new("Palette");
-        menupalette.position (190, 0).size(64, 16);
+        menupalette.position (230, 0).size(64, 16);
 
     //Menu entries for palette
     {
@@ -1440,11 +1553,23 @@ fn main() {
                           });
         menupalette.add(&action);
     }
+    
+    menupalette.add(&Separator::new());
 
+/*  {
+        let action = Action::new("Transparent");
+        
+        let trans_bar_clone = trans_bar.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        trans_bar_clone.value.set(0);
+                          });
+        menupalette.add(&action);
+    }
+*/
     //Menu help
 
     let menuhelp = Menu::new("Help");
-    menuhelp.position(260, 0).size(32, 16);
+    menuhelp.position(300, 0).size(32, 16);
 
     //menu entries for help
 
@@ -1452,7 +1577,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.25, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.26, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1461,6 +1586,7 @@ fn main() {
     window.add(&menufile);
     window.add(&menuedit);
     window.add(&menutools);
+    window.add(&menumask);
     window.add(&menuimage);
     window.add(&menupalette);
     window.add(&menuhelp);
@@ -1477,7 +1603,7 @@ fn main() {
         .position(0, CANVASOFFSET)
         .on_shortcut(move |canvas: &Canvas, key: char| {
             if cfg!(feature = "debug"){
-                println!("Emited {}",key);
+                println!("Emitted {}",key);
             }
             match key {
             'v' => {
@@ -1490,6 +1616,9 @@ fn main() {
             'c' => {
                     tool_clone.text.set("copy".to_owned());
                     canvas.emit_click(Point{x: 0, y: 0});
+                   },
+            'Q' => {
+                    canvas.paint_on_mask();
                    },
               _ => (),
             }
@@ -1529,16 +1658,16 @@ fn main() {
                 
                 //tools that dont need prev_position
                 match tool.clone().text.get().as_ref() {
-                    "pen"  => canvas.image.borrow_mut().pixel(point.x, point.y, color),
+                    "pen"  => canvas.pixel(point.x, point.y, color), //.image.borrow_mut()
                     "brush"=> {
                                 match property_get(&ntools.clone()["brush"],"Shape") {
-                                    Some(0) => canvas.image.borrow_mut().circle(point.x, point.y,-size,
+                                    Some(0) => canvas.circle(point.x, point.y,-size,
                                                     color),
-                                    Some(1) => canvas.image.borrow_mut().rect(point.x ,point.y,size as u32, size as u32,
+                                    Some(1) => canvas.rect(point.x ,point.y,size as u32, size as u32,
                                                     color),
                                     Some(2) => canvas.paste_buffer(point.x,point.y,
                                                     a.clone()),
-                                    Some(3) => canvas.image.borrow_mut().smooth_circle(point.x,point.y,
+                                    Some(3) => canvas.smooth_circle(point.x,point.y,
                                                     size as u32, color),
                              None | Some(_) => println!("no Shape match!"),
                                     }
@@ -1612,22 +1741,28 @@ fn main() {
                                 },
                    "circle" => {
                                     canvas.undo_save();
-                                    let mut image = canvas.image.borrow_mut();
+                                    
                                     let filled = property_get(&ntools.clone()["circle"],"Filled").unwrap();
                                     let width = property_get(&ntools.clone()["circle"],"Size").unwrap();
                                     let radius;
-                                    if let Some((r,angle)) = unsafe {image.interact_circle(point.x,
+                                    let mut myr = 0;
+                                    {
+                                        let mut image = canvas.image.borrow_mut();
+                                        if let Some((r,angle)) = unsafe {image.interact_circle(point.x,
                                                     point.y,
                                                     color,
                                                     &mut *window_clone
                                                     )}
+                                        {myr = r;}
+                                    }
+                                    
                                     {
                                         if filled == 1 {
-                                            radius = -r;
-                                            image.circle(point.x, point.y, radius, color);
+                                            radius = -myr;
+                                            canvas.circle(point.x, point.y, radius, color);
                                         }else{
-                                            radius=r;
-                                            image.wu_circle(point.x, point.y, radius, color);
+                                            radius=myr;
+                                            canvas.wu_circle(point.x, point.y, radius, color);
                                         }
                                         
                                  }                             
@@ -1635,6 +1770,9 @@ fn main() {
                     "polygon" => {
                                     let sides = property_get(&ntools.clone()["polygon"],"Sides").unwrap();
                                     canvas.undo_save();
+                                    let mut aangle=0_f32;
+                                    let mut rr=0;
+                                    {
                                     let mut image = canvas.image.borrow_mut();
                                     if let Some((r,angle)) = unsafe{
                                      image.interact_circle(point.x,
@@ -1642,10 +1780,12 @@ fn main() {
                                                     color,
                                                     &mut *window_clone
                                                     )}
-                                    {
-                                        image.polygon(point.x,point.y,r,sides as u32, angle, color,true);
+                                    {aangle = angle;
+                                      rr = r;  }
+                                    }
+                                        canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color,true);
                                         
-                                 }                             
+                                                           
                                 },
                                 
                     
@@ -1682,8 +1822,8 @@ fn main() {
         });
         
     window.add(&canvas);
-    
     window.add(&marquee);
+    window.add(&status);
     window.exec();
     
 /*    

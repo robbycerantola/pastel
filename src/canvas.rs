@@ -15,6 +15,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::slice;
 use std::io::Error;
+use std::f32::consts::PI;
 
 use AddOnsToOrbimage;
 
@@ -24,6 +25,9 @@ pub struct Canvas {
     pub rect: Cell<Rect>,
     pub image: RefCell<Image>,
     newundo_image: RefCell<Vec<Image>>,
+    mask: RefCell<Image>,
+    mask_flag: Cell<bool>,
+    mask_enabled: Cell<bool>,
     pub copy_buffer: RefCell<Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
@@ -44,6 +48,9 @@ impl Canvas {
         Arc::new(Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             newundo_image: RefCell::new(vec!(Image::new(image.width(),image.height()))),
+            mask: RefCell::new(Image::from_color(image.width(), image.height(), Color::rgba(255,0,0,50))),
+            mask_flag: Cell::new(false),
+            mask_enabled: Cell::new(false),
             image: RefCell::new(image),
             copy_buffer: RefCell::new(Image::new(0,0)),
             click_callback: RefCell::new(None),
@@ -111,6 +118,14 @@ impl Canvas {
        //image.clear();
        image.set(Color::rgba(255, 255, 255,255));
     }
+    
+    pub fn height(&self) -> u32 {
+        self.image.borrow().height()
+    }
+    
+    pub fn width(&self) -> u32 {
+        self.image.borrow().width()
+    }
 
 /*
     ///crop new image from curent canvas (copy)
@@ -165,9 +180,6 @@ impl Canvas {
 
     ///apply some transformations to canvas selection (in place)
     pub fn trans_selection(&self, selection: Rect, cod: &str, a: i32, b:i32){
-        //dirty hack: get rid of marquee by undoing
-        //self.undo();
-        
         //first prepare for undo 
         self.undo_save();
         
@@ -214,7 +226,7 @@ impl Canvas {
             slice::from_raw_parts(image_data.as_ptr() as *const u8, 4 * image_data.len())
         };
                 
-        let imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, image_buffer.to_vec()).unwrap();
+        let mut imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, image_buffer.to_vec()).unwrap();
         let vec_image_buffer:Vec<u8> = image::ImageBuffer::into_raw ( 
             match cod.as_ref() {
             
@@ -226,10 +238,11 @@ impl Canvas {
        //      "rotate"          => raster::transform::rotate(&mut imgbuf,45,Color::rgba(0,0,0,0)),
              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
+             "invert"          => {image::imageops::colorops::invert(&mut imgbuf);
+                                    imgbuf},
              "grayscale"       => self.gray2rgba(image::imageops::colorops::grayscale(&imgbuf),
                                             1.2,1.2,1.2),
-             "resize"          => { //width = a as u32;
-                                    //height = b as u32;
+             "resize"          => { 
                                     self.image.borrow_mut().clear();
                                     image::imageops::resize(&imgbuf,a as u32,b as u32,image::FilterType::Nearest)
                                     },
@@ -363,13 +376,13 @@ impl Canvas {
         }
     }
 
-    ///wrapper for filling an image within a canvas
+   ///wrapper for filling an image within a canvas
     pub fn fill (&self, x: i32 , y: i32, color: Color){
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.fill(x,y,color);
     }
-    
+   
     /// wrapper for paste_selection (paste an external image)
     pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, newimage: Image, ){
         self.undo_save();  //save state for undo
@@ -377,12 +390,12 @@ impl Canvas {
         image.paste_selection(x,y,opacity,newimage);
     }
     
-        /// paste internal copy buffer into canvas
+    /// paste internal copy buffer into canvas
     pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8){
         let mut image = self.image.borrow_mut();
         image.paste_selection(x, y, opacity, self.copy_buffer.borrow().clone());
     }
-        /// wrapper interactive paste
+    /// wrapper interactive paste
     pub fn interact_paste (&self, x: i32, y:i32, opacity: u8, window: &mut Window){
         let mut image = self.image.borrow_mut();
         image.interact_paste(x, y, opacity, self.copy_buffer.borrow().clone(), window);
@@ -394,6 +407,389 @@ impl Canvas {
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.interact_circle(x,y,color,window);
+    }
+    
+    pub fn paint_on_mask(&self) {
+        let mut image = self.image.borrow_mut();
+        let image2 = image.clone();
+        let mut mask = self.mask.borrow_mut();
+        *image = mask.clone();
+        *mask = image2;
+        if self.mask_flag.get(){
+            self.mask_flag.set(false); 
+            self.enable_mask(true);
+        }else{
+            self.mask_flag.set(true);
+            self.enable_mask(false);
+        }
+    }
+
+    pub fn clear_mask(& self) {
+        if self.mask_flag.get() {
+             self.image.borrow_mut().set(Color::rgba(255, 0, 0,50));
+        } else {
+            self.mask.borrow_mut().set(Color::rgba(255, 0, 0,50));
+        }
+    }
+    
+    pub fn enable_mask(& self, status: bool){
+        self.mask_enabled.set(status);
+    }
+    
+    pub fn mask_flag(& self) -> bool {
+        let flag = self.mask_flag.get();
+        flag
+    }
+
+//Here unfortunately I have to reimplement not only pixel function to
+//take care of mask but also the other graphics functions
+//because in rust I cannot override pixel!! 
+    ///pixel with mask
+    pub fn pixel(&self , x: i32, y: i32, color: Color) {
+        let mut color = color;
+        //if we are not in mask mode apply mask to pixel
+        if self.mask_enabled.get(){
+            //read from mask tranparency value 
+            let alpha_mask = self.mask.borrow().pixcol(x,y).r();
+            // add mask transparency to color
+            color = Color::rgba(color.r(),color.g(),color.b(),alpha_mask & color.a());
+        }
+        self.image.borrow_mut().pixel(x, y, color);
+    }
+
+    ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very quick.
+    fn pixcol(&self, x:i32, y:i32) -> Color {
+        let p = self.width()as i32 * y + x;
+        let rgba = self.image.borrow().data()[p as usize];
+        rgba
+    }
+
+    ///circle with mask
+    pub fn circle(&self , x0: i32, y0: i32, radius: i32, color: Color) {
+        //self.image.borrow_mut().circle(x0, y0, radius, color);
+        let mut x = radius.abs();
+        let mut y = 0;
+        let mut err = -radius.abs();
+        
+        match radius {
+            radius if radius > 0 => {
+                err = 0;
+                while x >= y {
+                    self.pixel(x0 - x, y0 + y, color);
+                    self.pixel(x0 + x, y0 + y, color);
+                    self.pixel(x0 - y, y0 + x, color);
+                    self.pixel(x0 + y, y0 + x, color);
+                    self.pixel(x0 - x, y0 - y, color);
+                    self.pixel(x0 + x, y0 - y, color);
+                    self.pixel(x0 - y, y0 - x, color);
+                    self.pixel(x0 + y, y0 - x, color);
+                
+                    y += 1;
+                    err += 1 + 2*y;
+                    if 2*(err-x) + 1 > 0 {
+                        x -= 1;
+                        err += 1 - 2*x;
+                    }
+                }      
+            },
+            
+            radius if radius < 0 => {
+                while x >= y {
+                    let lasty = y;
+                    err +=y;
+                    y +=1;
+                    err += y;
+                    self.line4points(x0,y0,x,lasty,color);
+                    if err >=0 {
+                        if x != lasty{
+                           self.line4points(x0,y0,lasty,x,color);
+                        }
+                        err -= x;
+                        x -= 1;
+                        err -= x;
+                    }
+                }
+
+                },
+                     _ => {
+                            self.pixel(x0, y0, color);
+                            
+                        },
+        }
+    }
+    
+    fn line4points(&self, x0: i32, y0: i32, x: i32, y: i32, color: Color){
+        self.line(x0 - x, y0 + y, (x+x0), y0 + y, color);
+        //self.rect(x0 - x, y0 + y, x as u32 * 2 + 1, 1, color);
+        if y != 0 {
+            self.line(x0 - x, y0 - y, (x+x0), y0-y , color);
+            //self.rect(x0 - x, y0 - y, x as u32 * 2 + 1, 1, color);
+        }
+    }
+
+    ///Draws antialiased circle with mask
+    pub fn wu_circle (&self, x0: i32, y0: i32, radius: i32, color: Color){
+        let r = color.r();
+        let g = color.g();
+        let b = color.b();
+        let a = color.a();
+        let mut y =0;
+        let mut x = radius;
+        let mut d =0_f64;
+        
+        self.pixel (x0+x,y0+y,color);
+        self.pixel (x0-x,y0-y,color);
+        self.pixel (x0+y,y0-x,color);
+        self.pixel (x0-y,y0+x,color);
+        
+        while x > y {
+            let di = dist(radius,y);
+            if di < d { x -= 1;}
+            let col = Color::rgba(r,g,b,(a as f64*(1.0-di)) as u8);
+            let col2 = Color::rgba(r,g,b,(a as f64*di) as u8);
+            
+            self.pixel(x0+x, y0+y, col);
+            self.pixel(x0+x-1, y0+y, col2);//-
+            self.pixel(x0-x, y0+y, col);
+            self.pixel(x0-x+1, y0+y, col2);//+
+            self.pixel(x0+x, y0-y, col);
+            self.pixel(x0+x-1, y0-y, col2);//-
+            self.pixel(x0-x, y0-y, col);
+            self.pixel(x0-x+1, y0-y, col2);//+
+            
+            self.pixel(x0+y, y0+x, col);
+            self.pixel(x0+y, y0+x-1, col2);
+            self.pixel(x0-y, y0+x, col);
+            self.pixel(x0-y, y0+x-1, col2);
+            self.pixel(x0+y, y0-x, col);
+            self.pixel(x0+y, y0-x+1, col2);
+            self.pixel(x0-y, y0-x, col);
+            self.pixel(x0-y, y0-x+1, col2);
+            d = di;
+            y += 1;
+        }
+        
+        fn dist(r: i32, y: i32) -> f64{
+            let x :f64 = ((r*r-y*y)as f64).sqrt();
+            x.ceil()-x
+        }
+    }
+    
+    
+    pub fn smooth_circle( &self, x: i32, y: i32, radius: u32, color: Color){
+        self.image.borrow_mut().smooth_circle(x, y, radius, color);
+    }
+    
+    pub fn rect(&self, x: i32, y: i32 ,lenght: u32, width: u32, color: Color){
+        self.image.borrow_mut().rect(x ,y, lenght, width, color);
+    }
+    
+    ///line with mask
+    fn line(&self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
+        let mut x = argx1;
+        let mut y = argy1;
+
+        let dx = if argx1 > argx2 { argx1 - argx2 } else { argx2 - argx1 };
+        let dy = if argy1 > argy2 { argy1 - argy2 } else { argy2 - argy1 };
+
+        let sx = if argx1 < argx2 { 1 } else { -1 };
+        let sy = if argy1 < argy2 { 1 } else { -1 };
+
+        let mut err = if dx > dy { dx } else {-dy} / 2;
+        let mut err_tolerance;
+
+        loop {
+            self.pixel(x, y, color);
+
+            if x == argx2 && y == argy2 { break };
+
+            err_tolerance = 2 * err;
+
+            if err_tolerance > -dx { err -= dy; x += sx; }
+            if err_tolerance < dy { err += dx; y += sy; }
+        }
+    }
+
+    fn wu_line (&self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
+        
+        let mut x0 = x0 as f64;
+        let mut y0 = y0 as f64;
+        let mut x1 = x1 as f64;
+        let mut y1 = y1 as f64;
+        let r = color.r();
+        let g = color.g();
+        let b = color.b();
+        let a = color.a() as f64;
+        
+        fn ipart (x: f64) -> i32 {
+            x.trunc() as i32
+        }
+        fn round (x: f64) -> i32 {
+            ipart(x+0.5) as i32
+        }
+        fn fpart (x: f64) -> f64 {
+            if x <0.0 { return 1.0-(x-x.floor());}
+            x-x.floor() 
+        }
+        fn rfpart(x: f64) -> f64 {
+            1.0-fpart(x)
+        }
+        fn chkalpha (mut alpha :f64) -> u8 {
+             if alpha > 255.0 { alpha = 255.0};
+             if alpha < 0.0 {alpha = 0.0};
+             alpha as u8
+        }
+        
+        let steep :bool = (y1-y0).abs() > (x1-x0).abs();
+        let mut temp;
+        if steep {
+            temp = x0; x0 = y0; y0 = temp;
+            temp = x1; x1 = y1; y1 = temp;
+        }
+        if x0 > x1 {
+            temp = x0; x0 = x1; x1 = temp;
+            temp = y0; y0 = y1; y1 = temp;
+        }
+        let dx = x1 -x0;
+        let dy = y1- y0;
+        let gradient = dy/dx;
+        
+        let mut xend: f64 = (x0 as f64).round() ;
+        let mut yend: f64 = y0 + gradient * (xend - x0);
+        let mut xgap: f64 = rfpart(x0+0.5);
+        let xpixel1 = xend as i32;
+        let ypixel1 = (ipart (yend)) as i32;
+        
+        if steep {
+            self.pixel(ypixel1, xpixel1, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
+            self.pixel(ypixel1+1, xpixel1, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
+        }else{
+            self.pixel(xpixel1, ypixel1, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
+            self.pixel(xpixel1+1, ypixel1, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
+        }
+        let mut intery :f64 = yend + gradient;
+        xend = x1.round();
+        yend = y1 + gradient * (xend-x1);
+        xgap = fpart(x1 + 0.5);
+        let xpixel2 = xend as i32;
+        let ypixel2 = ipart(yend) as i32;
+        if steep {
+            self.pixel(ypixel2, xpixel2, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
+            self.pixel(ypixel2+1, xpixel2, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
+        }else{
+            self.pixel(xpixel2, ypixel2, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
+            self.pixel(xpixel2+1, ypixel2, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
+        }
+        if steep {
+            for x in (xpixel1+1)..(xpixel2) {
+                self.pixel(ipart(intery) as i32 , x, Color::rgba(r,g,b,chkalpha(a*rfpart(intery))));
+                self.pixel(ipart(intery) as i32 + 1, x, Color::rgba(r,g,b,chkalpha(a*fpart(intery))));
+                intery += gradient;
+            }
+        }else{
+            for x in (xpixel1+1)..(xpixel2) {
+                self.pixel(x, ipart(intery) as i32, Color::rgba(r,g,b,chkalpha(a*rfpart(intery))));
+                self.pixel(x, ipart(intery) as i32 + 1, Color::rgba(r,g,b,chkalpha(a*fpart(intery))));
+                intery += gradient;
+            } 
+        }           
+    }
+
+     ///Draws a regular polygon with mask
+    pub fn polygon(&self, x0: i32, y0: i32, r: i32, sides: u32, angle: f32, color: Color, antialias: bool ) {
+        let mut x:Vec<i32> = Vec::new();
+        let mut y:Vec<i32> = Vec::new();
+        let i :usize = 0;
+        let sides = sides as usize;
+        //find vertices
+        for i in 0..sides+1 {
+            let t :f32 =angle + 2.0*PI* i as f32 /sides as f32;
+            x.push((r as f32 * t.cos()) as i32 + x0);
+            y.push((r as f32 * t.sin()) as i32 + y0);
+        }
+        
+        if antialias {
+        for i in 0..sides {
+            self.wu_line(x[i],y[i],x[i+1],y[i+1],color);
+        }
+        self.wu_line(x[sides],y[sides],x[0],y[0],color);    
+        }else{
+        for i in 0..sides-1 {
+            self.line(x[i],y[i],x[i+1],y[i+1],color);
+        }
+        self.line(x[sides],y[sides],x[0],y[0],color);
+        }
+    }
+    
+    ///wrapper for flood fill with mask
+    pub fn fill_mask(&self, x: i32, y: i32 , color: Color) {
+        //get current pixel color 
+        let rgba = self.pixcol(x,y);
+        self.flood_fill_scanline(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
+    }
+    ///stack friendly and fast floodfill algorithm that works with transparency too 
+    fn flood_fill_scanline( &self, x:i32, y:i32, new_color: u32, old_color:u32) {
+        if old_color == new_color {
+            return;
+        }
+        if self.pixcol(x,y).data  != old_color  {
+            return;
+        }
+        
+        let w = self.width() as i32;
+        let h = self.height() as i32;
+        
+        //draw current scanline from start position to the right
+        let mut x1 = x;
+        
+        while x1 < w && self.pixcol(x1,y).data  == old_color  {
+            self.pixel(x1,y,Color{data:new_color});
+            x1 +=1;
+        } 
+        //get resulted color because of transparency and use this for comparison 
+        let res_color = self.pixcol(x,y).data;
+        
+        //draw current scanline from start position to the left
+        x1 = x -1;
+        
+        while x1 >= 0 && self.pixcol(x1,y).data  == old_color  {
+            self.pixel(x1,y,Color{data:new_color});
+            x1 += -1;
+          }
+        
+        //test for new scanlines above
+        x1 = x;
+        
+        while x1 < w && self.pixcol(x1,y).data  == res_color  { 
+            if y > 0 && self.pixcol(x1,y-1).data  == old_color  {
+              self.flood_fill_scanline(x1, y - 1, new_color, old_color);
+            }
+            x1 += 1;
+          }
+        x1 = x - 1;
+        while x1 >= 0 && self.pixcol(x1,y).data == res_color {
+            if y > 0 && self.pixcol(x1,y - 1).data  == old_color  {
+              self.flood_fill_scanline(x1, y - 1, new_color, old_color);
+            }
+            x1 += -1;
+          }
+         
+         //test for new scanlines below
+        x1 = x;
+        while x1 < w && self.pixcol(x1,y).data == res_color  {
+            //println!("Test below {} {} ", self.pixcol(x1,y).data,old_color);
+            if y < (h - 1) && self.pixcol(x1,y + 1).data == old_color {
+                self.flood_fill_scanline(x1, y + 1, new_color, old_color);
+            }
+            x1 +=1;
+        }
+        x1 = x - 1;
+        while x1 >= 0 && self.pixcol(x1,y).data == res_color {
+            if y < (h - 1) && self.pixcol(x1,y + 1).data == old_color {
+                self.flood_fill_scanline(x1, y + 1, new_color, old_color);
+            }
+            x1 += -1;
+        }
     }
 }
 
@@ -425,6 +821,17 @@ impl Widget for Canvas {
         let rect = self.rect.get();
         let image = self.image.borrow();
         renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
+        //#TODO render mask only when needed
+       /*if self.mask_enabled.get() {
+           let image = self.image.borrow();
+           renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
+           let mask = self.mask.borrow();
+           renderer.image(rect.x, rect.y, mask.width(), mask.height(), mask.data());
+       } else {
+           let image = self.image.borrow();
+           renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
+       }*/
+        
     }
 
     fn event(&self, event: Event, focused: bool, redraw: &mut bool) -> bool {
@@ -458,7 +865,7 @@ impl Widget for Canvas {
                     self.undo();
                     *redraw = true;
                 }
-                if ['v','c','x'].contains(&c) {
+                if ['v','c','x','Q'].contains(&c) {
                     self.emit_shortcut(c);
                 }
             },

@@ -723,7 +723,7 @@ fn main() {
     match ToolbarIcon::from_path("hollow_circle.png") {
         Ok(image) => {
             image.position(x, y)                
-                 .text("Draws circles".to_owned());
+                 .text("Draw circles".to_owned());
             let tool_clone = tool.clone();
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
@@ -1609,9 +1609,9 @@ fn main() {
             'v' => {
                     tool_clone.text.set("paste".to_owned());
                     canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
-                    y: (canvas.rect.get().height/2) as i32});
+                        y: (canvas.rect.get().height/2) as i32});
                     canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
-                    y: (canvas.rect.get().height/2) as i32});
+                        y: (canvas.rect.get().height/2) as i32});
                    },
             'c' => {
                     tool_clone.text.set("copy".to_owned());
@@ -1817,6 +1817,7 @@ fn main() {
                 } else {
                     *prev_opt = Some(point);
                     if u == "line" || u =="pen" || u =="brush" {canvas.undo_save();} //prepare for undo
+                    //if ["line","pen","brush"].contains(&u) {canvas.undo_save();} 
                 }
             }
         });

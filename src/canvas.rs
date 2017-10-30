@@ -877,6 +877,9 @@ impl Widget for Canvas {
     fn visible(&self, flag: bool){
         !flag;
     }
-
+    
+    fn name(&self) -> Option<&'static str> {
+        Some("Canvas")
+    }
 
 }

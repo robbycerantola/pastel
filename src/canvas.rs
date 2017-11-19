@@ -585,7 +585,7 @@ impl Canvas {
     }
     
     ///line with mask
-    fn line(&self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
+    pub fn line(&self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
         let mut x = argx1;
         let mut y = argy1;
 
@@ -609,8 +609,9 @@ impl Canvas {
             if err_tolerance < dy { err += dx; y += sy; }
         }
     }
-
-    fn wu_line (&self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
+    
+    /// wu_line with mask
+    pub fn wu_line (&self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
         
         let mut x0 = x0 as f64;
         let mut y0 = y0 as f64;
@@ -693,6 +694,58 @@ impl Canvas {
                 intery += gradient;
             } 
         }           
+    }
+
+    ///continuus brush circular shape with mask
+    pub fn brush_line(&self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, radius: i32, color: Color) {
+        let mut x = argx1;
+        let mut y = argy1;
+
+        let dx = if argx1 > argx2 { argx1 - argx2 } else { argx2 - argx1 };
+        let dy = if argy1 > argy2 { argy1 - argy2 } else { argy2 - argy1 };
+
+        let sx = if argx1 < argx2 { 1 } else { -1 };
+        let sy = if argy1 < argy2 { 1 } else { -1 };
+
+        let mut err = if dx > dy { dx } else {-dy} / 2;
+        let mut err_tolerance;
+
+        loop {
+            self.circle(x, y, radius, color);
+
+            if x == argx2 && y == argy2 { break };
+
+            err_tolerance = 2 * err;
+
+            if err_tolerance > -dx { err -= dy; x += sx; }
+            if err_tolerance < dy { err += dx; y += sy; }
+        }
+    }
+    
+    ///continuus brush rectangular shape not yet with mask
+    pub fn rect_line(&self, argx1: i32, argy1: i32, argx2: i32, argy2: i32,lenght: u32, width: u32, color: Color) {
+        let mut x = argx1;
+        let mut y = argy1;
+
+        let dx = if argx1 > argx2 { argx1 - argx2 } else { argx2 - argx1 };
+        let dy = if argy1 > argy2 { argy1 - argy2 } else { argy2 - argy1 };
+
+        let sx = if argx1 < argx2 { 1 } else { -1 };
+        let sy = if argy1 < argy2 { 1 } else { -1 };
+
+        let mut err = if dx > dy { dx } else {-dy} / 2;
+        let mut err_tolerance;
+
+        loop {
+            self.rect(x, y, lenght, width, color);
+
+            if x == argx2 && y == argy2 { break };
+
+            err_tolerance = 2 * err;
+
+            if err_tolerance > -dx { err -= dy; x += sx; }
+            if err_tolerance < dy { err += dx; y += sy; }
+        }
     }
 
      ///Draws a regular polygon with mask

@@ -13,7 +13,7 @@ extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             Toolbar, ToolbarIcon, Rect, Separator,
-             Window, Renderer, ColorSwatch, Marquee};  //TextBox,ControlKnob,InnerWindow,
+             Window, ColorSwatch, Marquee};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use orbtk::cell::CloneCell;
@@ -140,7 +140,8 @@ fn main() {
     ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
     ntools.insert("line",vec![Property::new("Opacity",100),Property::new("Antialias",1)]);
     ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100),Property::new("Antialias",1)]); 
-    ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
+    ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]);
+    ntools.insert("brush_line",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
     ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
     ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
@@ -557,7 +558,7 @@ fn main() {
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tool_clone.text.set("brush".to_owned());
+                               tool_clone.text.set("brush_line".to_owned());
                                status_clone.text("");
                                size_label_clone.visible.set(true);
                                size_bar_clone.visible.set(true);
@@ -647,7 +648,7 @@ fn main() {
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tool_clone.text.set("polyline".to_owned());
-                               status_clone.text("Drawing polylines..");
+                               status_clone.text("Drawing polylines... right click to exit.");
                                //get previous settings
                                size_bar_clone.visible.set(true);
                                size_label_clone.visible.set(true);
@@ -1243,7 +1244,7 @@ fn main() {
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("pen".to_owned());
-                            status_clone.text("");
+                            status_clone.text("Drawing points ...");
                         });
         menutools.add(&action);
     }
@@ -1255,7 +1256,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
 
                             tool_clone.text.set("line".to_owned());
-                            status_clone .text("");
+                            status_clone .text("Drawing...");
                         });
         menutools.add(&action);
     }
@@ -1267,7 +1268,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                             
                             tool_clone.text.set("polyline".to_owned());
-                            status_clone.text("");
+                            status_clone.text("Drawing polylines...");
                         });
         menutools.add(&action);
     }
@@ -1278,7 +1279,18 @@ fn main() {
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("brush".to_owned());
-                            status_clone.text("");
+                            status_clone.text("Painting...");
+                        });
+        menutools.add(&action);
+    }
+    
+    {
+        let action = Action::new("Brush_line");
+        let tool_clone = tool.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            tool_clone.text.set("brush_line".to_owned());
+                            status_clone.text("Painting...(brush_line)");
                         });
         menutools.add(&action);
     }
@@ -1289,7 +1301,7 @@ fn main() {
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("fill".to_owned());
-                            status_clone.text("");
+                            status_clone.text("Filling...");
                         });
         menutools.add(&action);
     }
@@ -1297,8 +1309,10 @@ fn main() {
     {
         let action = Action::new("Rectangle");
         let tool_clone = tool.clone();
+        let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             tool_clone.text.set("rectangle".to_owned());
+                            status_clone.text("Drawing rectangles...");
                         });
         menutools.add(&action);
     }
@@ -1577,7 +1591,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.26, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.27, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1603,7 +1617,7 @@ fn main() {
         .position(0, CANVASOFFSET)
         .on_shortcut(move |canvas: &Canvas, key: char| {
             if cfg!(feature = "debug"){
-                println!("Emitted {}",key);
+                println!("Pressed {} key ",key);
             }
             match key {
             'v' => {
@@ -1656,8 +1670,10 @@ fn main() {
                 let swc = swatch_clone.read();
                 let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
                 
+                let selected_tool = tool.clone().text.get();
                 //tools that dont need prev_position
-                match tool.clone().text.get().as_ref() {
+                //match tool.clone().text.get().as_ref() {
+                match selected_tool.as_ref() {    
                     "pen"  => canvas.pixel(point.x, point.y, color), //.image.borrow_mut()
                     "brush"=> {
                                 match property_get(&ntools.clone()["brush"],"Shape") {
@@ -1794,29 +1810,50 @@ fn main() {
                 
                 //tools that need prev_position to work
                 if let Some(prev_position) = *prev_opt {
-                    match tool.clone().text.get().as_ref() {
+                    //match tool.clone().text.get().as_ref() {
+                    match selected_tool.as_ref() {
                         "line" => { 
                                     let antialias = property_get(&ntools.clone()["line"],"Antialias").unwrap();
                                     if antialias == 1 {
-                                        canvas.image.borrow_mut().wu_line(prev_position.x,
+                                        canvas.wu_line(prev_position.x,
                                             prev_position.y,
                                             point.x,
                                             point.y,
                                             color);
                                     }else{
-                                        canvas.image.borrow_mut().line(prev_position.x,
+                                        canvas.line(prev_position.x,
                                             prev_position.y,
                                             point.x,
                                             point.y,
                                             color);
                                         }
                                    },
+                       "brush_line" => {
+                                        match property_get(&ntools.clone()["brush"],"Shape") {
+                                    Some(0) => canvas.brush_line(prev_position.x,
+                                            prev_position.y,
+                                            point.x,
+                                            point.y,
+                                            -size,
+                                            color),
+                                    Some(1) => canvas.rect_line(prev_position.x,
+                                            prev_position.y,point.x ,point.y,size as u32, size as u32,
+                                                    color),
+                                    Some(2) => canvas.paste_buffer(point.x,point.y,
+                                                    a.clone()),
+                                    Some(3) => canvas.smooth_circle(point.x,point.y,
+                                                    size as u32, color),
+                             None | Some(_) => println!("no Shape match!"),
+                                    }
+                           
+                                        
+                                        }
                               _ => (),          
                     }
                     *prev_opt = Some(point);     
                 } else {
                     *prev_opt = Some(point);
-                    if u == "line" || u =="pen" || u =="brush" {canvas.undo_save();} //prepare for undo
+                    if u == "line" || u =="pen" || u =="brush" || u=="brush2" {canvas.undo_save();} //prepare for undo
                     //if ["line","pen","brush"].contains(&u) {canvas.undo_save();} 
                 }
             }

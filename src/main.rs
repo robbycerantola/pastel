@@ -1853,7 +1853,7 @@ fn main() {
                     *prev_opt = Some(point);     
                 } else {
                     *prev_opt = Some(point);
-                    if u == "line" || u =="pen" || u =="brush" || u=="brush2" {canvas.undo_save();} //prepare for undo
+                    if u == "line" || u =="pen" || u =="brush" || u=="brush_line" {canvas.undo_save();} //prepare for undo
                     //if ["line","pen","brush"].contains(&u) {canvas.undo_save();} 
                 }
             }

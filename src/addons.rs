@@ -15,11 +15,12 @@ pub trait AddOnsToOrbimage {
     fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
     fn pixcol(&self, x:i32, y:i32) -> Color;
     fn pixraw(&self, x:i32, y:i32) -> u32;
-    fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, width: i32, window: &mut Window);
+    //fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, width: i32, window: &mut Window) ->Option<Rect>;
     fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut Window);
     fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut Window) -> Option<(i32,f32)>;
     fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut Window);
     fn select_rect(&mut self, x: i32 , y: i32, window: &mut Window) ->Option<Rect>;
+    fn new_select_rect(&mut self, x: i32 , y: i32, color: Color, pattern: i32, window: &mut Window) ->Option<Rect>;
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
     fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
     fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
@@ -300,7 +301,7 @@ impl AddOnsToOrbimage for orbimage::Image {
             x.ceil()-x
         }
     }
-    
+
     ///Draws a regular polygon
     fn polygon(&mut self, x0: i32, y0: i32, r: i32, sides: u32, angle: f32, color: Color, antialias: bool ) {
         let mut x:Vec<i32> = Vec::new();
@@ -470,8 +471,79 @@ impl AddOnsToOrbimage for orbimage::Image {
         None  
     }
 
+    /// interactive selection (rectangle) pattern is an integer where 1 means continuuos line , 2 dotted line , 3 dotted line more spaced and so on 
+    fn new_select_rect(&mut self, x: i32 , y: i32, color: Color, pattern: i32, window: &mut Window) ->Option<Rect> {
+    
+         //gets events from orbclient and render helping lines directly into orbclient window 
+         let mut orbclient = window.inner.borrow_mut();
+         let mut lx = 0;
+         let mut ly = 0;
+         let mut x = x;
+         let mut y = y;
+         let mut w = false;
+         
+        'events: loop{
+            for event in orbclient.events() { 
+                match event.to_option() {
+                   EventOption::Key(key_event) => {println!("{:?}",key_event); break 'events},
+                EventOption::Quit(_quit_event) => break 'events,
+             EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
+                       EventOption::Mouse(evt) => {
+                                                if evt.y < CANVASOFFSET{
+                                                    break 'events;
+                                                };
+                                                if w {
+                                                    orbclient.rect_marquee(x,
+                                                    y+CANVASOFFSET,
+                                                    lx,
+                                                    ly+CANVASOFFSET,
+                                                    color,
+                                                    pattern);
+                                                }
+                                                w=true;
+                                                
+                                                orbclient.rect_marquee(x,
+                                                y+CANVASOFFSET,
+                                                evt.x,
+                                                evt.y,
+                                                color,
+                                                pattern);
+                                                lx=evt.x;
+                                                ly=evt.y-CANVASOFFSET;
+                                                
+                                                orbclient.sync();
+                                                },
+                    EventOption::Button(btn) => {if btn.left {
+                                                    
+                                                    if lx < x {
+                                                        let tmp =x; x= lx; lx = tmp;
+                                                    } 
+                                                    
+                                                    if ly < y {
+                                                        let tmp = y; y=ly; ly= tmp;
+                                                    }
+                                                    
+                                                    let dx=lx-x;
+                                                    let dy=ly-y;
+                                                    //println!("{} {} {} {}",x,y,dx,dy);
+                                                    return Some(Rect::new(x,y,dx as u32, dy as u32))
+                                                }
+                                                if btn.right{
+                                                              break 'events;
+                                                            //TODO show menu with actions upon selection
+                                                }
+                                                },
+                                event_option => if cfg!(feature = "debug"){
+                                                    println!("{:?}", event_option)
+                                                }else{ ()}
+                }
+          }
+        }
+        None  
+    }
+/*
     /// draws interactive rectangle 
-    fn interact_rect(&mut self, x: i32 , y: i32, color: Color,filled:bool, width: i32, window: &mut Window) {
+    fn interact_rect(&mut self, x: i32 , y: i32, color: Color,filled:bool, width: i32, window: &mut Window) ->Option<Rect> {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -531,6 +603,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                             self.line(lx+i,y-i,lx+i,ly+i,color);
                                                             self.line(lx+i,ly+i,x-i,ly+i,color);
                                                             self.line(x-i,ly+i,x-i,y-i,color);
+                                                        
                                                         }
                                                         break 'events
                                                     }
@@ -543,9 +616,11 @@ impl AddOnsToOrbimage for orbimage::Image {
                                     else{ ()}
                 }
           }
+          
         }
-        
+        None
     }
+*/ 
     /// by drawing an interactive circle in preview window , return a tuple with radius and cursor angular position  
     fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut Window) -> Option<(i32,f32)>{
     
@@ -800,6 +875,8 @@ impl AddOnsToOrbclient for orbclient::Window{
     
     /// Draws ant_line - - -   
     fn ant_line(&mut self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color, style: i32) {
+        
+        let color = Color::rgba(color.r(),color.g(),color.b(),0);  // make sure alpha is 0 otherwise trick does not work!!
         let mut x = argx1;
         let mut y = argy1;
                 

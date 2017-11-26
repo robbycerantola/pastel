@@ -304,18 +304,18 @@ impl Canvas {
         let imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, new_buffer).unwrap();
             imgbuf
     }
-        
-    
+
     pub fn on_right_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
         *self.right_click_callback.borrow_mut() = Some(Arc::new(func));
         self
     }
+
     pub fn emit_right_click(&self, point: Point) {
         if let Some(ref right_click_callback) = *self.right_click_callback.borrow() {
             right_click_callback(self, point);
         }
     }
-    
+
     pub fn on_clear_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
         *self.clear_click_callback.borrow_mut() = Some(Arc::new(func));
         self
@@ -326,35 +326,18 @@ impl Canvas {
             clear_click_callback(self, point);
         }
     }
-    
+
     pub fn on_shortcut<T: Fn(&Self, char) + 'static>(&self, func: T) -> &Self {
         *self.shortcut_callback.borrow_mut() = Some(Arc::new(func));
         self
     }
-    
+
     pub fn emit_shortcut(&self, c: char) {
         if let Some(ref shortcut_callback) = *self.shortcut_callback.borrow() {
             shortcut_callback(self, c);
         }
     }
-/* 
-    /// simple undo 
-    pub fn undo(&self) {
-        let mut image = self.image.borrow_mut();
-        let undo_image = self.undo_image.borrow_mut();
-        *image=undo_image.clone();
-        
-    }
 
-    /// save image state to be used if undo is required
-    pub fn undo_save(&self) {
-        //copy current image to undo_image
-        let image = self.image.borrow_mut();
-        let mut undo_image = self.undo_image.borrow_mut();
-        *undo_image=image.clone();
-        
-    }
-*/
     /// save image state to undo stack 
     pub fn undo_save(&self) {
         let image = self.image.borrow_mut();
@@ -389,26 +372,27 @@ impl Canvas {
         let mut image = self.image.borrow_mut();
         image.paste_selection(x,y,opacity,newimage);
     }
-    
+
     /// paste internal copy buffer into canvas
     pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8){
         let mut image = self.image.borrow_mut();
         image.paste_selection(x, y, opacity, self.copy_buffer.borrow().clone());
     }
+
     /// wrapper interactive paste
     pub fn interact_paste (&self, x: i32, y:i32, opacity: u8, window: &mut Window){
         let mut image = self.image.borrow_mut();
         image.interact_paste(x, y, opacity, self.copy_buffer.borrow().clone(), window);
         
     }
-    
+
     /// wrapper for interactive circle
     pub fn interact_circle (&mut self, x: i32 , y: i32, color: Color, window: &mut Window) {
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.interact_circle(x,y,color,window);
     }
-    
+
     pub fn paint_on_mask(&self) {
         let mut image = self.image.borrow_mut();
         let image2 = image.clone();
@@ -431,23 +415,24 @@ impl Canvas {
             self.mask.borrow_mut().set(Color::rgba(255, 0, 0,50));
         }
     }
-    
+
     pub fn enable_mask(& self, status: bool){
         self.mask_enabled.set(status);
     }
-    
+
     pub fn mask_flag(& self) -> bool {
         let flag = self.mask_flag.get();
         flag
     }
 
-//Here unfortunately I have to reimplement not only pixel function to
-//take care of mask but also the other graphics functions
-//because in rust I cannot override pixel!! 
-    ///pixel with mask
+/* Here unfortunately I have to reimplement not only the pixel function to
+   take care of mask but also the other graphics functions
+   because in rust I cannot override the pixel function !! 
+*/ 
+    ///pixel function with mask support
     pub fn pixel(&self , x: i32, y: i32, color: Color) {
         let mut color = color;
-        //if we are not in mask mode apply mask to pixel
+        //if we are not painting the mask apply mask to pixel
         if self.mask_enabled.get(){
             //read from mask tranparency value 
             let alpha_mask = self.mask.borrow().pixcol(x,y).r();
@@ -457,14 +442,14 @@ impl Canvas {
         self.image.borrow_mut().pixel(x, y, color);
     }
 
-    ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very quick.
+    ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very fast.
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = self.width()as i32 * y + x;
         let rgba = self.image.borrow().data()[p as usize];
         rgba
     }
 
-    ///circle with mask
+    ///circle with mask support
     pub fn circle(&self , x0: i32, y0: i32, radius: i32, color: Color) {
         //self.image.borrow_mut().circle(x0, y0, radius, color);
         let mut x = radius.abs();
@@ -527,7 +512,7 @@ impl Canvas {
         }
     }
 
-    ///Draws antialiased circle with mask
+    ///Draws antialiased circle with mask support
     pub fn wu_circle (&self, x0: i32, y0: i32, radius: i32, color: Color){
         let r = color.r();
         let g = color.g();
@@ -580,11 +565,18 @@ impl Canvas {
         self.image.borrow_mut().smooth_circle(x, y, radius, color);
     }
     
+    //rectangle with mask support
     pub fn rect(&self, x: i32, y: i32 ,lenght: u32, width: u32, color: Color){
-        self.image.borrow_mut().rect(x ,y, lenght, width, color);
+        //self.image.borrow_mut().rect(x ,y, lenght, width, color);
+        let lenght = lenght as i32;
+        let width = width as i32;
+        self.line(x, y, x+lenght, y, color);
+        self.line(x, y+1, x, y+width, color);
+        self.line(x+1 ,y+width, x+lenght-1, y+width, color);
+        self.line(x+lenght,y+width,x+lenght, y+1, color);
     }
     
-    ///line with mask
+    ///line with mask support
     pub fn line(&self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, color: Color) {
         let mut x = argx1;
         let mut y = argy1;
@@ -610,7 +602,7 @@ impl Canvas {
         }
     }
     
-    /// wu_line with mask
+    /// wu_line with mask support
     pub fn wu_line (&self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
         
         let mut x0 = x0 as f64;
@@ -696,7 +688,7 @@ impl Canvas {
         }           
     }
 
-    ///continuus brush circular shape with mask
+    ///continuus brush circular shape with mask support
     pub fn brush_line(&self, argx1: i32, argy1: i32, argx2: i32, argy2: i32, radius: i32, color: Color) {
         let mut x = argx1;
         let mut y = argy1;
@@ -722,7 +714,7 @@ impl Canvas {
         }
     }
     
-    ///continuus brush rectangular shape not yet with mask
+    ///continuus brush rectangular shape not yet with mask support
     pub fn rect_line(&self, argx1: i32, argy1: i32, argx2: i32, argy2: i32,lenght: u32, width: u32, color: Color) {
         let mut x = argx1;
         let mut y = argy1;
@@ -748,7 +740,7 @@ impl Canvas {
         }
     }
 
-     ///Draws a regular polygon with mask
+     ///Draws a regular polygon with mask support
     pub fn polygon(&self, x0: i32, y0: i32, r: i32, sides: u32, angle: f32, color: Color, antialias: bool ) {
         let mut x:Vec<i32> = Vec::new();
         let mut y:Vec<i32> = Vec::new();
@@ -767,14 +759,14 @@ impl Canvas {
         }
         self.wu_line(x[sides],y[sides],x[0],y[0],color);    
         }else{
-        for i in 0..sides-1 {
+        for i in 0..sides {
             self.line(x[i],y[i],x[i+1],y[i+1],color);
         }
         self.line(x[sides],y[sides],x[0],y[0],color);
         }
     }
     
-    ///wrapper for flood fill with mask
+    ///#FIXME wrapper for flood fill with mask support DOES NOT WORK YET !!
     pub fn fill_mask(&self, x: i32, y: i32 , color: Color) {
         //get current pixel color 
         let rgba = self.pixcol(x,y);
@@ -857,11 +849,7 @@ impl Click for Canvas {
         *self.click_callback.borrow_mut() = Some(Arc::new(func));
         self
     }
-
-
 }
-
-
 
 impl Place for Canvas {}
 
@@ -934,5 +922,4 @@ impl Widget for Canvas {
     fn name(&self) -> Option<&'static str> {
         Some("Canvas")
     }
-
 }

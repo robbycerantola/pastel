@@ -138,16 +138,17 @@ fn main() {
     //create new tool with some properties and initial values
     let mut ntools = HashMap::new();
     ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
-    ntools.insert("line",vec![Property::new("Opacity",100),Property::new("Antialias",1)]);
-    ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100),Property::new("Antialias",1)]); 
+    ntools.insert("line",vec![Property::new("Opacity",100)]);
+    ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100)]); 
     ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]);
-    ntools.insert("brush_line",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
+    //ntools.insert("brush_line",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
     ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
     ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
     ntools.insert("paste",vec![Property::new("Opacity",100)]);
     ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key'
-    ntools.insert("polygon",vec![Property::new("Opacity",100),Property::new("Sides",6),Property::new("Antialias",1)]); 
+    ntools.insert("polygon",vec![Property::new("Opacity",100),Property::new("Sides",6)]); 
+    ntools.insert("preferences",vec![Property::new("Antialias",1)]); // not a real tool but a way to store general preferences
 
     //use invisible Label for storing current active tool
     let tool = Label::new();
@@ -354,7 +355,7 @@ fn main() {
                       
                       //save Opacity (transparency) value for current tool
                       let cur_tool = tool_clone.text.get();
-                      let a: &str = &cur_tool[..];  //workarround to convert String into &str                      
+                      let a: &str = &cur_tool[..];  //convert String into &str
                       property_set(&ntools_clone[a],"Opacity",progress);
                       
                   });
@@ -381,7 +382,7 @@ fn main() {
                       volume_label_clone.text.set(format!("Volume: {} {}", progress.x , progress.y));
                       volume.value.set(progress);
                       //let cur_tool = tool_clone.text.get();
-                      //let a: &str = &cur_tool[..];  // workarround to convert String into &str                      
+                      //let a: &str = &cur_tool[..];  // convert String into &str
                       //tools_clone[a].size(progress);
                       
                   });
@@ -393,21 +394,6 @@ fn main() {
                             green_bar,blue_bar, red_label, green_label, blue_label);
     // show on window the standard palette
     palette.prepare(&window);
-    
-    /* TESTING floating window
-    //draw something on 2nd window
-    palette.draw(& win);
-    win.draw_if_needed();
-
-    // test possibilities to add a swatch to palette
-    {
-    
-    // add new color to palette on window by reference 
-    let window_clone = &mut window as *mut Window;
-    unsafe{palette.clone().add(Color::rgb(200,100,50),&mut *window_clone);}//here works but not inside a closure !!
-    unsafe{palette.clone().add(Color::rgb(100,200,150),&mut *window_clone);}
-    }
-    */
 
     //clickable icon
     match Image::from_path( "pastel100.png" ) {
@@ -558,7 +544,7 @@ fn main() {
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tool_clone.text.set("brush_line".to_owned());
+                               tool_clone.text.set("brush".to_owned());
                                status_clone.text("");
                                size_label_clone.visible.set(true);
                                size_bar_clone.visible.set(true);
@@ -1283,18 +1269,7 @@ fn main() {
                         });
         menutools.add(&action);
     }
-    
-    {
-        let action = Action::new("Brush_line");
-        let tool_clone = tool.clone();
-        let status_clone = status.clone();
-        action.on_click(move |_action: &Action, _point: Point| {
-                            tool_clone.text.set("brush_line".to_owned());
-                            status_clone.text("Painting...(brush_line)");
-                        });
-        menutools.add(&action);
-    }
-    
+
     {
         let action = Action::new("Fill");
         let tool_clone = tool.clone();
@@ -1347,6 +1322,30 @@ fn main() {
                         });
         menutools.add(&action);
     }
+    
+    menutools.add(&Separator::new());
+    
+    {
+        let action = Action::new("Antialias \u{2611}");
+        //let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        let ntools_clone = ntools.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        let antialias = property_get(&ntools_clone["preferences"],"Antialias").unwrap();
+                        if antialias == 1 {
+                            property_set(&ntools_clone["preferences"],"Antialias",0);
+                            _action.text("Antialias \u{2610}");
+                            status_clone.text("Antialiasing disabled");
+                        }else{
+                            property_set(&ntools_clone["preferences"],"Antialias",1);
+                            status_clone.text("Antialiasing enabled");
+                            _action.text("Antialias \u{2611}");
+                        }
+                            
+                          });
+        menutools.add(&action);
+    }
+    
 
     //Menu image
     let menuimage = Menu::new("Image");
@@ -1669,12 +1668,13 @@ fn main() {
                 let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;
                 let swc = swatch_clone.read();
                 let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
-                
+                let antialias = property_get(&ntools.clone()["preferences"],"Antialias").unwrap();
                 let selected_tool = tool.clone().text.get();
                 //tools that dont need prev_position
-                //match tool.clone().text.get().as_ref() {
+
                 match selected_tool.as_ref() {    
                     "pen"  => canvas.pixel(point.x, point.y, color), //.image.borrow_mut()
+                    /*
                     "brush"=> {
                                 match property_get(&ntools.clone()["brush"],"Shape") {
                                     Some(0) => canvas.circle(point.x, point.y,-size,
@@ -1688,25 +1688,36 @@ fn main() {
                              None | Some(_) => println!("no Shape match!"),
                                     }
                                 },
+                    */ 
                     "fill" => canvas.fill(point.x, point.y,color),
-               "rectangle" => {                   
+               "rectangle" => {
                                 canvas.undo_save();
                                 let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
-                                let width = property_get(&ntools.clone()["rectangle"],"Size").unwrap();
-                                unsafe{
-                                    canvas.image.borrow_mut().interact_rect(point.x,
-                                                    point.y,
-                                                    color,
-                                                    filled == 1,
-                                                    width,
-                                                    &mut *window_clone
-                                                    );
-                                }
+                                let mut width = property_get(&ntools.clone()["rectangle"],"Size").unwrap();
+                                let mut myselection = Rect::new(0,0,0,0);
+                                if let Some(selection) = unsafe{canvas.image.borrow_mut().new_select_rect(point.x,
+                                                    point.y, Color::rgb(100,100,100), 0, &mut *window_clone)}
+                                    {
+                                        myselection = selection;
+                                    }
+                                    if filled == 1 {
+                                        if myselection.height > myselection.width {
+                                            width = 1+(myselection.width/2) as i32;
+                                        }
+                                        else {
+                                              width = 1+(myselection.height/2) as i32;
+                                        }
+                                            
+                                    }
+                                    for i in 0..width {
+                                        canvas.rect(myselection.x+i,myselection.y+i,
+                                                    myselection.width- (2*i) as u32,myselection.height- (2*i) as u32,color);
+                                    }
                                },
                 "polyline" => { 
                                 canvas.undo_save();
                                 let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
-                                let antialias = property_get(&ntools.clone()["polyline"],"Antialias").unwrap();
+                                //let antialias = property_get(&ntools.clone()["polyline"],"Antialias").unwrap();
                                 unsafe{
                                         canvas.image.borrow_mut().interact_line(point.x,
                                                     point.y,
@@ -1778,7 +1789,11 @@ fn main() {
                                             canvas.circle(point.x, point.y, radius, color);
                                         }else{
                                             radius=myr;
-                                            canvas.wu_circle(point.x, point.y, radius, color);
+                                            if antialias == 1 {
+                                                canvas.wu_circle(point.x, point.y, radius, color);
+                                            }else{
+                                                canvas.circle(point.x, point.y, radius, color);
+                                            }
                                         }
                                         
                                  }                             
@@ -1799,7 +1814,7 @@ fn main() {
                                     {aangle = angle;
                                       rr = r;  }
                                     }
-                                        canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color,true);
+                                        canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color, antialias==1);
                                         
                                                            
                                 },
@@ -1813,7 +1828,7 @@ fn main() {
                     //match tool.clone().text.get().as_ref() {
                     match selected_tool.as_ref() {
                         "line" => { 
-                                    let antialias = property_get(&ntools.clone()["line"],"Antialias").unwrap();
+                                    //let antialias = property_get(&ntools.clone()["line"],"Antialias").unwrap();
                                     if antialias == 1 {
                                         canvas.wu_line(prev_position.x,
                                             prev_position.y,
@@ -1828,7 +1843,7 @@ fn main() {
                                             color);
                                         }
                                    },
-                       "brush_line" => {
+                       "brush" => {
                                         match property_get(&ntools.clone()["brush"],"Shape") {
                                     Some(0) => canvas.brush_line(prev_position.x,
                                             prev_position.y,

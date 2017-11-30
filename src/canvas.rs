@@ -9,6 +9,7 @@ use orbtk::point::Point;
 use orbtk::rect::Rect;
 use orbtk::traits::{Click, Place};
 use orbtk::widgets::Widget;
+use orbtk::theme::{Theme};
 
 use std::cell::{Cell, RefCell};
 use std::path::Path;
@@ -858,7 +859,7 @@ impl Widget for Canvas {
         &self.rect
     }
 
-    fn draw(&self, renderer: &mut Renderer, _focused: bool) {
+    fn draw(&self, renderer: &mut Renderer, _focused: bool, _theme: &Theme) {
         let rect = self.rect.get();
         let image = self.image.borrow();
         renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
@@ -919,7 +920,7 @@ impl Widget for Canvas {
         !flag;
     }
     
-    fn name(&self) -> Option<&'static str> {
-        Some("Canvas")
+    fn name(&self) -> &str {
+        "Canvas"
     }
 }

@@ -6,13 +6,16 @@ use std::cell::{Cell, RefCell};
 use orbtk::cell::CloneCell;
 use std::path::Path;
 use std::sync::Arc;
-use orbtk::theme::{LABEL_BACKGROUND, LABEL_BORDER, LABEL_FOREGROUND};
+
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
 use orbtk::traits::{Click, Place, Text}; //TODO create traits Tooltip , for now use Text
 use orbtk::widgets::Widget;
 use orbtk::window::Window;
+
+use orbtk::theme::{Theme};
+use theme::{LABEL_BACKGROUND, LABEL_BORDER, LABEL_FOREGROUND};
 
 #[allow(unused_imports)]
 use std::time::{Duration, Instant};
@@ -173,7 +176,7 @@ impl Widget for ToolbarIcon {
         &self.rect
     }
 
-    fn draw(&self, renderer: &mut Renderer, _focused: bool) {
+    fn draw(&self, renderer: &mut Renderer, _focused: bool, _theme: &Theme) {
         if self.visible.get(){
             let mut rect = self.rect.get();
             let image = self.image.borrow();
@@ -267,8 +270,8 @@ impl Widget for ToolbarIcon {
         self.visible.set(flag);
     }
     
-    fn name(&self) -> Option<&'static str> {
-        Some("ToolbarIcon")
+    fn name(&self) -> &str {
+        "ToolbarIcon"
     }
 }
 

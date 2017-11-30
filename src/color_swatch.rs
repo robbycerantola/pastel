@@ -6,9 +6,11 @@ use orbtk::cell::{CloneCell, CheckSet};
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
-use orbtk::theme::{BUTTON_BACKGROUND, BUTTON_BG_SELECTION, BUTTON_FOREGROUND, BUTTON_FG_SELECTION, BUTTON_BORDER};
-use orbtk::traits::{Border, Click, Place, Text};
+use theme::{BUTTON_BACKGROUND, BUTTON_BG_SELECTION, BUTTON_FOREGROUND, BUTTON_FG_SELECTION, BUTTON_BORDER};
+use orbtk::traits::{Click, Place, Text}; //Border
 use orbtk::widgets::Widget;
+
+use orbtk::theme::{Theme};
 
 pub struct ColorSwatch {
     pub rect: Cell<Rect>,
@@ -61,6 +63,7 @@ impl ColorSwatch {
     }
 }
 
+/*
 impl Border for ColorSwatch {
     fn border(&self, enabled: bool) -> &Self {
         self.border.set(enabled);
@@ -72,6 +75,7 @@ impl Border for ColorSwatch {
         self
     }
 }
+*/
 
 impl Click for ColorSwatch {
     fn emit_click(&self, point: Point) {
@@ -105,7 +109,7 @@ impl Widget for ColorSwatch {
         &self.rect
     }
 
-    fn draw(&self, renderer: &mut Renderer, _focused: bool) {
+    fn draw(&self, renderer: &mut Renderer, _focused: bool, _theme: &Theme) {
         if self.visible.get(){
             let rect = self.rect.get();
 
@@ -187,7 +191,7 @@ impl Widget for ColorSwatch {
         self.visible.set(flag);
     }
     
-    fn name(&self) -> Option<&'static str> {
-        Some("ColorSwatch")
+    fn name(&self) -> &str {
+        "ColorSwatch"
     }
 }

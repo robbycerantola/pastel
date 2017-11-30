@@ -1,7 +1,7 @@
 /*Pastel by Robby 21-05-2017
 simple image editor in Rust for Redox
 */
-
+#![feature(const_fn)]  //needed for fixing theme 
 #![allow(dead_code)]
 //#![allow(unused_imports)]
 #![allow(unused_variables)]
@@ -13,7 +13,7 @@ extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             Rect, Separator,
-             Window};  //Renderer,TextBox,ControlKnob,InnerWindow,
+             Window, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use orbtk::cell::CloneCell;
@@ -48,6 +48,8 @@ use color_swatch::ColorSwatch;
 
 mod toolbar;
 use toolbar::{Toolbar, ToolbarIcon};
+
+mod theme;  //#FIXME temporary fix to compile with new orbtk 0.2.26 which has moved to css theme, pastel has to move to css too
 
 //structure to store tools properties 
 struct Property{
@@ -200,11 +202,11 @@ fn main() {
     status.position(4, (window.height()-18) as i32)
         .size(window.width(),16)
         .text("Ready")
-        .visible.set(STATUSLINE);
+        .visible(STATUSLINE);
 
     //define marquee widget (visible selection rectangle)
     let marquee = Marquee::new();
-    marquee.visible.set(false);
+    marquee.visible(false);
 
     //define current color swatch 
     let swatch = ColorSwatch::new();
@@ -220,12 +222,11 @@ fn main() {
     let red_label = Label::new();
     red_label.text("R: 0")
         .position(x, y)
-        .size(48, 16)
-        .fg.set(orbtk::Color::rgb(255,0,0));
+        .size(48, 16);//        .fg.set(orbtk::Color::rgb(255,0,0));
     window.add(&red_label);
 
     {
-        red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
+        //red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
         let swatch_clone = swatch.clone();
         let green_bar_clone_r = green_bar.clone();
         let blue_bar_clone_r = blue_bar.clone();
@@ -251,12 +252,11 @@ fn main() {
     let green_label = Label::new();
     green_label.text("G: 0")
         .position(x, y)
-        .size(48, 16)
-        .fg.set(orbtk::Color::rgb(0,255,0));
+        .size(48, 16);//.fg.set(orbtk::Color::rgb(0,255,0));
     window.add(&green_label);
 
     {
-        green_bar.fg.set(orbtk::Color::rgb(0,255,0));
+        //green_bar.fg.set(orbtk::Color::rgb(0,255,0));
         let swatch_clone = swatch.clone();
         let red_bar_clone_g = red_bar.clone();
         let blue_bar_clone_g = blue_bar.clone();
@@ -281,12 +281,11 @@ fn main() {
     let blue_label = Label::new();
     blue_label.text("B: 0")
         .position(x, y)
-        .size(48, 16)
-        .fg.set(orbtk::Color::rgb(0,0,255));
+        .size(48, 16);//.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&blue_label);
     
     {
-        blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
+        //blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
         let swatch_clone = swatch.clone();
         let green_bar_clone_b = green_bar.clone();
         let red_bar_clone_b = red_bar.clone();
@@ -315,7 +314,7 @@ fn main() {
     size_label.text("Size: 1")
         .position(x+380, 56)
         .size(64, 16)
-        .visible.set(false);
+        .visible(false);
     window.add(&size_label);
 
     let size_bar = ProgressBar::new();
@@ -323,7 +322,7 @@ fn main() {
     let ntools_clone=ntools.clone();
     let size_label_clone = size_label.clone();
     size_bar.value.set(1);
-    size_bar.visible.set(false);
+    size_bar.visible(false);
     size_bar
         .position(x+450, 56)
         .size(256, 16)
@@ -344,7 +343,7 @@ fn main() {
     // tool transparency bar
     let trans_label = Label::new();
     trans_label.text("Opacity: 100%").position(x+340, 90).size(120, 16);
-    trans_label.visible.set(true);
+    trans_label.visible(true);
     //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&trans_label);
 
@@ -355,7 +354,7 @@ fn main() {
     let ntools_clone = ntools.clone();
     let trans_label_clone = trans_label.clone();
     trans_bar.value.set(100);
-    trans_bar.visible.set(true);
+    trans_bar.visible(true);
     trans_bar
         .position(x+450, 90)
         .size(256, 16)
@@ -470,8 +469,8 @@ fn main() {
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("pen".to_owned());
                                status_clone.text("");
-                               size_bar_clone.visible.set(false);
-                               size_label_clone.visible.set(false);
+                               size_bar_clone.visible(false);
+                               size_label_clone.visible(false);
                                let o = property_get(&ntools_clone["pen"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
@@ -511,8 +510,8 @@ fn main() {
                                tool_clone.text.set("line".to_owned());
                                status_clone.text("");
                                //get previous settings
-                               size_bar_clone.visible.set(false);
-                               size_label_clone.visible.set(false);
+                               size_bar_clone.visible(false);
+                               size_label_clone.visible(false);
                                let o = property_get(&ntools_clone["line"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
@@ -552,8 +551,8 @@ fn main() {
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("brush".to_owned());
                                status_clone.text("");
-                               size_label_clone.visible.set(true);
-                               size_bar_clone.visible.set(true);
+                               size_label_clone.visible(true);
+                               size_bar_clone.visible(true);
                                //let v=tools_clone.get(&"brush").unwrap().size.get();
                                let v = property_get(&ntools_clone["brush"],"Size").unwrap();
                                size_bar_clone.value.set(v);
@@ -598,8 +597,8 @@ fn main() {
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("fill".to_owned());
                                status_clone.text("Filling...");
-                               size_label_clone.visible.set(false);
-                               size_bar_clone.visible.set(false);
+                               size_label_clone.visible(false);
+                               size_bar_clone.visible(false);
                                
                                let o = property_get(&ntools_clone["fill"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
@@ -641,8 +640,8 @@ fn main() {
                                tool_clone.text.set("polyline".to_owned());
                                status_clone.text("Drawing polylines... right click to exit.");
                                //get previous settings
-                               size_bar_clone.visible.set(true);
-                               size_label_clone.visible.set(true);
+                               size_bar_clone.visible(true);
+                               size_label_clone.visible(true);
                                let o = property_get(&ntools_clone["polyline"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
@@ -686,8 +685,8 @@ fn main() {
                                tool_clone.text.set("rectangle".to_owned());
                                status_clone.text("Drawing rectangles...");
                                //get previous settings
-                               size_bar_clone.visible.set(true);
-                               size_label_clone.visible.set(true);
+                               size_bar_clone.visible(true);
+                               size_label_clone.visible(true);
                                let o = property_get(&ntools_clone["rectangle"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
@@ -731,8 +730,8 @@ fn main() {
                                tool_clone.text.set("circle".to_owned());
                                status_clone.text("Drawing circles...click on center, move cursor to set radius, click again.");
                                //get previous settings
-                               size_bar_clone.visible.set(false);
-                               size_label_clone.visible.set(false);
+                               size_bar_clone.visible(false);
+                               size_label_clone.visible(false);
                                let o = property_get(&ntools_clone["circle"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
@@ -772,8 +771,8 @@ fn main() {
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tool_clone.text.set("marquee".to_owned());
                                status_clone.text("Selecting...");
-                               size_bar_clone.visible.set(false);
-                               size_label_clone.visible.set(false);
+                               size_bar_clone.visible(false);
+                               size_label_clone.visible(false);
 
                                //let o = property_get(&ntools_clone["marquee"],"Opacity").unwrap();
                                //trans_bar_clone.value.set(o);
@@ -1085,7 +1084,7 @@ fn main() {
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         *selection_clone.borrow_mut()=None;
-                        marquee_clone.visible.set(false);
+                        marquee_clone.visible(false);
                         });
         menuedit.add(&action);
     }
@@ -1574,7 +1573,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.27, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.29, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1735,7 +1734,7 @@ fn main() {
                                         },
                                     }
                                 },
-                   "marquee"=> {    marquee_clone.visible.set(false);
+                   "marquee"=> {    marquee_clone.visible(false);
                                     canvas.undo_save();
                                     let mut image = canvas.image.borrow_mut();
                                     if let Some(selection) = unsafe{image.select_rect(point.x,
@@ -1744,7 +1743,7 @@ fn main() {
                                         *selection_clone.borrow_mut()= Some(selection);
                                         marquee_clone.position(selection.x,selection.y+CANVASOFFSET)
                                                     .size(selection.width,selection.height);
-                                        marquee_clone.visible.set(true);
+                                        marquee_clone.visible(true);
                                         }
                                     },
                     "paste" => {
@@ -1928,7 +1927,7 @@ fn toggle_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>) {
 fn visible_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>, v: bool) {
     for i in 0..toolbar_obj.len(){
         if let Some(toolbar) = toolbar_obj.get(i) {
-            toolbar.visible.set(v);
+            toolbar.visible(v);
         }
     }
 }

@@ -6,9 +6,10 @@ use orbtk::cell::{CloneCell, CheckSet};
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
-use orbtk::theme::{ BUTTON_BG_SELECTION, BUTTON_FOREGROUND, BUTTON_FG_SELECTION};
-use orbtk::traits::{Border, Click, Place, Text};
+use theme::{ BUTTON_BG_SELECTION, BUTTON_FOREGROUND, BUTTON_FG_SELECTION};
+use orbtk::traits::{Click, Place, Text}; //Border
 use orbtk::widgets::Widget;
+use orbtk::theme::{Theme};
 
 pub struct Marquee {
     pub rect: Cell<Rect>,
@@ -61,6 +62,7 @@ impl Marquee {
     }
 }
 
+/*
 impl Border for Marquee {
     fn border(&self, enabled: bool) -> &Self {
         self.border.set(enabled);
@@ -72,6 +74,7 @@ impl Border for Marquee {
         self
     }
 }
+*/
 
 impl Click for Marquee {
     fn emit_click(&self, point: Point) {
@@ -105,7 +108,7 @@ impl Widget for Marquee {
         &self.rect
     }
 
-    fn draw(&self, renderer: &mut Renderer, _focused: bool) {
+    fn draw(&self, renderer: &mut Renderer, _focused: bool, _theme: &Theme) {
 
 
 
@@ -212,7 +215,7 @@ impl Widget for Marquee {
         self.visible.set(flag);
     }
 
-    fn name(&self) -> Option<&'static str> {
-        Some("Marquee")
+    fn name(&self) -> &str {
+        "Marquee"
     }
 }

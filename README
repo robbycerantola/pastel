@@ -5,6 +5,7 @@ Compatible with Redox and SDL2 platforms.
 Now packaged for Redox !!
 
 To run on Redox simply edit file filesystem.toml and delete '#' before pastel item to enable its compilation.
+Then make all to compile Redox and install pastel.
 Once Redox is running select pastel from the menu.
 
 To run on Linux install dependencies (SDL2      ) and type on terminal

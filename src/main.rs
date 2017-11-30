@@ -12,8 +12,8 @@ extern crate image;
 extern crate orbclient;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
-            Toolbar, ToolbarIcon, Rect, Separator,
-             Window, ColorSwatch, Marquee};  //Renderer,TextBox,ControlKnob,InnerWindow,
+            Rect, Separator,
+             Window};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use orbtk::cell::CloneCell;
@@ -39,6 +39,15 @@ use addons::AddOnsToOrbimage;
 
 mod canvas;
 use canvas::Canvas;
+
+mod marquee;
+use marquee::Marquee;
+
+mod color_swatch;
+use color_swatch::ColorSwatch;
+
+mod toolbar;
+use toolbar::{Toolbar, ToolbarIcon};
 
 //structure to store tools properties 
 struct Property{
@@ -141,7 +150,6 @@ fn main() {
     ntools.insert("line",vec![Property::new("Opacity",100)]);
     ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100)]); 
     ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]);
-    //ntools.insert("brush_line",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]); //
     ntools.insert("fill",vec![Property::new("Opacity",100)]);
     ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
     ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
@@ -155,26 +163,23 @@ fn main() {
     tool.text("pen");
     
     //define current selection
-    //let selection :  Rc<RefCell<Option<Rect>>> = Rc::new(RefCell::new(Some(Rect::new(0,0,size.x,size.y))));  //Rect::new(0,0,0,0);
     let selection :  Rc<RefCell<Option<Rect>>> = Rc::new(RefCell::new(None));
     
     //if pastel_copy_buffer.png exists load it into canvas copy_buffer
     //for copy/paste between instances 
-    //let buffer: Rc<RefCell<orbimage::Image>> = Rc::new(RefCell::new(load_buffer("/tmp/pastel_copy_buffer.png")));
     *canvas.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
     
     //implement GUI
     
     let mut x = 10;
     let mut y = 56;
-    
     let title = format!("Pastel: {}", filename);
+
     //resizable main window
     let mut window = Window::new_flags(Rect::new(100, 100, 1024, 718),
                                        &title.to_owned(),
                                        &[orbclient::WindowFlag::Resizable ]);
-    
-        
+
     /*
     //2nd method to open a new window
     let win : Rc<RefCell<Window>> = Rc::new(RefCell::new(Window::new_flags(
@@ -189,20 +194,19 @@ fn main() {
     let mut orb_window = Some(InnerWindow::new(1130, 100, 300, 200, "Test floating window").unwrap());
     let mut win = Box::new(Window::from_inner(orb_window.take().unwrap()));
     */
-    
+
     // define status line
     let status = Label::new();
     status.position(4, (window.height()-18) as i32)
         .size(window.width(),16)
         .text("Ready")
         .visible.set(STATUSLINE);
-    
-    
+
     //define marquee widget (visible selection rectangle)
     let marquee = Marquee::new();
     marquee.visible.set(false);
 
-    // current color swatch 
+    //define current color swatch 
     let swatch = ColorSwatch::new();
     swatch.position(320,56).size(24,35);
     swatch.color(orbtk::Color::rgb(0,0,0));
@@ -214,10 +218,12 @@ fn main() {
     let green_bar = ProgressBar::new();
     let blue_bar = ProgressBar::new();
     let red_label = Label::new();
-    red_label.text("R: 0").position(x, y).size(48, 16);
-    red_label.fg.set(orbtk::Color::rgb(255,0,0));
+    red_label.text("R: 0")
+        .position(x, y)
+        .size(48, 16)
+        .fg.set(orbtk::Color::rgb(255,0,0));
     window.add(&red_label);
-    
+
     {
         red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
         let swatch_clone = swatch.clone();
@@ -243,8 +249,10 @@ fn main() {
     y += red_bar.rect.get().height as i32 + 2;
 
     let green_label = Label::new();
-    green_label.text("G: 0").position(x, y).size(48, 16);
-    green_label.fg.set(orbtk::Color::rgb(0,255,0));
+    green_label.text("G: 0")
+        .position(x, y)
+        .size(48, 16)
+        .fg.set(orbtk::Color::rgb(0,255,0));
     window.add(&green_label);
 
     {
@@ -271,8 +279,10 @@ fn main() {
     y += green_bar.rect.get().height as i32 + 2;
 
     let blue_label = Label::new();
-    blue_label.text("B: 0").position(x, y).size(48, 16);
-    blue_label.fg.set(orbtk::Color::rgb(0,0,255));
+    blue_label.text("B: 0")
+        .position(x, y)
+        .size(48, 16)
+        .fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&blue_label);
     
     {
@@ -299,14 +309,15 @@ fn main() {
         window.add(&blue_bar);
     }
     y += blue_bar.rect.get().height as i32 + 10;
-    
+
     // tool size bar
     let size_label = Label::new();
-    size_label.text("Size: 1").position(x+380, 56).size(64, 16);
-    size_label.visible.set(false);
+    size_label.text("Size: 1")
+        .position(x+380, 56)
+        .size(64, 16)
+        .visible.set(false);
     window.add(&size_label);
 
-    
     let size_bar = ProgressBar::new();
     let tool_clone = tool.clone();
     let ntools_clone=ntools.clone();
@@ -389,9 +400,10 @@ fn main() {
     window.add(&volume);
 */
 
-    // create a new palette at x,y,width,height linked to swatch 
+    // create a new palette at x,y,width,height linked to swatch and color picker
     let palette=Palette::new(10,120,window.width(),50,swatch_clone,red_bar,
                             green_bar,blue_bar, red_label, green_label, blue_label);
+
     // show on window the standard palette
     palette.prepare(&window);
 
@@ -413,13 +425,11 @@ fn main() {
             window.add(&label);
         }
     }
-    
+
     //button for adding current color to custom palette
     let add_button = Button::new();
     let swatch_clone = swatch.clone();
     let palette_clone = palette.clone();
-    
-
     add_button.position(320,93)
         .size(24, 16)
         .text("+")
@@ -429,8 +439,7 @@ fn main() {
             palette_clone.change(palette_clone.next(),swatch_clone.read());
         });
     window.add(&add_button);
-    
-    
+
     //manually implement toolbar object (old fashion...)
     // implement toolbars by multiple clickable images loaded in widget ToolbarIcon  
     let mut toolbar_obj = vec![];    //here we save all Toolbar widgets clones so we can manage 'selected' property
@@ -439,16 +448,15 @@ fn main() {
     //use new Toolbar widget to implement 3rd Toolbar
     let parent_window = &mut window as *mut Window;  //we need a pointer to the parent window to add the icons to
     let mut toolbar3 = Toolbar::new();
-    
+
     let y = 25;
 
-
+    //toolbar items
     match ToolbarIcon::from_path("pencil1.png") {
         Ok(image) => {
             image.position(x, y)
                 .text("Draft painting".to_owned())
                 .selected(true);
-                
             let tool_clone = tool.clone();
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
@@ -464,7 +472,6 @@ fn main() {
                                status_clone.text("");
                                size_bar_clone.visible.set(false);
                                size_label_clone.visible.set(false);
-
                                let o = property_get(&ntools_clone["pen"],"Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
@@ -475,9 +482,8 @@ fn main() {
                                //make toolbar3 invisible
                                unsafe{(&mut *toolbar3_clone).visible(false);}
                            });
-            
             window.add(&image);
-            toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
+            toolbar_obj.push(image.clone());  //TODO switch to new API;
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -615,7 +621,6 @@ fn main() {
             println!("Error loading toolbar element {}",err);
         }
     }
-
 
     match ToolbarIcon::from_path("polyline.png") {
         Ok(image) => {
@@ -940,7 +945,6 @@ fn main() {
     toolbar3.visible(false);
 
     //Menu file
-
     let menufile = Menu::new("File");
     menufile.position(10, 0).size(32, 16);
 
@@ -1080,13 +1084,8 @@ fn main() {
         let marquee_clone = marquee.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        
-                        //println!("{:?}",selection_clone);
-                                                                       
-                        //*selection_clone.borrow_mut()=Some(Rect{x:0, y:0, width:size_clone.x, height: size_clone.y});
                         *selection_clone.borrow_mut()=None;
                         marquee_clone.visible.set(false);
-                        
                         });
         menuedit.add(&action);
     }
@@ -1122,7 +1121,7 @@ fn main() {
     }
 
     menuedit.add(&Separator::new());
-    
+
     {
         let action = Action::new("Load Buffer");
         let home_dir_clone = home_dir.clone();
@@ -1136,7 +1135,6 @@ fn main() {
                         match f.exec() {
                         Some(response) => {
                             let bf = load_buffer(&(response.display().to_string())[..]);
-                            //*buffer_clone.borrow_mut() = bf; 
                             *canvas_clone.copy_buffer.borrow_mut() = bf;
                             },
                         None => println!("Cancelled"),
@@ -1144,9 +1142,7 @@ fn main() {
                           });
         menuedit.add(&action);
     }
-    
 
-    
     {
         let action = Action::new("Save Buffer");
         let home_dir_clone = home_dir.clone();
@@ -1319,12 +1315,12 @@ fn main() {
                             None => {println!("Cancelled");},
                         }
                             
-                        });
+        });
         menutools.add(&action);
     }
-    
+
     menutools.add(&Separator::new());
-    
+
     {
         let action = Action::new("Antialias \u{2611}");
         //let canvas_clone = canvas.clone();
@@ -1341,8 +1337,7 @@ fn main() {
                             status_clone.text("Antialiasing enabled");
                             _action.text("Antialias \u{2611}");
                         }
-                            
-                          });
+        });
         menutools.add(&action);
     }
     
@@ -1400,7 +1395,7 @@ fn main() {
                     });
         menuimage.add(&action);
     }
-    
+
     {
         let action = Action::new("Rotate 90");
         let canvas_clone = canvas.clone();
@@ -1422,7 +1417,7 @@ fn main() {
                     });
         menuimage.add(&action);
     }
-    
+
     {
         let action = Action::new("Brighten");
         let canvas_clone = canvas.clone();
@@ -1434,7 +1429,7 @@ fn main() {
                     });
         menuimage.add(&action);
     }
-    
+
     {
         let action = Action::new("Darken");
         let canvas_clone = canvas.clone();
@@ -1446,7 +1441,7 @@ fn main() {
                     });
         menuimage.add(&action);
     }
-    
+
     {
         let action = Action::new("Invert");
         let canvas_clone = canvas.clone();
@@ -1508,7 +1503,6 @@ fn main() {
         let home_dir_clone = home_dir.clone();
         let palette_clone = palette.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            //match dialog("Open", "path:",&home_dir_clone[..]) {
                             let mut f= FileDialog::new();
                             f.title="Load palette".to_owned();
                             f.path=PathBuf::from(home_dir_clone.to_owned());
@@ -1569,16 +1563,6 @@ fn main() {
     
     menupalette.add(&Separator::new());
 
-/*  {
-        let action = Action::new("Transparent");
-        
-        let trans_bar_clone = trans_bar.clone();
-        action.on_click(move |_action: &Action, _point: Point| {
-                        trans_bar_clone.value.set(0);
-                          });
-        menupalette.add(&action);
-    }
-*/
     //Menu help
 
     let menuhelp = Menu::new("Help");
@@ -1618,6 +1602,7 @@ fn main() {
             if cfg!(feature = "debug"){
                 println!("Pressed {} key ",key);
             }
+            //manage shortcuts
             match key {
             'v' => {
                     tool_clone.text.set("paste".to_owned());
@@ -1673,7 +1658,7 @@ fn main() {
                 //tools that dont need prev_position
 
                 match selected_tool.as_ref() {    
-                    "pen"  => canvas.pixel(point.x, point.y, color), //.image.borrow_mut()
+                    "pen"  => canvas.pixel(point.x, point.y, color),
                     /*
                     "brush"=> {
                                 match property_get(&ntools.clone()["brush"],"Shape") {
@@ -1860,48 +1845,24 @@ fn main() {
                                                     size as u32, color),
                              None | Some(_) => println!("no Shape match!"),
                                     }
-                           
-                                        
                                         }
-                              _ => (),          
+                              _ => (),
                     }
-                    *prev_opt = Some(point);     
+                    *prev_opt = Some(point);
                 } else {
                     *prev_opt = Some(point);
                     if u == "line" || u =="pen" || u =="brush" || u=="brush_line" {canvas.undo_save();} //prepare for undo
-                    //if ["line","pen","brush"].contains(&u) {canvas.undo_save();} 
                 }
             }
         });
-        
+
     window.add(&canvas);
     window.add(&marquee);
     window.add(&status);
     window.exec();
-    
-/*    
-    'event: while window.running.get() {
-            window.drain_events();
-            window.draw_if_needed();
-            window.drain_orbital_events();
-            //shows selection rectangle if needed
-            match *selection.borrow() {
-                Some(selection) => {
-                            window.inner.borrow_mut().rect(selection.x,selection.y+CANVASOFFSET,selection.width, selection.height, Color::rgba(200,0,0,100));
-                            //window.inner.borrow_mut().rect_marquee(selection.x,selection.y+CANVASOFFSET,selection.width as i32 +selection.x, selection.height as i32 +selection.y, Color::rgba(100,100,100,255));
-                            window.inner.borrow_mut().sync();
-                            },
-                None => (),
-            }
-            
-        }
-*/
 }
 
 //Helper functions
-fn test<T: Into<Option<i32>>> ( antialiased: T) {
-    let antialiased = antialiased.into().unwrap_or(0);
-}
 
 ///Load an image from path if exists, otherwise create new empty canvas
 fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {  

@@ -1,4 +1,4 @@
-use orbtk::{Color,  Point, ProgressBar, Rect, Window,  ColorSwatch, Label}; //Toolbar,Action, Button, Image, Label, Menu,ControlKnob,Toolbar, ToolbarIcon, Separator,TextBox,Renderer,
+use orbtk::{Color,  Point, ProgressBar, Rect, Window, Label}; //Toolbar,Action, Button, Image, Label, Menu,ControlKnob,Toolbar, ToolbarIcon, Separator,TextBox,Renderer,
 use orbtk::traits::{Click, Place};  //Border, Enter, Text
 
 use std::cell::{Cell, RefCell};
@@ -7,6 +7,8 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::prelude::*;
+
+use color_swatch::ColorSwatch;
 
 const SWATCH_SIZE :i32 = 24;
 const SWATCH_MAX :usize = 109; //67

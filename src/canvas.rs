@@ -1,6 +1,9 @@
 //canvas widget based on image widget
 
 use image;
+use image::{GenericImage, ImageBuffer, Pixel};
+
+
 use orbclient::{Color, Renderer};
 use orbimage::Image;
 use orbtk::Window;
@@ -236,7 +239,7 @@ impl Canvas {
              "flip_vertical"   => image::imageops::flip_vertical(&imgbuf),
              "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
              "rotate90"        => image::imageops::rotate90(&imgbuf),
-       //      "rotate"          => raster::transform::rotate(&mut imgbuf,45,Color::rgba(0,0,0,0)),
+             "rotate"          => self.rotate_center(&imgbuf,(a as f32 * PI/180.0)),
              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
              "invert"          => {image::imageops::colorops::invert(&mut imgbuf);
@@ -250,7 +253,7 @@ impl Canvas {
                              _ => imgbuf,
          });
         
-        //convert rgba 8u image buffer back into Color slice
+        //convert rgba u8 image buffer back into Color slice
         let mut i = 0 ;
         let mut r: u8 ;
         let mut g: u8 ;
@@ -305,6 +308,63 @@ impl Canvas {
         let imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, new_buffer).unwrap();
             imgbuf
     }
+
+    fn rotate_center<I: GenericImage + 'static>(&self, image: &I, theta: f32) 
+        -> ImageBuffer<I::Pixel, Vec<<I::Pixel as Pixel>::Subpixel>>
+        where I::Pixel: 'static,
+          <I::Pixel as Pixel>::Subpixel: 'static  {
+        let (width, height) = image.dimensions();
+        let center = ((width/2) as f32, (height/2) as f32);
+        self.rotate_nearest(image, center, theta)
+    }
+
+    fn rotate_nearest<I: GenericImage + 'static>(&self, image: &I, center: (f32, f32), theta: f32) 
+        -> ImageBuffer<I::Pixel, Vec<<I::Pixel as Pixel>::Subpixel>>
+        where I::Pixel: 'static,
+          <I::Pixel as Pixel>::Subpixel: 'static  {
+        let default = unsafe { image.unsafe_get_pixel(0,0) };
+        let (width, height) = image.dimensions();
+        let mut out = ImageBuffer::new(width, height);
+
+        let cos_theta = theta.cos();
+        let sin_theta = theta.sin();
+        let center_x = center.0;
+        let center_y = center.1;
+
+        for y in 0..height {
+            let dy = y as f32 - center_y;
+            let mut px = center_x + sin_theta * dy - cos_theta * center_x;
+            let mut py = center_y + cos_theta * dy + sin_theta * center_x;
+
+            for x in 0..width {
+
+                unsafe {
+                    let pix = self.nearest(image, px, py, default);
+                    out.unsafe_put_pixel(x, y, pix);
+                }
+
+                px += cos_theta;
+                py -= sin_theta;
+            }
+        }
+
+        out
+    }
+
+    fn nearest<P: Pixel + 'static, I: GenericImage + 'static>(&self, image: &I, x: f32, y: f32, default: P)
+        -> <I as image::GenericImage>::Pixel {
+        let rx = x.round();
+        let ry = y.round();
+
+        // default if out of bound
+        let (width, height) = image.dimensions();
+        if rx < 0f32 || rx >= width as f32 || ry < 0f32 || ry >= height as f32 {
+            unsafe { image.unsafe_get_pixel(0,0) }
+        } else {
+           unsafe { image.unsafe_get_pixel(rx as u32, ry as u32) }
+        }
+    }
+
 
     pub fn on_right_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
         *self.right_click_callback.borrow_mut() = Some(Arc::new(func));

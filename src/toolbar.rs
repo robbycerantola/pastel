@@ -242,7 +242,7 @@ impl Widget for ToolbarIcon {
                             match self.tooltip_time.get() {
                                 Some(time) => {
                                                 if !self.tooltip.get(){
-                                                    if (Instant::now()-time) > Duration::new(2,0){
+                                                    if (Instant::now()-time) > Duration::new(0,8){
                                                         //println!("Tooltip: {} time:{:?}",self.tooltip_text.get(),time);
                                                         self.tooltip.set(true);
                                                         *redraw = true;

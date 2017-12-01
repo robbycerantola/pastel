@@ -10,6 +10,7 @@ extern crate orbtk;
 extern crate orbimage;
 extern crate image;
 extern crate orbclient;
+//extern crate imageproc;
 
 use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
             Rect, Separator,
@@ -1418,6 +1419,30 @@ fn main() {
     }
 
     {
+        let action = Action::new("Rotate");
+        let canvas_clone = canvas.clone();
+        let selection_clone = selection.clone();
+        let marquee_clone = marquee.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        match dialog("Rotate", "degrees:","45") {
+                            Some(response) => {
+                                canvas_clone.trans_selection(selection_clone.borrow()
+                                .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                                height: canvas_clone.rect.get().height-1}),"rotate",response.parse::<i32>().unwrap_or(0),0);
+                            },
+                        
+                            None => {println!("Cancelled");},
+                        
+                        
+                        
+
+
+                        }
+                    });
+        menuimage.add(&action);
+    }
+
+    {
         let action = Action::new("Brighten");
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
@@ -1577,15 +1602,6 @@ fn main() {
                         });
         menuhelp.add(&action);
     }
-
-    // add menus
-    window.add(&menufile);
-    window.add(&menuedit);
-    window.add(&menutools);
-    window.add(&menumask);
-    window.add(&menuimage);
-    window.add(&menupalette);
-    window.add(&menuhelp);
 
     // paint on canvas
     let click_pos: Rc<RefCell<Option<Point>>> = Rc::new(RefCell::new(None));
@@ -1779,8 +1795,7 @@ fn main() {
                                                 canvas.circle(point.x, point.y, radius, color);
                                             }
                                         }
-                                        
-                                 }                             
+                                 }
                                 },
                     "polygon" => {
                                     let sides = property_get(&ntools.clone()["polygon"],"Sides").unwrap();
@@ -1799,11 +1814,7 @@ fn main() {
                                       rr = r;  }
                                     }
                                         canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color, antialias==1);
-                                        
-                                                           
                                 },
-                                
-                    
                            _ => (),
                     }
                 
@@ -1858,6 +1869,16 @@ fn main() {
     window.add(&canvas);
     window.add(&marquee);
     window.add(&status);
+    
+    // add menus
+    window.add(&menufile);
+    window.add(&menuedit);
+    window.add(&menutools);
+    window.add(&menumask);
+    window.add(&menuimage);
+    window.add(&menupalette);
+    window.add(&menuhelp);
+    
     window.exec();
 }
 

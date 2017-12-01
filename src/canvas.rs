@@ -309,6 +309,7 @@ impl Canvas {
             imgbuf
     }
 
+    ///rotate image about center
     fn rotate_center<I: GenericImage + 'static>(&self, image: &I, theta: f32) 
         -> ImageBuffer<I::Pixel, Vec<<I::Pixel as Pixel>::Subpixel>>
         where I::Pixel: 'static,
@@ -317,13 +318,15 @@ impl Canvas {
         let center = ((width/2) as f32, (height/2) as f32);
         self.rotate_nearest(image, center, theta)
     }
-
+    
+    ///rotate image using nearest interpolation
     fn rotate_nearest<I: GenericImage + 'static>(&self, image: &I, center: (f32, f32), theta: f32) 
         -> ImageBuffer<I::Pixel, Vec<<I::Pixel as Pixel>::Subpixel>>
         where I::Pixel: 'static,
           <I::Pixel as Pixel>::Subpixel: 'static  {
-        let default = unsafe { image.unsafe_get_pixel(0,0) };
+        let default :<I as image::GenericImage>::Pixel = unsafe { image.unsafe_get_pixel(0,0) };
         let (width, height) = image.dimensions();
+        //#TODO calculate new dimensions to fit rotated image; change canvas dimensions too! 
         let mut out = ImageBuffer::new(width, height);
 
         let cos_theta = theta.cos();
@@ -359,7 +362,7 @@ impl Canvas {
         // default if out of bound
         let (width, height) = image.dimensions();
         if rx < 0f32 || rx >= width as f32 || ry < 0f32 || ry >= height as f32 {
-            unsafe { image.unsafe_get_pixel(0,0) }
+            unsafe { image.unsafe_get_pixel(0,0) }  //#FIXME default pixel has to be transparent !
         } else {
            unsafe { image.unsafe_get_pixel(rx as u32, ry as u32) }
         }

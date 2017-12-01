@@ -4,7 +4,7 @@ use orbtk::traits::{Click, Enter, Place, Text};  //Border
 
 //dialog window
 pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
-    let mut new_window = Window::new(Rect::new(200, 200, 320, 100), title);
+    let mut new_window = Window::new(Rect::new(100, 100, 320, 100), title);
 
     let x = 10;
     let mut y = 10;

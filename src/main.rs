@@ -10,9 +10,8 @@ extern crate orbtk;
 extern crate orbimage;
 extern crate image;
 extern crate orbclient;
-//extern crate imageproc;
 
-use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar,
+use orbtk::{Color, Action, Button, Image, Label, Menu, Point, 
             Rect, Separator,
              Window, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
@@ -49,6 +48,9 @@ use color_swatch::ColorSwatch;
 
 mod toolbar;
 use toolbar::{Toolbar, ToolbarIcon};
+
+mod progress_bar;
+use progress_bar::ProgressBar;
 
 mod theme;  //#FIXME temporary fix to compile with new orbtk 0.2.26 which has moved to css theme, pastel has to move to css too
 
@@ -227,7 +229,7 @@ fn main() {
     window.add(&red_label);
 
     {
-        //red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
+        red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
         let swatch_clone = swatch.clone();
         let green_bar_clone_r = green_bar.clone();
         let blue_bar_clone_r = blue_bar.clone();
@@ -257,7 +259,7 @@ fn main() {
     window.add(&green_label);
 
     {
-        //green_bar.fg.set(orbtk::Color::rgb(0,255,0));
+        green_bar.fg.set(orbtk::Color::rgb(0,255,0));
         let swatch_clone = swatch.clone();
         let red_bar_clone_g = red_bar.clone();
         let blue_bar_clone_g = blue_bar.clone();
@@ -286,7 +288,7 @@ fn main() {
     window.add(&blue_label);
     
     {
-        //blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
+        blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
         let swatch_clone = swatch.clone();
         let green_bar_clone_b = green_bar.clone();
         let red_bar_clone_b = red_bar.clone();
@@ -1353,9 +1355,17 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow()
-                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"blur",0,0);
+                        match dialog("Blur", "quantity:","5.1") {
+                            Some(response) => {
+                                canvas_clone.trans_selection(selection_clone.borrow()
+                                .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                                height: canvas_clone.rect.get().height-1}),
+                                "blur",response.parse::<f32>().unwrap_or(0.0),0);
+                            },
+                            None => {println!("Cancelled");},
+                        }
+                        
+                        
                     });
         menuimage.add(&action);
     }
@@ -1365,9 +1375,15 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow()
-                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"unsharpen",0,0);
+                        match dialog("Unsharpen", "quantity:","5.1") {
+                            Some(response) => {
+                                canvas_clone.trans_selection(selection_clone.borrow()
+                                .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                                height: canvas_clone.rect.get().height-1}),
+                                "unsharpen",response.parse::<f32>().unwrap_or(0.0),0);
+                            },
+                            None => {println!("Cancelled");},
+                        }
                     });
         menuimage.add(&action);
     }
@@ -1379,7 +1395,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"flip_vertical",0,0);
+                             height: canvas_clone.rect.get().height-1}),"flip_vertical",0.0,0);
                     });
         menuimage.add(&action);
     }
@@ -1391,7 +1407,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"flip_horizontal",0,0);
+                             height: canvas_clone.rect.get().height-1}),"flip_horizontal",0.0,0);
                     });
         menuimage.add(&action);
     }
@@ -1404,7 +1420,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"rotate90",0,0);
+                             height: canvas_clone.rect.get().height-1}),"rotate90",0.0,0);
                         //rotate also selection if exists 
                         let rect = selection_clone.borrow()
                             .unwrap_or(Rect{x: 0, y: 0 , width: 0, height: 0});
@@ -1428,15 +1444,10 @@ fn main() {
                             Some(response) => {
                                 canvas_clone.trans_selection(selection_clone.borrow()
                                 .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                                height: canvas_clone.rect.get().height-1}),"rotate",response.parse::<i32>().unwrap_or(0),0);
+                                height: canvas_clone.rect.get().height-1}),
+                                "rotate",response.parse::<f32>().unwrap_or(0.0),0);
                             },
-                        
                             None => {println!("Cancelled");},
-                        
-                        
-                        
-
-
                         }
                     });
         menuimage.add(&action);
@@ -1449,7 +1460,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"brighten",0,0);
+                             height: canvas_clone.rect.get().height-1}),"brighten",0.0,0);
                     });
         menuimage.add(&action);
     }
@@ -1461,7 +1472,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"darken",0,0);
+                             height: canvas_clone.rect.get().height-1}),"darken",0.0,0);
                     });
         menuimage.add(&action);
     }
@@ -1473,7 +1484,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"invert",0,0);
+                             height: canvas_clone.rect.get().height-1}),"invert",0.0,0);
                     });
         menuimage.add(&action);
     }
@@ -1484,7 +1495,7 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.transformation("grayscale",0,0);
+                        canvas_clone.transformation("grayscale",0.0,0);
                     });
         menuimage.add(&action);
     }
@@ -1500,7 +1511,7 @@ fn main() {
                                     let val: Vec<&str> = resolution.split("x").collect();
                                     let x: i32 = val[0].parse().unwrap_or(640);
                                     let y: i32 = val[1].parse().unwrap_or(480);
-                                    canvas_clone.transformation("resize",x,y);
+                                    canvas_clone.transformation("resize",x as f32,y);
                                                 },
                                     None => println!("Resize cancelled"),
                                 }

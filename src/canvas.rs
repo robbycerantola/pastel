@@ -157,7 +157,7 @@ impl Canvas {
 */
 
     ///apply some transformations to entire canvas
-    pub fn transformation(&self, cod: &str, a: i32, b:i32){
+    pub fn transformation(&self, cod: &str, a: f32, b:i32){
         //first prepare for undo 
         self.undo_save();
      
@@ -183,7 +183,7 @@ impl Canvas {
     }
 
     ///apply some transformations to canvas selection (in place)
-    pub fn trans_selection(&self, selection: Rect, cod: &str, a: i32, b:i32){
+    pub fn trans_selection(&self, selection: Rect, cod: &str, a: f32, b:i32){
         //first prepare for undo 
         self.undo_save();
         
@@ -211,7 +211,7 @@ impl Canvas {
 
 
     /// apply some transformation to an image 
-    pub fn trans_image (&self, image_selection: Image, cod: &str, a: i32, b: i32) -> Vec<Color> {
+    pub fn trans_image (&self, image_selection: Image, cod: &str, a: f32, b: i32) -> Vec<Color> {
         let width = image_selection.width() as u32;
         let height = image_selection.height() as u32;
         //get image data in form of [Color] slice
@@ -223,7 +223,7 @@ impl Canvas {
     }
 
     /// apply some transformation to an image slice
-    fn trans_from_slice (&self, image_data: Box<[Color]>, width: u32, height: u32, cod: &str, a: i32, b:i32) -> Vec<Color> {
+    fn trans_from_slice (&self, image_data: Box<[Color]>, width: u32, height: u32, cod: &str, a: f32, b:i32) -> Vec<Color> {
         //let mut width = width;
         //let mut height = height;
         let image_buffer = unsafe {
@@ -234,8 +234,8 @@ impl Canvas {
         let vec_image_buffer:Vec<u8> = image::ImageBuffer::into_raw ( 
             match cod.as_ref() {
             
-             "blur"            => image::imageops::blur(&imgbuf,5.1),
-             "unsharpen"       => image::imageops::unsharpen(&imgbuf,5.1,10),
+             "blur"            => image::imageops::blur(&imgbuf,a),
+             "unsharpen"       => image::imageops::unsharpen(&imgbuf,a,10),
              "flip_vertical"   => image::imageops::flip_vertical(&imgbuf),
              "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
              "rotate90"        => image::imageops::rotate90(&imgbuf),

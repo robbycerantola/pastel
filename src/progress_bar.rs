@@ -1,15 +1,19 @@
+//temporary override orbtk progress bar (with CUSTOM colors....)  
+
 use orbclient::{Color, Renderer};
 use std::cell::{Cell, RefCell};
 use std::cmp::{min, max};
 use std::sync::Arc;
 
-use cell::CheckSet;
-use event::Event;
-use point::Point;
-use rect::Rect;
-use theme::{ITEM_BACKGROUND, ITEM_BORDER, ITEM_SELECTION};
-use traits::{Border, Click, Place};
-use widgets::Widget;
+use orbtk::cell::CheckSet;
+use orbtk::event::Event;
+use orbtk::point::Point;
+use orbtk::rect::Rect;
+use orbtk::theme::{Theme};
+use orbtk::traits::{Click, Place};
+use orbtk::widgets::Widget;
+
+use theme::{ITEM_BACKGROUND, ITEM_BORDER, ITEM_SELECTION};  //workaround to change colors untill css override is ready
 
 pub struct ProgressBar {
     pub rect: Cell<Rect>,
@@ -49,7 +53,7 @@ impl ProgressBar {
         self
     }
 }
-
+/*
 impl Border for ProgressBar {
     fn border(&self, enabled: bool) -> &Self {
         self.border.set(enabled);
@@ -61,6 +65,7 @@ impl Border for ProgressBar {
         self
     }
 }
+*/
 
 impl Click for ProgressBar {
     fn emit_click(&self, point: Point) {
@@ -82,7 +87,7 @@ impl Widget for ProgressBar {
         &self.rect
     }
 
-    fn draw(&self, renderer: &mut Renderer, _focused: bool) {
+    fn draw(&self, renderer: &mut Renderer, _focused: bool, _theme: &Theme) {
         if self.visible.get(){
             let rect = self.rect.get();
             let progress_rect = Rect{
@@ -146,7 +151,7 @@ impl Widget for ProgressBar {
         self.visible.set(flag);
     }
 
-    fn name(&self) -> Option<&'static str> {
-        Some("ProgressBar")
+    fn name(&self) -> &str {
+        "ProgressBar"
     }
 }

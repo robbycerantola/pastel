@@ -79,7 +79,6 @@ impl Toolbar {
     }    
 }
 
-
 pub struct ToolbarIcon {
     pub rect: Cell<Rect>,
     pub image: RefCell<orbimage::Image>,
@@ -96,8 +95,6 @@ pub struct ToolbarIcon {
     pub border: Cell<bool>,
     pub border_radius: Cell<u32>,
     tooltip_time : Cell<Option<Instant>>,
-    
- 
 }
 
 impl ToolbarIcon {
@@ -133,11 +130,11 @@ impl ToolbarIcon {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Arc<Self>, String> {
         Ok(Self::from_image(orbimage::Image::from_path(path)?))
     }
-    
+
     pub fn selected(&self, flag: bool) {
         self.selected.set(flag);
     }
-    
+
     pub fn enabled(&self, flag: bool) {
         self.enabled.set(flag);
     }
@@ -199,8 +196,6 @@ impl Widget for ToolbarIcon {
             }
 
             let fg = self.fg.get();
-            
-
             let mut point = self.tooltip_offset.get();
             for c in text.chars() {
                 if c == '\n' {
@@ -265,14 +260,12 @@ impl Widget for ToolbarIcon {
         }
         focused
     }
-    
+
     fn visible(&self, flag: bool) {
         self.visible.set(flag);
     }
-    
+
     fn name(&self) -> &str {
         "ToolbarIcon"
     }
 }
-
-

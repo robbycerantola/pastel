@@ -1,5 +1,9 @@
 //canvas widget based on image widget
 
+extern crate rusttype;
+
+use self::rusttype::{FontCollection, Scale, point};
+
 use image;
 use image::{GenericImage, ImageBuffer, Pixel};
 
@@ -24,6 +28,7 @@ use std::f32::consts::PI;
 use AddOnsToOrbimage;
 
 use UNDODEPTH;
+use CANVASOFFSET;
 
 pub struct Canvas {
     pub rect: Cell<Rect>,
@@ -242,6 +247,7 @@ impl Canvas {
              "rotate"          => self.rotate_center(&imgbuf,(a as f32 * PI/180.0)),
              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
+             "contrast"        => image::imageops::colorops::contrast(&imgbuf, a),
              "invert"          => {image::imageops::colorops::invert(&mut imgbuf);
                                     imgbuf},
              "grayscale"       => self.gray2rgba(image::imageops::colorops::grayscale(&imgbuf),
@@ -487,6 +493,58 @@ impl Canvas {
     pub fn mask_flag(& self) -> bool {
         let flag = self.mask_flag.get();
         flag
+    }
+    
+    pub fn text(&self, text: &str, x0: i32, y0: i32, color: Color, size: i32){
+        let rect = self.rect.get();
+        let text = text;
+        
+        /*
+        let mut mypoint = Point::new(x0, y0);
+        for c in text.chars() {
+            if c == '\n' {
+                mypoint.x = x0;
+                mypoint.y += 16;
+            } else {
+                if mypoint.x + 8 <= rect.width as i32 && mypoint.y + 16 <= rect.height as i32 {
+                self.image.borrow_mut().char(mypoint.x + rect.x, mypoint.y + rect.y, c, color);
+                }
+                mypoint.x += 8;
+            }
+        }
+        */
+         
+        //using rusttype
+        // Load the font
+        #[cfg(target_os = "linux")]
+        let font_data = include_bytes!("/usr/share/fonts/gnu-free/FreeMonoBold.ttf");
+        
+        #[cfg(target_os = "redox")]
+        let font_data = include_bytes!("/ui/fonts/Mono/Fira/Bold.ttf");
+        
+        let collection = FontCollection::from_bytes(font_data as &[u8]);
+        // This only succeeds if collection consists of one font
+        let font = collection.into_font().unwrap();
+        
+        // The font size to use
+        let size = 32.0;
+        let scale = Scale {x: size, y: size};
+        let start = point(x0 as f32, (y0 + CANVASOFFSET) as f32);
+
+        // Loop through the glpyhs in the text, positing each one on a line
+        for glyph in font.layout(text, scale, start) {
+            if let Some(bounding_box) = glyph.pixel_bounding_box() {
+                // Draw the glyph into the image per-pixel by using the draw closure
+                glyph.draw(|x, y, v| self.image.borrow_mut().pixel(
+                    // Offset the position by the glyph bounding box
+                    x as i32 + bounding_box.min.x ,
+                    y as i32 + bounding_box.min.y ,
+                    // Turn the coverage into an alpha value
+                    Color::rgba(color.r(), color.g(), color.b(), (v * 255.0) as u8)
+                ));
+            }
+        }        
+        
     }
 
 /* Here unfortunately I have to reimplement not only the pixel function to

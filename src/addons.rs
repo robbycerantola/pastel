@@ -898,7 +898,7 @@ impl AddOnsToOrbclient for orbclient::Window{
             // rgb bitwise xor between old and new pixel color
             // New faster implementation xor-ing 32 bit internal color data   
             // Attention :trick does not work as intended xor-ing entire 32bit color data, if new color alpha > 0!!
-            self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)}); 
+            unsafe{self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)});}
             }
             
             if x == argx2 && y == argy2 { break };
@@ -937,7 +937,9 @@ impl AddOnsToOrbclient for orbclient::Window{
         let mut y = 0;
         let mut err = 0;
         let mut old_color : Color ;
+        
         while x >= y {
+            unsafe{
             old_color = self.pixcol(x0 - x, y0+ y);
             self.pixel(x0 - x, y0 + y, Color{data: (&old_color.data ^ &color.data)});
             old_color = self.pixcol(x0 + x, y0+ y);
@@ -954,7 +956,7 @@ impl AddOnsToOrbclient for orbclient::Window{
             self.pixel(x0 - y, y0 - x, Color{data: (&old_color.data ^ &color.data)});
             old_color = self.pixcol(x0 + y, y0 -x);
             self.pixel(x0 + y, y0 - x, Color{data: (&old_color.data ^ &color.data)});
-        
+            }
             y += 1;
             err += 1 + 2*y;
             if 2*(err-x) + 1 > 0 {

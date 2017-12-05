@@ -13,6 +13,7 @@ orbtk = { git = "https://github.com/robbycerantola/orbtk.git", branch = "resync"
 #orbtk = { path = "/home/robby/orbtk"}
 orbimage = "0.1.15"
 image = "0.12.4"
+rusttype = "*"
 
 
 [features]

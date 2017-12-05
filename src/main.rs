@@ -160,7 +160,8 @@ fn main() {
     ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
     ntools.insert("paste",vec![Property::new("Opacity",100)]);
     ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key'
-    ntools.insert("polygon",vec![Property::new("Opacity",100),Property::new("Sides",6)]); 
+    ntools.insert("polygon",vec![Property::new("Opacity",100),Property::new("Sides",6)]);
+    ntools.insert("text",vec![Property::new("Opacity",100),Property::new("Size",8)]);  
     ntools.insert("preferences",vec![Property::new("Antialias",1)]); // not a real tool but a way to store general preferences
 
     //use invisible Label for storing current active tool
@@ -169,6 +170,9 @@ fn main() {
     
     //define current selection
     let selection :  Rc<RefCell<Option<Rect>>> = Rc::new(RefCell::new(None));
+    
+    let text = Label::new();
+    text.text("Pastel");
     
     //if pastel_copy_buffer.png exists load it into canvas copy_buffer
     //for copy/paste between instances 
@@ -1309,7 +1313,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                             match dialog("Regular polygon", "sides:","3") {
                             Some(response) => {
-                                property_set(&ntools_clone["polygon"],"Sides",response.parse::<i32>().unwrap());
+                                property_set(&ntools_clone["polygon"],"Sides",response.parse::<i32>().unwrap_or(3));
                                 tool_clone.text.set("polygon".to_owned());
                                 status_clone.text("Drawing regular poligons...");
                             },
@@ -1318,6 +1322,28 @@ fn main() {
                         }
                             
         });
+        menutools.add(&action);
+    }
+
+    {
+        let action = Action::new("Text");
+        let text_clone = text.clone();
+        let tool_clone = tool.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            match dialog("Text", "text:","") {
+                            Some(response) => {
+                                text_clone.text.set(response.to_owned());
+                                tool_clone.text.set("text".to_owned());
+                                status_clone.text("Writing text...");
+                            },
+                        
+                            None => {println!("Cancelled");},
+                        
+                        }
+                            
+                            
+                        });
         menutools.add(&action);
     }
 
@@ -1473,6 +1499,25 @@ fn main() {
                         canvas_clone.trans_selection(selection_clone.borrow()
                         .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
                              height: canvas_clone.rect.get().height-1}),"darken",0.0,0);
+                    });
+        menuimage.add(&action);
+    }
+
+    {
+        let action = Action::new("Contrast");
+        let canvas_clone = canvas.clone();
+        let selection_clone = selection.clone();
+        let marquee_clone = marquee.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        match dialog("Contrast", "value (+/-):","10.0") {
+                            Some(response) => {
+                                canvas_clone.trans_selection(selection_clone.borrow()
+                                .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                                height: canvas_clone.rect.get().height-1}),
+                                "contrast",response.parse::<f32>().unwrap_or(0.0),0);
+                            },
+                            None => {println!("Cancelled");},
+                        }
                     });
         menuimage.add(&action);
     }
@@ -1681,6 +1726,7 @@ fn main() {
                 let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
                 let antialias = property_get(&ntools.clone()["preferences"],"Antialias").unwrap();
                 let selected_tool = tool.clone().text.get();
+                
                 //tools that dont need prev_position
 
                 match selected_tool.as_ref() {    
@@ -1825,8 +1871,11 @@ fn main() {
                                       rr = r;  }
                                     }
                                         canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color, antialias==1);
-                                },
-                           _ => (),
+                                 },
+                       "text" => {
+                                    let text = text.clone().text.get();
+                                    canvas.text(&text[..], point.x, point.y - CANVASOFFSET, color, size )},
+                            _ => (),
                     }
                 
                 //tools that need prev_position to work

@@ -1,10 +1,15 @@
 use orbclient::WindowFlag;
-use orbtk::{ Button, Label, Point,  Rect, TextBox, Window}; //Color, Action,ControlKnob, Image, Menu, ProgressBar, Separator, Renderer
+use orbtk::{ Button, Label, Point,  Rect, TextBox, Window, InnerWindow}; //Color, Action,ControlKnob, Image, Menu, ProgressBar, Separator, Renderer
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
+use std::ops::Deref;
 
-//dialog window
+//generic dialog window
 pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
-    let mut new_window = Window::new(Rect::new(100, 100, 320, 100), title);
+    
+    //let mut new_window = Window::new(Rect::new(100, 100, 320, 100), title); 
+    
+    let mut orb_window = Some(InnerWindow::new(100, 100, 320, 100, title).unwrap());
+    let mut new_window = Box::new(Window::from_inner(orb_window.take().unwrap()));
 
     let x = 10;
     let mut y = 10;
@@ -24,13 +29,15 @@ pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
     //pressing enter in text_box closes popup window
     {
         let text_box = text_box.clone();
-        let new_window_clone = &mut new_window as *mut Window;
+        //let new_window_clone = &mut new_window as *mut Window;
+        let new_window_clone = new_window.deref() as *const Window;
         //let label = label.clone();
         text_box.on_enter(move |_| {
             //text_box: &TextBox
 
             unsafe {
-                (&mut *new_window_clone).close();
+                //(&mut *new_window_clone).close();
+                (*new_window_clone).close();
             }
         });
     }
@@ -79,6 +86,119 @@ pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
     }
 }
 
+//dialog window for text tool
+pub fn text_dialog(title: &str, text: &str, suggestion: &str) -> Option<(String,String)> {
+    let mut orb_window = Some(InnerWindow::new(100, 100, 420, 200, title).unwrap());
+    let mut new_window = Box::new(Window::from_inner(orb_window.take().unwrap()));
+
+    let x = 10;
+    let mut y = 10;
+
+    let label = Label::new();
+    label.position(x, y).size(290, 16).text(text);
+    new_window.add(&label);
+
+    y += label.rect.get().height as i32 + 2;
+
+    let text_box = TextBox::new();
+    text_box.position(x, y)
+    .size(390, 28)
+    .text_offset(6, 6)
+    .text(suggestion);
+
+    //pressing enter in text_box closes popup window
+    {
+        let text_box = text_box.clone();
+        //let new_window_clone = &mut new_window as *mut Window;
+        let new_window_clone = new_window.deref() as *const Window;
+        //let label = label.clone();
+        text_box.on_enter(move |_| {
+            //text_box: &TextBox
+
+            unsafe {
+                //(&mut *new_window_clone).close();
+                (*new_window_clone).close();
+            }
+        });
+    }
+    new_window.add(&text_box);
+
+    y += text_box.rect.get().height as i32 + 8;
+
+    let label2 = Label::new();
+    label2.position(x, y).size(290, 16).text("Font path:");
+    new_window.add(&label2);
+
+    y += label.rect.get().height as i32 + 2;
+
+//default font 
+    #[cfg(target_os = "linux")]
+    let font_path = "/usr/share/fonts/gnu-free/FreeMonoBold.ttf";
+
+    #[cfg(target_os = "redox")]
+    let font_path = "/ui/fonts/Mono/Fira/Bold.ttf";
+
+    let text_box2 = TextBox::new();
+    text_box2.position(x, y)
+    .size(390, 28)
+    .text_offset(6, 6)
+    .text(font_path);
+
+// select font name
+    {
+        let text_box2 = text_box2.clone();
+        let new_window_clone = new_window.deref() as *const Window;
+        text_box.on_enter(move |_| {
+            unsafe {
+                (*new_window_clone).close();
+            }
+        });
+    }
+    new_window.add(&text_box2);
+
+    y += text_box.rect.get().height as i32 + 8;
+
+    //OK button
+    let ok_button = Button::new();
+    ok_button
+        .position(x, y)
+        .size(48 + 12, text_box.rect.get().height)
+        .text("OK")
+        .text_offset(6, 6);
+
+    {
+        let text_box = text_box.clone();
+        let button = ok_button.clone();
+        button.on_click(move |_button: &Button, _point: Point| { text_box.emit_enter(); });
+    }
+    new_window.add(&ok_button);
+
+    //Cancell button
+    let cancel_button = Button::new();
+    cancel_button
+        .position(x + 64, y)
+        .size(48 + 12, text_box.rect.get().height)
+        .text("Cancel")
+        .text_offset(6, 6);
+
+    {
+        let text_box = text_box.clone();
+        let button = cancel_button.clone();
+        button.on_click(move |_button: &Button, _point: Point| {
+                            text_box.emit_enter();
+                            text_box.text.set("".to_owned());
+
+                        });
+    }
+    new_window.add(&cancel_button);
+    new_window.exec();
+
+    match text_box.text.get().len() {
+        0 => None,
+        _ => Some((text_box.text.get(),text_box2.text.get())),
+    }
+}
+
 pub fn new_dialog(title: &str) -> Option<String> {
     //Dialog to input dimensions of new image
     let mut new_window = Window::new(Rect::new(200, 300, 320, 200), title);
@@ -112,6 +232,7 @@ pub fn new_dialog(title: &str) -> Option<String> {
 
             unsafe {
                 (&mut *new_window_clone).close();
+                
             }
         });
     }

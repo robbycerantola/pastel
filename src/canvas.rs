@@ -24,6 +24,9 @@ use std::sync::Arc;
 use std::slice;
 use std::io::Error;
 use std::f32::consts::PI;
+//use std::io;
+use std::io::prelude::*;
+use std::fs::File;
 
 use AddOnsToOrbimage;
 
@@ -494,57 +497,45 @@ impl Canvas {
         let flag = self.mask_flag.get();
         flag
     }
-    
-    pub fn text(&self, text: &str, x0: i32, y0: i32, color: Color, size: i32){
-        let rect = self.rect.get();
+
+    ///Draw some text on canvas
+    pub fn text(&self, text: &str, font_path: &str, x0: i32, y0: i32, color: Color, size: i32){
+        //self.undo_save();  //save state for undo
         let text = text;
-        
-        /*
-        let mut mypoint = Point::new(x0, y0);
-        for c in text.chars() {
-            if c == '\n' {
-                mypoint.x = x0;
-                mypoint.y += 16;
-            } else {
-                if mypoint.x + 8 <= rect.width as i32 && mypoint.y + 16 <= rect.height as i32 {
-                self.image.borrow_mut().char(mypoint.x + rect.x, mypoint.y + rect.y, c, color);
-                }
-                mypoint.x += 8;
-            }
-        }
-        */
-         
-        //using rusttype
-        // Load the font
+        let size = size as f32;
+        //using rusttype to render text
+
+/*        // Load the font at compile time !
         #[cfg(target_os = "linux")]
         let font_data = include_bytes!("/usr/share/fonts/gnu-free/FreeMonoBold.ttf");
-        
         #[cfg(target_os = "redox")]
         let font_data = include_bytes!("/ui/fonts/Mono/Fira/Bold.ttf");
-        
         let collection = FontCollection::from_bytes(font_data as &[u8]);
-        // This only succeeds if collection consists of one font
-        let font = collection.into_font().unwrap();
+*/        
+        //Load font at runtime
+        let mut f = match File::open(font_path.to_owned()) {
+            Err(e) => return,
+            Ok(f) =>f,
+        };
+        let mut buffer = Vec::new();
         
-        // The font size to use
-        let size = 32.0;
+        f.read_to_end(&mut buffer).unwrap();
+        
+        let collection = FontCollection::from_bytes(buffer);
+
+        let font = collection.into_font().unwrap();
         let scale = Scale {x: size, y: size};
         let start = point(x0 as f32, (y0 + CANVASOFFSET) as f32);
-
-        // Loop through the glpyhs in the text, positing each one on a line
+        let opacity = color.a() as f32;
         for glyph in font.layout(text, scale, start) {
             if let Some(bounding_box) = glyph.pixel_bounding_box() {
-                // Draw the glyph into the image per-pixel by using the draw closure
                 glyph.draw(|x, y, v| self.image.borrow_mut().pixel(
-                    // Offset the position by the glyph bounding box
                     x as i32 + bounding_box.min.x ,
                     y as i32 + bounding_box.min.y ,
-                    // Turn the coverage into an alpha value
-                    Color::rgba(color.r(), color.g(), color.b(), (v * 255.0) as u8)
+                    Color::rgba(color.r(), color.g(), color.b(), (v * opacity) as u8)
                 ));
             }
-        }        
-        
+        }
     }
 
 /* Here unfortunately I have to reimplement not only the pixel function to

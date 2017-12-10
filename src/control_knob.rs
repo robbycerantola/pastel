@@ -3,13 +3,14 @@ use std::cell::{Cell, RefCell};
 //use std::cmp::{min, max};
 use std::sync::Arc;
 
-use cell::CheckSet;
-use event::Event;
-use point::Point;
-use rect::Rect;
+use orbtk::cell::CheckSet;
+use orbtk::event::Event;
+use orbtk::point::Point;
+use orbtk::rect::Rect;
 use theme::{ITEM_BACKGROUND, ITEM_BORDER, ITEM_SELECTION};
-use traits::{Border, Click, Place};
-use widgets::Widget;
+use orbtk::theme::Theme;
+use orbtk::traits::{Click, Place};
+use orbtk::widgets::Widget;
 
 pub struct ControlKnob {
     pub rect: Cell<Rect>,
@@ -49,7 +50,7 @@ impl ControlKnob {
         self
     }
 }
-
+/*
 impl Border for ControlKnob {
     fn border(&self, enabled: bool) -> &Self {
         self.border.set(enabled);
@@ -61,6 +62,7 @@ impl Border for ControlKnob {
         self
     }
 }
+*/
 
 impl Click for ControlKnob {
     fn emit_click(&self, point: Point) {
@@ -82,7 +84,7 @@ impl Widget for ControlKnob {
         &self.rect
     }
 
-    fn draw(&self, renderer: &mut Renderer, _focused: bool) {
+    fn draw(&self, renderer: &mut Renderer, _focused: bool, _theme: &Theme) {
         if self.visible.get(){
             let rect = self.rect.get();
             let progress_rect = self.value.get();
@@ -143,5 +145,9 @@ impl Widget for ControlKnob {
     
     fn visible(&self, flag: bool){
         self.visible.set(flag);
+    }
+    
+    fn name(&self) -> &str {
+        "ControlKnob"
     }
 }

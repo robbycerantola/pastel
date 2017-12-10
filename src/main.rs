@@ -29,7 +29,7 @@ use std::path::{Path,PathBuf};
 use std::fs;
 
 mod dialogs;
-use dialogs::{dialog,popup,new_dialog};
+use dialogs::{dialog,popup,new_dialog,text_dialog};
 
 mod palette;
 use palette::Palette;
@@ -51,8 +51,11 @@ use toolbar::{Toolbar, ToolbarIcon};
 
 mod progress_bar;
 use progress_bar::ProgressBar;
-
-mod theme;  //#FIXME temporary fix to compile with new orbtk 0.2.26 which has moved to css theme, pastel has to move to css too
+/*
+mod control_knob;
+use control_knob::ControlKnob;
+*/
+mod theme;  //#FIXME use local theme to temporary fix compilation with last orbtk 0.2.26 pull which has moved to css theme, pastel has to move to css too
 
 //structure to store tools properties 
 struct Property{
@@ -79,13 +82,41 @@ impl Property {
     }
 }
 
+pub struct MyText {
+    pub rect: Cell<Rect>,
+    pub text: CloneCell<String>,
+    pub text_offset: Cell<Point>,
+    pub font: CloneCell<String>,
+}
+
+impl MyText {
+    pub fn new() -> Arc<Self> {
+        Arc::new(MyText {
+            rect: Cell::new(Rect::default()),
+            text: CloneCell::new(String::new()),
+            text_offset: Cell::new(Point::default()),
+            font: CloneCell::new(String::new()),
+        })
+    }
+    fn text<S: Into<String>>(&self, text: S) -> &Self {
+        self.text.set(text.into());
+        self
+    }
+
+    fn font<S: Into<String>>(&self, text: S) -> &Self {
+        self.font.set(text.into());
+        self
+    }
+    
+}
+
 #[derive(Clone)]
 struct MySize {
     x: u32,
     y: u32,
 }
 
-//canvas position
+//canvas y offset position relative to main window
 const CANVASOFFSET: i32 = 200;
 
 // undo stack depth
@@ -170,9 +201,16 @@ fn main() {
     
     //define current selection
     let selection :  Rc<RefCell<Option<Rect>>> = Rc::new(RefCell::new(None));
-    
-    let text = Label::new();
+
+    //storing default text to be rendered on canvas with default font
+    let text = MyText::new();
     text.text("Pastel");
+    #[cfg(target_os = "linux")]
+    text.font("/usr/share/fonts/gnu-free/FreeMonoBold.ttf");
+    #[cfg(target_os = "redox")]
+    text.font("/ui/fonts/Mono/Fira/Bold.ttf");
+    #[cfg(target_os = "windows")]
+    text.font.set(""); //#FIXME put path of windows font!!
     
     //if pastel_copy_buffer.png exists load it into canvas copy_buffer
     //for copy/paste between instances 
@@ -387,7 +425,7 @@ fn main() {
     
     let volume = ControlKnob::new(); //try widget control_knob
     let tool_clone = tool.clone();
-    let tools_clone=tools.clone();
+    //let tools_clone=tools.clone();
     let volume_label_clone = volume_label.clone();
     
     volume.border.set(true);
@@ -759,6 +797,62 @@ fn main() {
             println!("Error loading toolbar element {}",err);
         }
     }
+/*
+    match ToolbarIcon::from_path("text.png") {
+        Ok(image) => {
+            image.position(x, y)
+            .text("Draw some text on canvas".to_owned());
+            let canvas_clone = canvas.clone();    
+            let tool_clone = tool.clone();
+            let text_clone = text.clone();
+            let status_clone = status.clone();
+            let size_bar_clone = size_bar.clone();
+            let trans_bar_clone = trans_bar.clone();
+            let ntools_clone = ntools.clone();
+            let size_label_clone = size_label.clone();
+            let trans_label_clone = trans_label.clone();
+            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
+            image.on_click(move |_image: &ToolbarIcon, point: Point| {
+                               size_bar_clone.visible(true);
+                               size_label_clone.visible(true);
+                                match dialog("Text", "text:","") {
+                                    Some(response) => {
+                                    text_clone.text.set(response.to_owned());
+                                    canvas_clone.emit_right_click(point); //fix click bug
+                                },
+                                    None => {println!("Cancelled");},
+                                }   
+                               tool_clone.text.set("text".to_owned());
+                               status_clone.text("Drawing some text...");
+
+
+                               let o = property_get(&ntools_clone["text"],"Opacity").unwrap();
+                               trans_bar_clone.value.set(o);
+                               trans_label_clone.text(format!("Opacity: {}%",o));
+                                let s = property_get(&ntools_clone["text"],"Size").unwrap();
+                                size_bar_clone.value.set(s);
+                                size_label_clone.text(format!("Size: {}",s));
+                               //toggle tool in toolbar TODO move into Toolbar
+                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               //make invisible toolbar2  TODO move into Toolbar
+                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               //make toolbar3 invisible
+                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               
+                           });
+            
+            window.add(&image);
+            toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
+
+           x += image.rect.get().width as i32 + 2;
+        }
+        Err(err) => {
+            println!("Error loading toolbar element {}",err);
+        }
+    }
+*/
 
     match ToolbarIcon::from_path("select.png") {
         Ok(image) => {
@@ -795,12 +889,14 @@ fn main() {
             window.add(&image);
             toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
 
-           // x += image.rect.get().width as i32 + 2;
+            //x += image.rect.get().width as i32 + 2;
         }
         Err(err) => {
             println!("Error loading toolbar element {}",err);
         }
     }
+
+
 
 //2nd toolbar
     x=500;
@@ -1330,12 +1426,24 @@ fn main() {
         let text_clone = text.clone();
         let tool_clone = tool.clone();
         let status_clone = status.clone();
+        let size_bar_clone = size_bar.clone();
+        let size_label_clone = size_label.clone();
+        //let trans_bar_clone = trans_bar.clone();
+        let ntools_clone = ntools.clone();
+        
+        
         action.on_click(move |_action: &Action, _point: Point| {
-                            match dialog("Text", "text:","") {
+                            match text_dialog("Text", "text:","") {
                             Some(response) => {
-                                text_clone.text.set(response.to_owned());
+                                text_clone.text(response.0.to_owned());
+                                text_clone.font(response.1.to_owned());
                                 tool_clone.text.set("text".to_owned());
                                 status_clone.text("Writing text...");
+                                let s = property_get(&ntools_clone["text"],"Size").unwrap();
+                                size_bar_clone.visible(true);
+                                size_label_clone.visible(true);
+                                size_bar_clone.value.set(s);
+                                size_label_clone.text(format!("Size: {}",s));
                             },
                         
                             None => {println!("Cancelled");},
@@ -1654,7 +1762,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.29, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.30, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1668,238 +1776,239 @@ fn main() {
     let tool_clone = tool.clone();
     
     canvas
-        .position(0, CANVASOFFSET)
-        .on_shortcut(move |canvas: &Canvas, key: char| {
-            if cfg!(feature = "debug"){
-                println!("Pressed {} key ",key);
-            }
-            //manage shortcuts
-            match key {
-            'v' => {
-                    tool_clone.text.set("paste".to_owned());
-                    canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
-                        y: (canvas.rect.get().height/2) as i32});
-                    canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
-                        y: (canvas.rect.get().height/2) as i32});
-                   },
-            'c' => {
-                    tool_clone.text.set("copy".to_owned());
-                    canvas.emit_click(Point{x: 0, y: 0});
-                   },
-            'Q' => {
-                    canvas.paint_on_mask();
-                   },
-              _ => (),
-            }
-            
-        })
-         
-        .on_right_click(move |_ , point:Point|{
-            if cfg!(feature = "debug"){
-                println!("Right click at {:?} not implemented yet",point);
-            }
-        })
+    .position(0, CANVASOFFSET)
+    .on_shortcut(move |canvas: &Canvas, key: char| {
+        if cfg!(feature = "debug"){
+            println!("Pressed {} key ",key);
+        }
+        //manage shortcuts
+        match key {
+        'v' => {
+                tool_clone.text.set("paste".to_owned());
+                canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+                    y: (canvas.rect.get().height/2) as i32});
+                canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+                    y: (canvas.rect.get().height/2) as i32});
+               },
+        'c' => {
+                tool_clone.text.set("copy".to_owned());
+                canvas.emit_click(Point{x: 0, y: 0});
+               },
+        'Q' => {
+                canvas.paint_on_mask();
+               },
+          _ => (),
+        }
         
-        .on_clear_click(move |_ , _point:Point|{
-            // clears last cursor position 
-            let mut ck=click_pos_clone.borrow_mut();
-            *ck = None;
-        })
+    })
 
-        .on_click(move |canvas: &Canvas, point: Point| {
+    .on_right_click(move |_ , point:Point|{
+        if cfg!(feature = "debug"){
+            println!("Right click at {:?} not implemented yet",point);
+        }
+    })
 
-            let click = click_pos.clone();
-            let size = size_bar.clone().value.get();
-            //let buffer_clone = buffer.clone();
-            let swatch_clone = swatch.clone();
-            let u = tool.clone().text.get();
-            let selection_clone = selection_clone.clone();
+    .on_clear_click(move |_ , _point:Point|{
+        // clears last cursor position 
+        let mut ck=click_pos_clone.borrow_mut();
+        *ck = None;
+    })
+
+    .on_click(move |canvas: &Canvas, point: Point| {
+        let click = click_pos.clone();
+        let size = size_bar.clone().value.get();
+        //let buffer_clone = buffer.clone();
+        let swatch_clone = swatch.clone();
+        let u = tool.clone().text.get();
+        //let selection_clone = selection_clone.clone();
+        let text_clone = text.clone();
+        {
+            let mut prev_opt = click.borrow_mut();
+            //let mut bf = buffer_clone.borrow_mut();
+            //let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
+            //let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
+            //let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
+            let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;
+            let swc = swatch_clone.read();
+            let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
+            let antialias = property_get(&ntools.clone()["preferences"],"Antialias").unwrap();
+            let selected_tool = tool.clone().text.get();
             
-            {
-                let mut prev_opt = click.borrow_mut();
-                //let mut bf = buffer_clone.borrow_mut();
-                //let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
-                //let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
-                //let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
-                let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;
-                let swc = swatch_clone.read();
-                let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
-                let antialias = property_get(&ntools.clone()["preferences"],"Antialias").unwrap();
-                let selected_tool = tool.clone().text.get();
-                
-                //tools that dont need prev_position
+            //tools that dont need prev_position
 
-                match selected_tool.as_ref() {    
-                    "pen"  => canvas.pixel(point.x, point.y, color),
-                    /*
-                    "brush"=> {
-                                match property_get(&ntools.clone()["brush"],"Shape") {
-                                    Some(0) => canvas.circle(point.x, point.y,-size,
-                                                    color),
-                                    Some(1) => canvas.rect(point.x ,point.y,size as u32, size as u32,
-                                                    color),
-                                    Some(2) => canvas.paste_buffer(point.x,point.y,
-                                                    a.clone()),
-                                    Some(3) => canvas.smooth_circle(point.x,point.y,
-                                                    size as u32, color),
-                             None | Some(_) => println!("no Shape match!"),
-                                    }
-                                },
-                    */ 
-                    "fill" => canvas.fill(point.x, point.y,color),
-               "rectangle" => {
-                                canvas.undo_save();
-                                let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
-                                let mut width = property_get(&ntools.clone()["rectangle"],"Size").unwrap();
-                                let mut myselection = Rect::new(0,0,0,0);
-                                if let Some(selection) = unsafe{canvas.image.borrow_mut().new_select_rect(point.x,
-                                                    point.y, Color::rgb(100,100,100), 0, &mut *window_clone)}
-                                    {
-                                        myselection = selection;
-                                    }
-                                    if filled == 1 {
-                                        if myselection.height > myselection.width {
-                                            width = 1+(myselection.width/2) as i32;
-                                        }
-                                        else {
-                                              width = 1+(myselection.height/2) as i32;
-                                        }
-                                            
-                                    }
-                                    for i in 0..width {
-                                        canvas.rect(myselection.x+i,myselection.y+i,
-                                                    myselection.width- (2*i) as u32,myselection.height- (2*i) as u32,color);
-                                    }
-                               },
-                "polyline" => { 
-                                canvas.undo_save();
-                                let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
-                                //let antialias = property_get(&ntools.clone()["polyline"],"Antialias").unwrap();
-                                unsafe{
-                                        canvas.image.borrow_mut().interact_line(point.x,
-                                                    point.y,
-                                                    color,
-                                                    width,
-                                                    antialias == 1,
-                                                    &mut *window_clone
-                                                    );
+            match selected_tool.as_ref() {    
+                "pen"  => canvas.pixel(point.x, point.y, color),
+                /*
+                "brush"=> {
+                            match property_get(&ntools.clone()["brush"],"Shape") {
+                                Some(0) => canvas.circle(point.x, point.y,-size,
+                                                color),
+                                Some(1) => canvas.rect(point.x ,point.y,size as u32, size as u32,
+                                                color),
+                                Some(2) => canvas.paste_buffer(point.x,point.y,
+                                                a.clone()),
+                                Some(3) => canvas.smooth_circle(point.x,point.y,
+                                                size as u32, color),
+                         None | Some(_) => println!("no Shape match!"),
                                 }
-                               },
-                    "copy" =>  {
-                                    let mut image = canvas.image.borrow_mut();
-                                    match *selection_clone.borrow() {
-                                        Some(selection) => {
-                                             *canvas.copy_buffer.borrow_mut() = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
-                                             //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
-                                             let newcanvas= Canvas::from_image(canvas.copy_buffer.borrow().clone());
-                                             let path = "/tmp/pastel_copy_buffer.png".to_string();
-                                             if let Ok(_) = newcanvas.save(&path){}
-                                         },
-                                         None => if let Some(selection) = unsafe { 
-                                                                image.select_rect(point.x,
-                                                                    point.y,&mut *window_clone)
-                                                             } {
+                            },
+                */ 
+                "fill" => canvas.fill(point.x, point.y,color),
+           "rectangle" => {
+                            canvas.undo_save();
+                            let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
+                            let mut width = property_get(&ntools.clone()["rectangle"],"Size").unwrap();
+                            let mut myselection = Rect::new(0,0,0,0);
+                            if let Some(selection) = unsafe{canvas.image.borrow_mut().new_select_rect(point.x,
+                                                point.y, Color::rgb(100,100,100), 0, &mut *window_clone)}
+                                {
+                                    myselection = selection;
+                                }
+                                if filled == 1 {
+                                    if myselection.height > myselection.width {
+                                        width = 1+(myselection.width/2) as i32;
+                                    }
+                                    else {
+                                          width = 1+(myselection.height/2) as i32;
+                                    }
+                                        
+                                }
+                                for i in 0..width {
+                                    canvas.rect(myselection.x+i,myselection.y+i,
+                                                myselection.width- (2*i) as u32,myselection.height- (2*i) as u32,color);
+                                }
+                           },
+            "polyline" => { 
+                            canvas.undo_save();
+                            let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
+                            //let antialias = property_get(&ntools.clone()["polyline"],"Antialias").unwrap();
+                            unsafe{
+                                    canvas.image.borrow_mut().interact_line(point.x,
+                                                point.y,
+                                                color,
+                                                width,
+                                                antialias == 1,
+                                                &mut *window_clone
+                                                );
+                            }
+                           },
+                "copy" =>  {
+                                let mut image = canvas.image.borrow_mut();
+                                match *selection_clone.borrow() {
+                                    Some(selection) => {
                                          *canvas.copy_buffer.borrow_mut() = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
                                          //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
                                          let newcanvas= Canvas::from_image(canvas.copy_buffer.borrow().clone());
                                          let path = "/tmp/pastel_copy_buffer.png".to_string();
                                          if let Ok(_) = newcanvas.save(&path){}
-                                        },
-                                    }
-                                },
-                   "marquee"=> {    marquee_clone.visible(false);
-                                    canvas.undo_save();
-                                    let mut image = canvas.image.borrow_mut();
-                                    if let Some(selection) = unsafe{image.select_rect(point.x,
-                                                    point.y,&mut *window_clone)}
-                                        {
-                                        *selection_clone.borrow_mut()= Some(selection);
-                                        marquee_clone.position(selection.x,selection.y+CANVASOFFSET)
-                                                    .size(selection.width,selection.height);
-                                        marquee_clone.visible(true);
-                                        }
+                                     },
+                                     None => if let Some(selection) = unsafe { 
+                                                            image.select_rect(point.x,
+                                                                point.y,&mut *window_clone)
+                                                         } {
+                                     *canvas.copy_buffer.borrow_mut() = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
+                                     //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
+                                     let newcanvas= Canvas::from_image(canvas.copy_buffer.borrow().clone());
+                                     let path = "/tmp/pastel_copy_buffer.png".to_string();
+                                     if let Ok(_) = newcanvas.save(&path){}
                                     },
-                    "paste" => {
+                                }
+                            },
+               "marquee"=> {    marquee_clone.visible(false);
+                                canvas.undo_save();
+                                let mut image = canvas.image.borrow_mut();
+                                if let Some(selection) = unsafe{image.select_rect(point.x,
+                                                point.y,&mut *window_clone)}
+                                    {
+                                    *selection_clone.borrow_mut()= Some(selection);
+                                    marquee_clone.position(selection.x,selection.y+CANVASOFFSET)
+                                                .size(selection.width,selection.height);
+                                    marquee_clone.visible(true);
+                                    }
+                                },
+                "paste" => {
+                            
+                            unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)};
+                            },
+               "circle" => {
+                                canvas.undo_save();
                                 
-                                unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)};
-                                },
-                   "circle" => {
-                                    canvas.undo_save();
-                                    
-                                    let filled = property_get(&ntools.clone()["circle"],"Filled").unwrap();
-                                    let width = property_get(&ntools.clone()["circle"],"Size").unwrap();
-                                    let radius;
-                                    let mut myr = 0;
-                                    {
-                                        let mut image = canvas.image.borrow_mut();
-                                        if let Some((r,angle)) = unsafe {image.interact_circle(point.x,
-                                                    point.y,
-                                                    color,
-                                                    &mut *window_clone
-                                                    )}
-                                        {myr = r;}
-                                    }
-                                    
-                                    {
-                                        if filled == 1 {
-                                            radius = -myr;
-                                            canvas.circle(point.x, point.y, radius, color);
-                                        }else{
-                                            radius=myr;
-                                            if antialias == 1 {
-                                                canvas.wu_circle(point.x, point.y, radius, color);
-                                            }else{
-                                                canvas.circle(point.x, point.y, radius, color);
-                                            }
-                                        }
-                                 }
-                                },
-                    "polygon" => {
-                                    let sides = property_get(&ntools.clone()["polygon"],"Sides").unwrap();
-                                    canvas.undo_save();
-                                    let mut aangle=0_f32;
-                                    let mut rr=0;
-                                    {
+                                let filled = property_get(&ntools.clone()["circle"],"Filled").unwrap();
+                                let width = property_get(&ntools.clone()["circle"],"Size").unwrap();
+                                let radius;
+                                let mut myr = 0;
+                                {
                                     let mut image = canvas.image.borrow_mut();
-                                    if let Some((r,angle)) = unsafe{
-                                     image.interact_circle(point.x,
-                                                    point.y,
-                                                    color,
-                                                    &mut *window_clone
-                                                    )}
-                                    {aangle = angle;
-                                      rr = r;  }
-                                    }
-                                        canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color, antialias==1);
-                                 },
-                       "text" => {
-                                    let text = text.clone().text.get();
-                                    canvas.text(&text[..], point.x, point.y - CANVASOFFSET, color, size )},
-                            _ => (),
-                    }
-                
-                //tools that need prev_position to work
-                if let Some(prev_position) = *prev_opt {
-                    //match tool.clone().text.get().as_ref() {
-                    match selected_tool.as_ref() {
-                        "line" => { 
-                                    //let antialias = property_get(&ntools.clone()["line"],"Antialias").unwrap();
-                                    if antialias == 1 {
-                                        canvas.wu_line(prev_position.x,
-                                            prev_position.y,
-                                            point.x,
-                                            point.y,
-                                            color);
+                                    if let Some((r,angle)) = unsafe {image.interact_circle(point.x,
+                                                point.y,
+                                                color,
+                                                &mut *window_clone
+                                                )}
+                                    {myr = r;}
+                                }
+                                
+                                {
+                                    if filled == 1 {
+                                        radius = -myr;
+                                        canvas.circle(point.x, point.y, radius, color);
                                     }else{
-                                        canvas.line(prev_position.x,
-                                            prev_position.y,
-                                            point.x,
-                                            point.y,
-                                            color);
+                                        radius=myr;
+                                        if antialias == 1 {
+                                            canvas.wu_circle(point.x, point.y, radius, color);
+                                        }else{
+                                            canvas.circle(point.x, point.y, radius, color);
                                         }
-                                   },
-                       "brush" => {
-                                        match property_get(&ntools.clone()["brush"],"Shape") {
+                                    }
+                             }
+                            },
+                "polygon" => {
+                                let sides = property_get(&ntools.clone()["polygon"],"Sides").unwrap();
+                                canvas.undo_save();
+                                let mut aangle=0_f32;
+                                let mut rr=0;
+                                {
+                                let mut image = canvas.image.borrow_mut();
+                                if let Some((r,angle)) = unsafe{
+                                 image.interact_circle(point.x,
+                                                point.y,
+                                                color,
+                                                &mut *window_clone
+                                                )}
+                                {aangle = angle;
+                                  rr = r;  }
+                                }
+                                    canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color, antialias==1);
+                             },
+                                 "text" => {
+                                            let text = text_clone.text.get();
+                                            let font_path = text_clone.font.get();
+                                            canvas.text(&text, &font_path, point.x, point.y - CANVASOFFSET, color, size );
+                                            
+                                            },
+                        _ => (),
+                }
+            
+            //tools that need prev_position to work
+            if let Some(prev_position) = *prev_opt {
+                match selected_tool.as_ref() {
+                    "line" => { 
+                                //let antialias = property_get(&ntools.clone()["line"],"Antialias").unwrap();
+                                if antialias == 1 {
+                                    canvas.wu_line(prev_position.x,
+                                        prev_position.y,
+                                        point.x,
+                                        point.y,
+                                        color);
+                                }else{
+                                    canvas.line(prev_position.x,
+                                        prev_position.y,
+                                        point.x,
+                                        point.y,
+                                        color);
+                                    }
+                               },
+                   "brush" => {
+                                match property_get(&ntools.clone()["brush"],"Shape") {
                                     Some(0) => canvas.brush_line(prev_position.x,
                                             prev_position.y,
                                             point.x,
@@ -1914,22 +2023,23 @@ fn main() {
                                     Some(3) => canvas.smooth_circle(point.x,point.y,
                                                     size as u32, color),
                              None | Some(_) => println!("no Shape match!"),
-                                    }
-                                        }
-                              _ => (),
+                                }
+                              },
+
+                        _ => (),
                     }
-                    *prev_opt = Some(point);
-                } else {
-                    *prev_opt = Some(point);
-                    if u == "line" || u =="pen" || u =="brush" || u=="brush_line" {canvas.undo_save();} //prepare for undo
-                }
+                *prev_opt = Some(point);
+            } else {
+                *prev_opt = Some(point);
+                if u == "line" || u =="pen" || u =="brush" || u=="brush_line" || u=="text" {canvas.undo_save();} //prepare for undo
             }
-        });
+        }
+    });
 
     window.add(&canvas);
     window.add(&marquee);
     window.add(&status);
-    
+
     // add menus
     window.add(&menufile);
     window.add(&menuedit);

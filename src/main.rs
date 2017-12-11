@@ -210,7 +210,7 @@ fn main() {
     #[cfg(target_os = "redox")]
     text.font("/ui/fonts/Mono/Fira/Bold.ttf");
     #[cfg(target_os = "windows")]
-    text.font.set(""); //#FIXME put path of windows font!!
+    text.font("C:/Windows/Fonts/arial.ttf");
     
     //if pastel_copy_buffer.png exists load it into canvas copy_buffer
     //for copy/paste between instances 

@@ -137,6 +137,9 @@ pub fn text_dialog(title: &str, text: &str, suggestion: &str) -> Option<(String,
 
     #[cfg(target_os = "redox")]
     let font_path = "/ui/fonts/Mono/Fira/Bold.ttf";
+    
+    #[cfg(target_os = "windows")]
+    let font_path = "C:/Windows/Fonts/arial.ttf";
 
     let text_box2 = TextBox::new();
     text_box2.position(x, y)

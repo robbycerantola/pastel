@@ -1,6 +1,8 @@
 //canvas widget based on image widget
 
 extern crate rusttype;
+extern crate imageproc;
+extern crate conv;
 
 use self::rusttype::{FontCollection, Scale, point};
 
@@ -27,6 +29,11 @@ use std::f32::consts::PI;
 //use std::io;
 use std::io::prelude::*;
 use std::fs::File;
+
+use self::imageproc::math::cast;
+use self::imageproc::definitions::Clamp;
+use self::conv::ValueInto;
+
 
 use AddOnsToOrbimage;
 
@@ -248,6 +255,7 @@ impl Canvas {
              "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
              "rotate90"        => image::imageops::rotate90(&imgbuf),
              "rotate"          => self.rotate_center(&imgbuf,(a as f32 * PI/180.0)),
+             //"rotate"          => imageproc::affine::rotate_about_center(&imgbuf,(a as f32 * PI/180.0),imageproc::affine::Interpolation::Bilinear),
              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
              "contrast"        => image::imageops::colorops::contrast(&imgbuf, a),
@@ -375,6 +383,63 @@ impl Canvas {
         } else {
            unsafe { image.unsafe_get_pixel(rx as u32, ry as u32) }
         }
+    }
+
+/*
+    fn interpolate<P: Pixel + 'static, I: GenericImage + 'static>(&self, image: &I, x: f32, y: f32, default: P)
+     -> P
+    where
+        P: Pixel + 'static,
+        <P as Pixel>::Subpixel: ValueInto<f32> + Clamp<f32>,
+    {
+        let left = x.floor();
+        let right = left + 1f32;
+        let top = y.floor();
+        let bottom = top + 1f32;
+
+        let right_weight = x - left;
+        let bottom_weight = y - top;
+
+        // default if out of bound
+        let (width, height) = image.dimensions();
+        if left < 0f32 || right >= width as f32 || top < 0f32 || bottom >= height as f32 {
+            default
+        } else {
+            let (tl, tr, bl, br) = unsafe {
+                (
+                    image.unsafe_get_pixel(left as u32, top as u32),
+                    image.unsafe_get_pixel(right as u32, top as u32),
+                    image.unsafe_get_pixel(left as u32, bottom as u32),
+                    image.unsafe_get_pixel(right as u32, bottom as u32),
+                )
+            };
+            //self.blend(tl, tr, bl, br, right_weight, bottom_weight)
+        }
+    }
+*/
+    fn blend<P>(&self,
+        top_left: P,
+        top_right: P,
+        bottom_left: P,
+        bottom_right: P,
+        right_weight: f32,
+        bottom_weight: f32,
+    ) -> P
+    where
+        P: Pixel,
+        P::Subpixel: ValueInto<f32> + Clamp<f32>,
+    {
+        let top = top_left.map2(&top_right, |u, v| {
+            P::Subpixel::clamp((1f32 - right_weight) * cast(u) + right_weight * cast(v))
+        });
+
+        let bottom = bottom_left.map2(&bottom_right, |u, v| {
+            P::Subpixel::clamp((1f32 - right_weight) * cast(u) + right_weight * cast(v))
+        });
+
+        top.map2(&bottom, |u, v| {
+            P::Subpixel::clamp((1f32 - bottom_weight) * cast(u) + bottom_weight * cast(v))
+        })
     }
 
 

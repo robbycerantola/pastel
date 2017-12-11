@@ -2,7 +2,7 @@
 simple image editor in Rust for Redox
 */
 #![feature(const_fn)]  //needed for fixing theme 
-#![allow(dead_code)]
+//#![allow(dead_code)]
 //#![allow(unused_imports)]
 #![allow(unused_variables)]
 
@@ -1433,17 +1433,19 @@ fn main() {
         
         
         action.on_click(move |_action: &Action, _point: Point| {
+                            
                             match text_dialog("Text", "text:","") {
                             Some(response) => {
                                 text_clone.text(response.0.to_owned());
                                 text_clone.font(response.1.to_owned());
                                 tool_clone.text.set("text".to_owned());
-                                status_clone.text("Writing text...");
+                                
                                 let s = property_get(&ntools_clone["text"],"Size").unwrap();
                                 size_bar_clone.visible(true);
                                 size_label_clone.visible(true);
                                 size_bar_clone.value.set(s);
                                 size_label_clone.text(format!("Size: {}",s));
+                                status_clone.text("Click on canvas to draw the text...(you can change color, size & opacity)");
                             },
                         
                             None => {println!("Cancelled");},

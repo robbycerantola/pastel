@@ -19,7 +19,7 @@ use orbtk::traits::{Click, Place, Text};  //Border, Enter
 use orbtk::cell::CloneCell;
 
 use std::rc::Rc;
-use std::cell::{Cell, RefCell}; //, RefMut
+use std::cell::{Cell, RefCell}; //, RefMut, Cell
 use std::sync::Arc;
 use std::process;
 use std::process::Command;
@@ -57,17 +57,17 @@ use control_knob::ControlKnob;
 */
 mod theme;  //#FIXME use local theme to temporary fix compilation with last orbtk 0.2.26 pull which has moved to css theme, pastel has to move to css too
 
-//structure to store tools properties 
+//structure to store property values 
 struct Property{
     name: CloneCell<String>,
-    value: Cell<i32>,
+    value: CloneCell<String>,
 }
 
 impl Property {
-    fn new(name: &str, value: i32) -> Arc<Self> {
+    fn new(name: &str, value: &str) -> Arc<Self> {
         Arc::new(Property {
         name: CloneCell::new(name.to_owned()),
-        value: Cell::new(value),
+        value: CloneCell::new(value.to_owned()),
         })
     }
 
@@ -76,38 +76,83 @@ impl Property {
         self
     }
 
-    fn value(&self, value: i32) -> &Self {
-        self.value.set(value);
+    fn value<S: Into<String>>(&self, value: S) -> &Self {
+        self.value.set(value.into());
         self
     }
 }
 
-pub struct MyText {
-    pub rect: Cell<Rect>,
-    pub text: CloneCell<String>,
-    pub text_offset: Cell<Point>,
-    pub font: CloneCell<String>,
+// Trait to use either str or i32 
+trait MyTrait: std::string::ToString {}
+impl MyTrait for i32 {}
+impl MyTrait for str {}
+impl MyTrait for &'static str {}
+impl MyTrait for String {}
+
+//structure to store tools with properties
+#[derive(Clone)]
+struct Tools {
+    tools: HashMap<&'static str,Vec<Arc<Property>>>,
+    selected: Cell<&'static str>,
 }
 
-impl MyText {
-    pub fn new() -> Arc<Self> {
-        Arc::new(MyText {
-            rect: Cell::new(Rect::default()),
-            text: CloneCell::new(String::new()),
-            text_offset: Cell::new(Point::default()),
-            font: CloneCell::new(String::new()),
-        })
-    }
-    fn text<S: Into<String>>(&self, text: S) -> &Self {
-        self.text.set(text.into());
-        self
+impl Tools {
+    fn new() -> Self {
+       Tools {
+            tools: HashMap::new(),
+            selected: Cell::new(""),
+        }
     }
 
-    fn font<S: Into<String>>(&self, text: S) -> &Self {
-        self.font.set(text.into());
-        self
+    fn insert(&mut self, key : &'static str, properties: Vec<Arc<Property>>) {
+        self.tools.insert(key,properties);
     }
     
+        ///get tool property as i32 value
+    fn get(&self, tool_name: &str  , property: &str) -> Option<i32> {
+        let properties = &self.tools[tool_name];
+        for a in properties {
+            if &a.name.get() == property {
+                return Some(a.value.get().parse::<i32>().unwrap());
+            }
+        } 
+        None
+    }
+    
+    /// get tool property as string
+    fn get_str(&self, tool_name: &str  , property: &str) -> Option<String> {
+        let properties = &self.tools[tool_name];
+        for a in properties {
+            if &a.name.get() == property {
+                return Some(a.value.get());
+            }
+        } 
+        None
+    }
+
+    ///set tool property as i32 value or str 
+    fn set <T: MyTrait> (&self, tool_name: &str, property: &str, value: T){
+        let properties = &self.tools[tool_name];
+        for a in properties {
+            if &a.name.get() == property {
+                a.value.set(value.to_string());
+            }
+        } 
+    }
+
+    ///get current active tool
+    fn current(&self) -> String {
+        self.get_str("tool","Current").unwrap()
+        //self.selected.get().to_string()
+        
+    }
+
+    ///select active tool
+    fn select(&self, tool_name: &'static str) {
+        self.set("tool","Current",tool_name);
+        //self.selected.set(tool_name); //#FIXME does not work
+    }
+
 }
 
 #[derive(Clone)]
@@ -124,6 +169,13 @@ const UNDODEPTH :usize = 10;
 
 // enable disable help and status line
 const STATUSLINE :bool = true;
+
+#[cfg(target_os = "linux")]
+const DEFAULTFONT : &'static str = "/usr/share/fonts/gnu-free/FreeMonoBold.ttf";
+#[cfg(target_os = "redox")]
+const DEFAULTFONT_PATH : &'static str = "/ui/fonts/Mono/Fira/Bold.ttf";
+#[cfg(target_os = "windows")]
+const DEFAULTFONT : &'static str = "C:/Windows/Fonts/arial.ttf";
 
 fn main() {
 
@@ -165,7 +217,7 @@ fn main() {
     } else {
         filename = String::from("../test.png");  //no name
     }
-    
+
     //size given
     if args.len() > 2 {
        let k: Vec<_> = args[2].split("x").collect();
@@ -181,41 +233,32 @@ fn main() {
 
     //Tools and properties 
     //create new tool with some properties and initial values
-    let mut ntools = HashMap::new();
-    ntools.insert("pen",vec![Property::new("Size",1),Property::new("Opacity",100)]);
-    ntools.insert("line",vec![Property::new("Opacity",100)]);
-    ntools.insert("polyline",vec![Property::new("Size",1),Property::new("Opacity",100)]); 
-    ntools.insert("brush",vec![Property::new("Size",4),Property::new("Opacity",100),Property::new("Shape",0)]);
-    ntools.insert("fill",vec![Property::new("Opacity",100)]);
-    ntools.insert("rectangle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
-    ntools.insert("circle",vec![Property::new("Opacity",100),Property::new("Size",1),Property::new("Filled",0)]);
-    ntools.insert("paste",vec![Property::new("Opacity",100)]);
-    ntools.insert("marquee",vec![Property::new("Opacity",100)]); //#FIXME quick dirty fix to 'no entry found for key'
-    ntools.insert("polygon",vec![Property::new("Opacity",100),Property::new("Sides",6)]);
-    ntools.insert("text",vec![Property::new("Opacity",100),Property::new("Size",8)]);  
-    ntools.insert("preferences",vec![Property::new("Antialias",1)]); // not a real tool but a way to store general preferences
 
-    //use invisible Label for storing current active tool
-    let tool = Label::new();
-    tool.text("pen");
-    
+    let mut tools = Tools::new();
+    tools.insert("pen",vec![Property::new("Size","1"),Property::new("Opacity","100")]);
+    tools.insert("line",vec![Property::new("Opacity","100")]);
+    tools.insert("polyline",vec![Property::new("Size","1"),Property::new("Opacity","100")]); 
+    tools.insert("brush",vec![Property::new("Size","4"),Property::new("Opacity","100"),Property::new("Shape","0")]);
+    tools.insert("fill",vec![Property::new("Opacity","100")]);
+    tools.insert("rectangle",vec![Property::new("Opacity","100"),Property::new("Size","1"),Property::new("Filled","0")]);
+    tools.insert("circle",vec![Property::new("Opacity","100"),Property::new("Size","1"),Property::new("Filled","0")]);
+    tools.insert("paste",vec![Property::new("Opacity","100")]);
+    tools.insert("marquee",vec![Property::new("Opacity","100")]); //#FIXME quick dirty fix to 'no entry found for key'
+    tools.insert("polygon",vec![Property::new("Opacity","100"),Property::new("Sides","6")]);
+    tools.insert("text",vec![Property::new("Opacity","100"),Property::new("Size","8"),Property::new("Text","Pastel"),Property::new("Font",DEFAULTFONT)]);
+    tools.insert("preferences",vec![Property::new("Antialias","1")]); // not a real tool but a way to store general preferences
+    tools.insert("tool",vec![Property::new("Current","pen")]); // store current active tool
+
+    //set initial active tool
+    tools.select("pen");
+
     //define current selection
     let selection :  Rc<RefCell<Option<Rect>>> = Rc::new(RefCell::new(None));
 
-    //storing default text to be rendered on canvas with default font
-    let text = MyText::new();
-    text.text("Pastel");
-    #[cfg(target_os = "linux")]
-    text.font("/usr/share/fonts/gnu-free/FreeMonoBold.ttf");
-    #[cfg(target_os = "redox")]
-    text.font("/ui/fonts/Mono/Fira/Bold.ttf");
-    #[cfg(target_os = "windows")]
-    text.font("C:/Windows/Fonts/arial.ttf");
-    
     //if pastel_copy_buffer.png exists load it into canvas copy_buffer
     //for copy/paste between instances 
     *canvas.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
-    
+
     //implement GUI
     
     let mut x = 10;
@@ -363,8 +406,7 @@ fn main() {
     window.add(&size_label);
 
     let size_bar = ProgressBar::new();
-    let tool_clone = tool.clone();
-    let ntools_clone=ntools.clone();
+    let tools_clone = tools.clone();
     let size_label_clone = size_label.clone();
     size_bar.value.set(1);
     size_bar.visible(false);
@@ -377,14 +419,12 @@ fn main() {
                       size_bar.value.set(progress);
                       
                       //save size value for current tool
-                      let cur_tool = tool_clone.text.get();
+                      let cur_tool = tools_clone.current();
                       let a: &str = &cur_tool[..];  //workarround to convert String into &str                      
-                      property_set(&ntools_clone[a],"Size",progress);
-                      
+                      tools_clone.set(a,"Size",progress);
                   });
     window.add(&size_bar);
-    
-    
+
     // tool transparency bar
     let trans_label = Label::new();
     trans_label.text("Opacity: 100%").position(x+340, 90).size(120, 16);
@@ -392,11 +432,8 @@ fn main() {
     //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&trans_label);
 
-    
     let trans_bar = ProgressBar::new();
-    let tool_clone = tool.clone();
-    //let tools_clone = tools.clone();
-    let ntools_clone = ntools.clone();
+    let tools_clone = tools.clone();
     let trans_label_clone = trans_label.clone();
     trans_bar.value.set(100);
     trans_bar.visible(true);
@@ -409,13 +446,12 @@ fn main() {
                       trans_bar.value.set(progress);
                       
                       //save Opacity (transparency) value for current tool
-                      let cur_tool = tool_clone.text.get();
+                      let cur_tool = tools_clone.current();
                       let a: &str = &cur_tool[..];  //convert String into &str
-                      property_set(&ntools_clone[a],"Opacity",progress);
-                      
+                      tools_clone.set(a,"Opacity", progress);
                   });
     window.add(&trans_bar);
-    
+
 /*
     // tool Volume knob
     let volume_label = Label::new();
@@ -501,22 +537,23 @@ fn main() {
             image.position(x, y)
                 .text("Draft painting".to_owned())
                 .selected(true);
-            let tool_clone = tool.clone();
+
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let trans_bar_clone = trans_bar.clone();
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tool_clone.text.set("pen".to_owned());
+                               tools_clone.select("pen");
                                status_clone.text("");
                                size_bar_clone.visible(false);
                                size_label_clone.visible(false);
-                               let o = property_get(&ntools_clone["pen"],"Opacity").unwrap();
+                               //let o = property_get(&ntools_clone["pen"],"Opacity").unwrap();
+                               let o = tools_clone.get("pen","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                //toggle tool in toolbar TODO move into Toolbar
@@ -540,24 +577,24 @@ fn main() {
         Ok(image) => {
             image.position(x, y)                
                  .text("Draw lines".to_owned());
-            let tool_clone = tool.clone();
+
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
-                               tool_clone.text.set("line".to_owned());
+                               tools_clone.select("line");
                                status_clone.text("");
                                //get previous settings
                                size_bar_clone.visible(false);
                                size_label_clone.visible(false);
-                               let o = property_get(&ntools_clone["line"],"Opacity").unwrap();
+                               let o = tools_clone.get("line","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
@@ -578,32 +615,30 @@ fn main() {
         }
     }
 
-
     match ToolbarIcon::from_path("brush.png") {
         Ok(image) => {
             image.position(x, y)
                  .text("Paint brush".to_owned());
-            let tool_clone = tool.clone();
+
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tool_clone.text.set("brush".to_owned());
+                               tools_clone.select("brush");
                                status_clone.text("");
                                size_label_clone.visible(true);
                                size_bar_clone.visible(true);
-                               //let v=tools_clone.get(&"brush").unwrap().size.get();
-                               let v = property_get(&ntools_clone["brush"],"Size").unwrap();
+                               let v = tools_clone.get("brush","Size").unwrap();
                                size_bar_clone.value.set(v);
                                size_label_clone.text(format!("Size: {}",v));
                                
-                               let o = property_get(&ntools_clone["brush"],"Opacity").unwrap();
+                               let o = tools_clone.get("brush","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
@@ -627,25 +662,24 @@ fn main() {
     match ToolbarIcon::from_path("fillbucket.png") {
         Ok(item) => {
             
-            let tool_clone = tool.clone();
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
                  .text("Fill up area with color".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tool_clone.text.set("fill".to_owned());
+                               tools_clone.select("fill");
                                status_clone.text("Filling...");
                                size_label_clone.visible(false);
                                size_bar_clone.visible(false);
                                
-                               let o = property_get(&ntools_clone["fill"],"Opacity").unwrap();
+                               let o = tools_clone.get("fill","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
@@ -670,27 +704,27 @@ fn main() {
         Ok(image) => {
             image.position(x, y)                
                  .text("Draw polylines".to_owned());
-            let tool_clone = tool.clone();
+
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
-                               tool_clone.text.set("polyline".to_owned());
+                               tools_clone.select("polyline");
                                status_clone.text("Drawing polylines... right click to exit.");
                                //get previous settings
                                size_bar_clone.visible(true);
                                size_label_clone.visible(true);
-                               let o = property_get(&ntools_clone["polyline"],"Opacity").unwrap();
+                               let o = tools_clone.get("polyline","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
-                               let s = property_get(&ntools_clone["polyline"],"Size").unwrap();
+                               let s = tools_clone.get("polyline","Size").unwrap();
                                size_bar_clone.value.set(s);
                                size_label_clone.text(format!("Size: {}",s));
                                
@@ -715,27 +749,27 @@ fn main() {
         Ok(image) => {
             image.position(x, y)                
                  .text("Draw rectangles".to_owned());
-            let tool_clone = tool.clone();
+
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
-                               tool_clone.text.set("rectangle".to_owned());
+                               tools_clone.select("rectangle");
                                status_clone.text("Drawing rectangles...");
                                //get previous settings
                                size_bar_clone.visible(true);
                                size_label_clone.visible(true);
-                               let o = property_get(&ntools_clone["rectangle"],"Opacity").unwrap();
+                               let o = tools_clone.get("rectangle","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
-                               let w = property_get(&ntools_clone["rectangle"],"Size").unwrap();
+                               let w = tools_clone.get("rectangle","Size").unwrap();
                                size_bar_clone.value.set(w);
                                size_label_clone.text(format!("Size: {}",w));
                                
@@ -760,24 +794,24 @@ fn main() {
         Ok(image) => {
             image.position(x, y)                
                  .text("Draw circles".to_owned());
-            let tool_clone = tool.clone();
+                 
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
-                               tool_clone.text.set("circle".to_owned());
+                               tools_clone.select("circle");
                                status_clone.text("Drawing circles...click on center, move cursor to set radius, click again.");
                                //get previous settings
                                size_bar_clone.visible(false);
                                size_label_clone.visible(false);
-                               let o = property_get(&ntools_clone["circle"],"Opacity").unwrap();
+                               let o = tools_clone.get("circle","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
@@ -808,7 +842,7 @@ fn main() {
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let trans_bar_clone = trans_bar.clone();
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
@@ -825,13 +859,14 @@ fn main() {
                                     None => {println!("Cancelled");},
                                 }   
                                tool_clone.text.set("text".to_owned());
+                               tools_clone.set("tool","Current","text");
                                status_clone.text("Drawing some text...");
 
 
-                               let o = property_get(&ntools_clone["text"],"Opacity").unwrap();
+                               let o = toola_clone.get("text","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
-                                let s = property_get(&ntools_clone["text"],"Size").unwrap();
+                                let s = tools_clone.get("text","Size").unwrap();
                                 size_bar_clone.value.set(s);
                                 size_label_clone.text(format!("Size: {}",s));
                                //toggle tool in toolbar TODO move into Toolbar
@@ -859,25 +894,20 @@ fn main() {
             image.position(x, y)
                 .text("Select canvas region".to_owned());
                 
-            let tool_clone = tool.clone();
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
-            //let trans_bar_clone = trans_bar.clone();
-            //let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
             let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tool_clone.text.set("marquee".to_owned());
+                               tools_clone.select("marquee");
                                status_clone.text("Selecting...");
                                size_bar_clone.visible(false);
                                size_label_clone.visible(false);
 
-                               //let o = property_get(&ntools_clone["marquee"],"Opacity").unwrap();
-                               //trans_bar_clone.value.set(o);
-                               //trans_label_clone.text(format!("Opacity: {}%",o));
                                //toggle tool in toolbar TODO move into Toolbar
                                unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
                                //make invisible toolbar2  TODO move into Toolbar
@@ -903,12 +933,12 @@ fn main() {
     
     match ToolbarIcon::from_path("circle.png") {
         Ok(item) => {
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             item.position(x, y)
                  .text("Circular shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               property_set(&ntools_clone["brush"],"Shape",0);
+                               tools_clone.set("brush","Shape",0);
                                //toggle shape in toolbar2
                                unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
                                });
@@ -924,19 +954,19 @@ fn main() {
 
     match ToolbarIcon::from_path("smooth_circle.png") {
         Ok(item) => {
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             item.position(x, y)
                  .text("Smooth edges circular shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               property_set(&ntools_clone["brush"],"Shape",3);
-                               
+                               tools_clone.set("brush","Shape",3);
+
                                //toggle shape in toolbar2
                                unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
                                });
             window.add(&item);
             toolbar2_obj.push(item.clone());
-            
+
             x += item.rect.get().width as i32 + 2;
         }
         Err(err) => {
@@ -946,19 +976,19 @@ fn main() {
 
     match ToolbarIcon::from_path("block.png") {
         Ok(item) => {
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             item.position(x, y)
                  .text("Blocky shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               property_set(&ntools_clone["brush"],"Shape",1);
-                               
+                               tools_clone.set("brush","Shape",1);
+
                                //toggle shape in toolbar2
                                unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
                                });
             window.add(&item);
             toolbar2_obj.push(item.clone());
-            
+
             x += item.rect.get().width as i32 + 2;
         }
         Err(err) => {
@@ -968,12 +998,12 @@ fn main() {
 
     match ToolbarIcon::from_path("buffer.png") {
         Ok(item) => {
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
             item.position(x, y)
                  .text("custom brush from buffer".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               property_set(&ntools_clone["brush"],"Shape",2);
+                               tools_clone.set("brush","Shape",2);
                                
                                //toggle shape in toolbar2
                                unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
@@ -997,14 +1027,14 @@ fn main() {
     //3rd toolbar new api 
     match ToolbarIcon::from_path("rectangle.png") {
         Ok(item) => {
-            let ntools_clone = ntools.clone();
+            let tools_clone = tools.clone();
             //let toolbar3_clone = toolbar3.clone(); //does not work properly!!
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
                  .text("Not filled".to_owned()) 
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               property_set(&ntools_clone["rectangle"],"Filled",0);
-                               property_set(&ntools_clone["circle"],"Filled",0);
+                               tools_clone.set("rectangle","Filled",0);
+                               tools_clone.set("circle","Filled",0);
                                //toggle item in toolbar3
                                //toolbar3_clone.toggle(); //does not work properly !!
                                unsafe{(&mut *toolbar3_clone).toggle();}  
@@ -1021,14 +1051,13 @@ fn main() {
 
     match ToolbarIcon::from_path("filled.png") {
         Ok(item) => {
-            let ntools_clone = ntools.clone();
-            //let toolbar3_clone = toolbar3.clone();
+            let tools_clone = tools.clone();
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
                  .text("Filled".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               property_set(&ntools_clone["rectangle"],"Filled",1);
-                               property_set(&ntools_clone["circle"],"Filled",1);
+                               tools_clone.set("rectangle","Filled",1);
+                               tools_clone.set("circle","Filled",1);
                                //toggle item in toolbar3  
                                //toolbar3_clone.toggle();
                                unsafe{(&mut *toolbar3_clone).toggle();}  
@@ -1067,10 +1096,8 @@ fn main() {
                                                 .arg(resolution.to_owned())
                                                 .spawn()
                                                 .expect("Command executed with failing error code");
-                           
                                                 println!("New image opened.");
                                                 },
-                                                
                                     None => println!("New image cancelled"),
                                 }
                         });
@@ -1169,10 +1196,10 @@ fn main() {
 
     {
         let action = Action::new("Select");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        tool_clone.text.set("marquee".to_owned());
+                        tools_clone.select("marquee");
                         status_clone.text("Selecting... (click on canvas, move cursor to define a rectangle than click again)");
                           });
         menuedit.add(&action);
@@ -1196,11 +1223,11 @@ fn main() {
 
     {
         let action = Action::new("Copy     Ctrl+C");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let canvas_clone = canvas.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        tool_clone.text.set("copy".to_owned());
+                        tools_clone.select("copy");
                         canvas_clone.emit_click(Point{x:0,y:0}); //trigger buffer saving without clicking effectively on canvas
                         status_clone.text("Copying...");
                           });
@@ -1209,14 +1236,12 @@ fn main() {
     
     {
         let action = Action::new("Paste    Ctrl+V");
-        let tool_clone = tool.clone();
-        let ntools_clone = ntools.clone();
+        let tools_clone = tools.clone();
         let canvas_clone = canvas.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         *canvas_clone.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
-                        //property_set(&ntools_clone["brush"],"Shape",2);
-                        tool_clone.text.set("paste".to_owned());
+                        tools_clone.select("paste");
                         status_clone.text("Pasting... (click on canvas, move cursor to refine the position than click again)");
                           });
         menuedit.add(&action);
@@ -1317,6 +1342,7 @@ fn main() {
     }
 
 
+
     //Menu tool
     let menutools = Menu::new("Tools");
     menutools.position(130, 0).size(48, 16);
@@ -1324,10 +1350,11 @@ fn main() {
     //Menu entries for tools
     {
         let action = Action::new("Pen");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let status_clone = status.clone();
+
         action.on_click(move |_action: &Action, _point: Point| {
-                            tool_clone.text.set("pen".to_owned());
+                            tools_clone.select("pen");
                             status_clone.text("Drawing points ...");
                         });
         menutools.add(&action);
@@ -1335,11 +1362,10 @@ fn main() {
 
     {
         let action = Action::new("Line");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-
-                            tool_clone.text.set("line".to_owned());
+                            tools_clone.select("line");
                             status_clone .text("Drawing...");
                         });
         menutools.add(&action);
@@ -1347,11 +1373,10 @@ fn main() {
 
     {
         let action = Action::new("Polyline");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            
-                            tool_clone.text.set("polyline".to_owned());
+                            tools_clone.select("polyline");
                             status_clone.text("Drawing polylines...");
                         });
         menutools.add(&action);
@@ -1359,10 +1384,10 @@ fn main() {
 
     {
         let action = Action::new("Brush");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            tool_clone.text.set("brush".to_owned());
+                            tools_clone.select("brush");
                             status_clone.text("Painting...");
                         });
         menutools.add(&action);
@@ -1370,10 +1395,10 @@ fn main() {
 
     {
         let action = Action::new("Fill");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            tool_clone.text.set("fill".to_owned());
+                            tools_clone.select("fill");
                             status_clone.text("Filling...");
                         });
         menutools.add(&action);
@@ -1381,10 +1406,10 @@ fn main() {
     
     {
         let action = Action::new("Rectangle");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            tool_clone.text.set("rectangle".to_owned());
+                            tools_clone.select("rectangle");
                             status_clone.text("Drawing rectangles...");
                         });
         menutools.add(&action);
@@ -1392,68 +1417,55 @@ fn main() {
     
     {
         let action = Action::new("Circle");
-        let tool_clone = tool.clone();
+        let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            tool_clone.text.set("circle".to_owned());
+                            tools_clone.select("circle");
                             status_clone.text("Drawing circles...");
                         });
         menutools.add(&action);
     }
- 
+
     {
         let action = Action::new("Polygon");
-        let tool_clone = tool.clone();
         let status_clone = status.clone();
-        let ntools_clone = ntools.clone();
+        let tools_clone = tools.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             match dialog("Regular polygon", "sides:","3") {
                             Some(response) => {
-                                property_set(&ntools_clone["polygon"],"Sides",response.parse::<i32>().unwrap_or(3));
-                                tool_clone.text.set("polygon".to_owned());
+                                tools_clone.set("polygon","Sides",response.parse::<i32>().unwrap_or(3));
+                                tools_clone.select("polygon");
                                 status_clone.text("Drawing regular poligons...");
                             },
-                        
                             None => {println!("Cancelled");},
                         }
-                            
         });
         menutools.add(&action);
     }
 
     {
         let action = Action::new("Text");
-        let text_clone = text.clone();
-        let tool_clone = tool.clone();
         let status_clone = status.clone();
         let size_bar_clone = size_bar.clone();
         let size_label_clone = size_label.clone();
-        //let trans_bar_clone = trans_bar.clone();
-        let ntools_clone = ntools.clone();
-        
-        
+        let tools_clone = tools.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            
                             match text_dialog("Text", "text:","") {
-                            Some(response) => {
-                                text_clone.text(response.0.to_owned());
-                                text_clone.font(response.1.to_owned());
-                                tool_clone.text.set("text".to_owned());
-                                
-                                let s = property_get(&ntools_clone["text"],"Size").unwrap();
-                                size_bar_clone.visible(true);
-                                size_label_clone.visible(true);
-                                size_bar_clone.value.set(s);
-                                size_label_clone.text(format!("Size: {}",s));
-                                status_clone.text("Click on canvas to draw the text...(you can change color, size & opacity)");
-                            },
-                        
-                            None => {println!("Cancelled");},
-                        
-                        }
-                            
-                            
-                        });
+                                Some(response) => {
+                                    tools_clone.set("tool","Current","text");
+                                    tools_clone.set("text","Text",response.0.to_owned());
+                                    tools_clone.set("text","Font",response.1.to_owned());
+                                    let s = tools_clone.get("text","Size").unwrap();
+                                    let o = tools_clone.get("text","Opacity").unwrap();
+                                    size_bar_clone.visible(true);
+                                    size_label_clone.visible(true);
+                                    size_bar_clone.value.set(s);
+                                    size_label_clone.text(format!("Size: {}",s));
+                                    status_clone.text("Click on canvas to draw the text...(you can change color, size & opacity)");
+                                },
+                                None => {println!("Cancelled");},
+                            }
+        });
         menutools.add(&action);
     }
 
@@ -1461,31 +1473,29 @@ fn main() {
 
     {
         let action = Action::new("Antialias \u{2611}");
-        //let canvas_clone = canvas.clone();
         let status_clone = status.clone();
-        let ntools_clone = ntools.clone();
+        let tools_clone = tools.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        let antialias = property_get(&ntools_clone["preferences"],"Antialias").unwrap();
+                        let antialias = tools_clone.get("preferences","Antialias").unwrap();
                         if antialias == 1 {
-                            property_set(&ntools_clone["preferences"],"Antialias",0);
+                            tools_clone.set("preferences","Antialias",0);
                             _action.text("Antialias \u{2610}");
                             status_clone.text("Antialiasing disabled");
                         }else{
-                            property_set(&ntools_clone["preferences"],"Antialias",1);
+                            tools_clone.set("preferences","Antialias",1);
                             status_clone.text("Antialiasing enabled");
                             _action.text("Antialias \u{2611}");
                         }
         });
         menutools.add(&action);
     }
-    
 
     //Menu image
     let menuimage = Menu::new("Image");
     menuimage.position (180,0).size (48,16);
-    
+
     //Menu entries for image
-    
+
     {
         let action = Action::new("Blur");
         let canvas_clone = canvas.clone();
@@ -1500,12 +1510,10 @@ fn main() {
                             },
                             None => {println!("Cancelled");},
                         }
-                        
-                        
                     });
         menuimage.add(&action);
     }
-    
+
     {
         let action = Action::new("Unsharpen");
         let canvas_clone = canvas.clone();
@@ -1523,7 +1531,7 @@ fn main() {
                     });
         menuimage.add(&action);
     }
-    
+
     {
         let action = Action::new("Verical flip");
         let canvas_clone = canvas.clone();
@@ -1775,7 +1783,8 @@ fn main() {
     let click_pos_clone = click_pos.clone();
     let selection_clone = selection.clone();
     let marquee_clone = marquee.clone();
-    let tool_clone = tool.clone();
+    //let tool_clone = tool.clone();
+    let tools_clone = tools.clone();
     
     canvas
     .position(0, CANVASOFFSET)
@@ -1786,14 +1795,16 @@ fn main() {
         //manage shortcuts
         match key {
         'v' => {
-                tool_clone.text.set("paste".to_owned());
+                //tool_clone.text.set("paste".to_owned());
+                tools_clone.select("paste");
                 canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
                     y: (canvas.rect.get().height/2) as i32});
                 canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
                     y: (canvas.rect.get().height/2) as i32});
                },
         'c' => {
-                tool_clone.text.set("copy".to_owned());
+                //tool_clone.text.set("copy".to_owned());
+                tools_clone.select("copy");
                 canvas.emit_click(Point{x: 0, y: 0});
                },
         'Q' => {
@@ -1819,47 +1830,27 @@ fn main() {
     .on_click(move |canvas: &Canvas, point: Point| {
         let click = click_pos.clone();
         let size = size_bar.clone().value.get();
-        //let buffer_clone = buffer.clone();
         let swatch_clone = swatch.clone();
-        let u = tool.clone().text.get();
-        //let selection_clone = selection_clone.clone();
-        let text_clone = text.clone();
         {
             let mut prev_opt = click.borrow_mut();
-            //let mut bf = buffer_clone.borrow_mut();
             //let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
             //let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
             //let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
             let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;
             let swc = swatch_clone.read();
             let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
-            let antialias = property_get(&ntools.clone()["preferences"],"Antialias").unwrap();
-            let selected_tool = tool.clone().text.get();
-            
-            //tools that dont need prev_position
+            let tools_clone = tools.clone();
+            let antialias = tools_clone.get("preferences","Antialias").unwrap();
+            let selected_tool = tools_clone.current();
 
-            match selected_tool.as_ref() {    
+            //tools that dont need prev_position
+            match selected_tool.as_ref() {
                 "pen"  => canvas.pixel(point.x, point.y, color),
-                /*
-                "brush"=> {
-                            match property_get(&ntools.clone()["brush"],"Shape") {
-                                Some(0) => canvas.circle(point.x, point.y,-size,
-                                                color),
-                                Some(1) => canvas.rect(point.x ,point.y,size as u32, size as u32,
-                                                color),
-                                Some(2) => canvas.paste_buffer(point.x,point.y,
-                                                a.clone()),
-                                Some(3) => canvas.smooth_circle(point.x,point.y,
-                                                size as u32, color),
-                         None | Some(_) => println!("no Shape match!"),
-                                }
-                            },
-                */ 
                 "fill" => canvas.fill(point.x, point.y,color),
            "rectangle" => {
                             canvas.undo_save();
-                            let filled = property_get(&ntools.clone()["rectangle"],"Filled").unwrap();
-                            let mut width = property_get(&ntools.clone()["rectangle"],"Size").unwrap();
+                            let filled = tools_clone.get("rectangle","Filled").unwrap();
+                            let mut width = tools_clone.get("rectangle","Size").unwrap();
                             let mut myselection = Rect::new(0,0,0,0);
                             if let Some(selection) = unsafe{canvas.image.borrow_mut().new_select_rect(point.x,
                                                 point.y, Color::rgb(100,100,100), 0, &mut *window_clone)}
@@ -1882,8 +1873,7 @@ fn main() {
                            },
             "polyline" => { 
                             canvas.undo_save();
-                            let width = property_get(&ntools.clone()["polyline"],"Size").unwrap();
-                            //let antialias = property_get(&ntools.clone()["polyline"],"Antialias").unwrap();
+                            let width = tools_clone.get("polyline","Size").unwrap();
                             unsafe{
                                     canvas.image.borrow_mut().interact_line(point.x,
                                                 point.y,
@@ -1929,14 +1919,12 @@ fn main() {
                                     }
                                 },
                 "paste" => {
-                            
                             unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)};
                             },
                "circle" => {
                                 canvas.undo_save();
-                                
-                                let filled = property_get(&ntools.clone()["circle"],"Filled").unwrap();
-                                let width = property_get(&ntools.clone()["circle"],"Size").unwrap();
+                                let filled = tools_clone.get("circle","Filled").unwrap();
+                                let width = tools_clone.get("circle","Size").unwrap();
                                 let radius;
                                 let mut myr = 0;
                                 {
@@ -1964,7 +1952,7 @@ fn main() {
                              }
                             },
                 "polygon" => {
-                                let sides = property_get(&ntools.clone()["polygon"],"Sides").unwrap();
+                                let sides = tools_clone.get("polygon","Sides").unwrap();
                                 canvas.undo_save();
                                 let mut aangle=0_f32;
                                 let mut rr=0;
@@ -1982,19 +1970,20 @@ fn main() {
                                     canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color, antialias==1);
                              },
                                  "text" => {
-                                            let text = text_clone.text.get();
-                                            let font_path = text_clone.font.get();
+                                            //let text = text_clone.text.get();
+                                            //let font_path = text_clone.font.get();
+                                            let text = tools_clone.get_str("text","Text").unwrap();
+                                            let font_path = tools_clone.get_str("text","Font").unwrap();
                                             canvas.text(&text, &font_path, point.x, point.y - CANVASOFFSET, color, size );
                                             
                                             },
                         _ => (),
                 }
-            
+
             //tools that need prev_position to work
             if let Some(prev_position) = *prev_opt {
                 match selected_tool.as_ref() {
                     "line" => { 
-                                //let antialias = property_get(&ntools.clone()["line"],"Antialias").unwrap();
                                 if antialias == 1 {
                                     canvas.wu_line(prev_position.x,
                                         prev_position.y,
@@ -2010,7 +1999,7 @@ fn main() {
                                     }
                                },
                    "brush" => {
-                                match property_get(&ntools.clone()["brush"],"Shape") {
+                                match tools.clone().get("brush","Shape") {
                                     Some(0) => canvas.brush_line(prev_position.x,
                                             prev_position.y,
                                             point.x,
@@ -2033,7 +2022,7 @@ fn main() {
                 *prev_opt = Some(point);
             } else {
                 *prev_opt = Some(point);
-                if u == "line" || u =="pen" || u =="brush" || u=="brush_line" || u=="text" {canvas.undo_save();} //prepare for undo
+                if selected_tool == "line" || selected_tool =="pen" || selected_tool =="brush" || selected_tool=="brush_line" || selected_tool=="text" {canvas.undo_save();} //prepare for undo
             }
         }
     });
@@ -2088,8 +2077,18 @@ fn load_buffer(path: &str) -> orbimage::Image {
     }
 }    
 
+/*
 ///get tool property value
 fn property_get( properties: &Vec<Arc<Property>>  , name: &str) -> Option<i32> {
+    for a in properties {
+        if &a.name.get() == name {
+            return Some(a.value.get().parse::<i32>().unwrap());
+        }
+    } 
+    None
+}
+
+fn property_get_text( properties: &Vec<Arc<Property>>  , name: &str) -> Option<String> {
     for a in properties {
         if &a.name.get() == name {
             return Some(a.value.get());
@@ -2102,10 +2101,19 @@ fn property_get( properties: &Vec<Arc<Property>>  , name: &str) -> Option<i32> {
 fn property_set( properties: &Vec<Arc<Property>>  , name: &str, value: i32) {
     for a in properties {
         if &a.name.get() == name {
-            a.value.set(value);
+            a.value.set(value.to_string());
         }
     } 
 }
+
+fn property_set_text( properties: &Vec<Arc<Property>>  , name: &str, value: &str) {
+    for a in properties {
+        if &a.name.get() == name {
+            a.value.set(value.to_string());
+        }
+    } 
+}
+*/
 
 ///unselect all toolbar items
 fn toggle_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>) {

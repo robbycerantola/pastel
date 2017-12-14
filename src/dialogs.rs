@@ -3,6 +3,8 @@ use orbtk::{ Button, Label, Point,  Rect, TextBox, Window, InnerWindow}; //Color
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
 use std::ops::Deref;
 
+use DEFAULTFONT;
+
 //generic dialog window
 pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
     
@@ -131,15 +133,8 @@ pub fn text_dialog(title: &str, text: &str, suggestion: &str) -> Option<(String,
 
     y += label.rect.get().height as i32 + 2;
 
-//default font 
-    #[cfg(target_os = "linux")]
-    let font_path = "/usr/share/fonts/gnu-free/FreeMonoBold.ttf";
 
-    #[cfg(target_os = "redox")]
-    let font_path = "/ui/fonts/Mono/Fira/Bold.ttf";
-    
-    #[cfg(target_os = "windows")]
-    let font_path = "C:/Windows/Fonts/arial.ttf";
+    let font_path = DEFAULTFONT;
 
     let text_box2 = TextBox::new();
     text_box2.position(x, y)

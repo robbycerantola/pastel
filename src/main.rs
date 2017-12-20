@@ -2,7 +2,7 @@
 simple image editor in Rust for Redox
 */
 #![feature(const_fn)]  //needed for fixing theme 
-//#![allow(dead_code)]
+#![allow(dead_code)]
 //#![allow(unused_imports)]
 #![allow(unused_variables)]
 
@@ -70,7 +70,7 @@ impl Property {
         value: CloneCell::new(value.to_owned()),
         })
     }
-
+/*
     fn name<S: Into<String>>(&self, text: S) -> &Self {
         self.name.set(text.into());
         self
@@ -80,6 +80,7 @@ impl Property {
         self.value.set(value.into());
         self
     }
+*/
 }
 
 // Trait to use either str or i32 
@@ -107,7 +108,7 @@ impl Tools {
     fn insert(&mut self, key : &'static str, properties: Vec<Arc<Property>>) {
         self.tools.insert(key,properties);
     }
-    
+
         ///get tool property as i32 value
     fn get(&self, tool_name: &str  , property: &str) -> Option<i32> {
         let properties = &self.tools[tool_name];
@@ -173,7 +174,7 @@ const STATUSLINE :bool = true;
 #[cfg(target_os = "linux")]
 const DEFAULTFONT : &'static str = "/usr/share/fonts/gnu-free/FreeMonoBold.ttf";
 #[cfg(target_os = "redox")]
-const DEFAULTFONT_PATH : &'static str = "/ui/fonts/Mono/Fira/Bold.ttf";
+const DEFAULTFONT : &'static str = "/ui/fonts/Mono/Fira/Bold.ttf";
 #[cfg(target_os = "windows")]
 const DEFAULTFONT : &'static str = "C:/Windows/Fonts/arial.ttf";
 
@@ -205,14 +206,13 @@ fn main() {
     //canvas default size
     let mut size = MySize{x: 1024, y:500};
 
-    let filename;          //FIXME change filename type to Box so we can update
+    let filename;//#FIXME change filename type to Box so we can update
 
     //deal with command line arguments
     let args: Vec<String> = env::args().collect();
     
     //only name given
     if args.len() > 1 {
-
         filename = args[1].clone();
     } else {
         filename = String::from("../test.png");  //no name
@@ -233,7 +233,6 @@ fn main() {
 
     //Tools and properties 
     //create new tool with some properties and initial values
-
     let mut tools = Tools::new();
     tools.insert("pen",vec![Property::new("Size","1"),Property::new("Opacity","100")]);
     tools.insert("line",vec![Property::new("Opacity","100")]);
@@ -371,7 +370,7 @@ fn main() {
         .position(x, y)
         .size(48, 16);//.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&blue_label);
-    
+
     {
         blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
         let swatch_clone = swatch.clone();
@@ -420,7 +419,7 @@ fn main() {
                       
                       //save size value for current tool
                       let cur_tool = tools_clone.current();
-                      let a: &str = &cur_tool[..];  //workarround to convert String into &str                      
+                      let a: &str = &cur_tool[..];  //convert String into &str                      
                       tools_clone.set(a,"Size",progress);
                   });
     window.add(&size_bar);
@@ -520,13 +519,10 @@ fn main() {
         });
     window.add(&add_button);
 
-    //manually implement toolbar object (old fashion...)
-    // implement toolbars by multiple clickable images loaded in widget ToolbarIcon  
-    let mut toolbar_obj = vec![];    //here we save all Toolbar widgets clones so we can manage 'selected' property
-    let mut toolbar2_obj = vec![];   //create Toolbar2 here so we can manage 'selected','visible' properties from Toolbar
-    
-    //use new Toolbar widget to implement 3rd Toolbar
+    //use new Toolbar widget to implement Toolbars
     let parent_window = &mut window as *mut Window;  //we need a pointer to the parent window to add the icons to
+    let mut toolbar1 = Toolbar::new();
+    let mut toolbar2 = Toolbar::new();
     let mut toolbar3 = Toolbar::new();
 
     let y = 25;
@@ -544,27 +540,26 @@ fn main() {
             let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.select("pen");
                                status_clone.text("");
                                size_bar_clone.visible(false);
                                size_label_clone.visible(false);
-                               //let o = property_get(&ntools_clone["pen"],"Opacity").unwrap();
                                let o = tools_clone.get("pen","Opacity").unwrap();
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                //toggle tool in toolbar TODO move into Toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
-                               //make invisible toolbar2  TODO move into Toolbar
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               unsafe{(*toolbar1_clone).toggle();}
+                               //make  toolbar2 invisible
+                               unsafe{(*toolbar2_clone).visible(false);}
                                //make toolbar3 invisible
-                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               unsafe{(*toolbar3_clone).visible(false);}
                            });
-            window.add(&image);
-            toolbar_obj.push(image.clone());  //TODO switch to new API;
+
+            toolbar1.add(&image,parent_window);
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -575,8 +570,7 @@ fn main() {
 
     match ToolbarIcon::from_path("pencil2.png") {
         Ok(image) => {
-            image.position(x, y)                
-                 .text("Draw lines".to_owned());
+
 
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
@@ -584,10 +578,12 @@ fn main() {
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
-            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+            image.position(x, y)
+                .tooltip("Draw lines".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tools_clone.select("line");
                                status_clone.text("");
@@ -599,15 +595,15 @@ fn main() {
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
                                //toggle tool in toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               unsafe{(*toolbar1_clone).toggle();}
                                //make invisible toolbar2
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               unsafe{(*toolbar2_clone).visible(false);}
                                //make toolbar3 invisible
-                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               unsafe{(*toolbar3_clone).visible(false);}
                                });
-            window.add(&image);
-            toolbar_obj.push(image.clone());
 
+            toolbar1.add(&image,parent_window);
+            
             x += image.rect.get().width as i32 + 2;
         }
         Err(err) => {
@@ -617,19 +613,18 @@ fn main() {
 
     match ToolbarIcon::from_path("brush.png") {
         Ok(image) => {
-            image.position(x, y)
-                 .text("Paint brush".to_owned());
-
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
-            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+            image.position(x, y)
+                 .tooltip("Paint brush".to_owned())
+                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.select("brush");
                                status_clone.text("");
                                size_label_clone.visible(true);
@@ -643,14 +638,14 @@ fn main() {
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
                                //toggle tool in toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               unsafe{(*toolbar1_clone).toggle();}
                                //make visible toolbar2
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,true);}
+                               unsafe{(*toolbar2_clone).visible(true);}
                                //make toolbar3 invisible
-                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               unsafe{(*toolbar3_clone).visible(false);}
                                });
-            window.add(&image);
-            toolbar_obj.push(image.clone());
+
+            toolbar1.add(&image,parent_window);
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -661,18 +656,17 @@ fn main() {
 
     match ToolbarIcon::from_path("fillbucket.png") {
         Ok(item) => {
-            
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
-                 .text("Fill up area with color".to_owned())
+                 .tooltip("Fill up area with color".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.select("fill");
                                status_clone.text("Filling...");
@@ -684,14 +678,14 @@ fn main() {
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
                                //toggle tool in toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               unsafe{(*toolbar1_clone).toggle();}
                                //make invisible toolbar2
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               unsafe{(*toolbar2_clone).visible(false);}
                                //make toolbar3 invisible
-                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               unsafe{(*toolbar3_clone).visible(false);}
                                });
-            window.add(&item);
-            toolbar_obj.push(item.clone());
+
+            toolbar1.add(&item,parent_window);
             
             x += item.rect.get().width as i32 + 2;
         }
@@ -702,8 +696,6 @@ fn main() {
 
     match ToolbarIcon::from_path("polyline.png") {
         Ok(image) => {
-            image.position(x, y)                
-                 .text("Draw polylines".to_owned());
 
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
@@ -711,10 +703,12 @@ fn main() {
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
-            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+            image.position(x, y)
+                .tooltip("Draw polylines".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tools_clone.select("polyline");
                                status_clone.text("Drawing polylines... right click to exit.");
@@ -729,14 +723,14 @@ fn main() {
                                size_label_clone.text(format!("Size: {}",s));
                                
                                //toggle tool in toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               unsafe{(*toolbar1_clone).toggle();}
                                //make visible toolbar2
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               unsafe{(*toolbar2_clone).visible(false);}
                                //make toolbar3 invisible
-                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               unsafe{(*toolbar3_clone).visible(false);}
                                });
-            window.add(&image);
-            toolbar_obj.push(image.clone());
+
+            toolbar1.add(&image,parent_window);
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -747,19 +741,18 @@ fn main() {
 
     match ToolbarIcon::from_path("rectangle.png") {
         Ok(image) => {
-            image.position(x, y)                
-                 .text("Draw rectangles".to_owned());
-
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
-            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+            image.position(x, y)
+                .tooltip("Draw rectangles".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tools_clone.select("rectangle");
                                status_clone.text("Drawing rectangles...");
@@ -774,14 +767,14 @@ fn main() {
                                size_label_clone.text(format!("Size: {}",w));
                                
                                //toggle tool in toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               unsafe{(*toolbar1_clone).toggle();}
                                //make invisible toolbar2
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               unsafe{(*toolbar2_clone).visible(false);}
                                //make toolbar3 visible
-                               unsafe{(&mut *toolbar3_clone).visible(true);}
+                               unsafe{(*toolbar3_clone).visible(true);}
                                });
-            window.add(&image);
-            toolbar_obj.push(image.clone());
+
+            toolbar1.add(&image,parent_window);
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -792,19 +785,18 @@ fn main() {
 
     match ToolbarIcon::from_path("hollow_circle.png") {
         Ok(image) => {
-            image.position(x, y)                
-                 .text("Draw circles".to_owned());
-                 
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
-            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+            image.position(x, y)
+                .tooltip("Draw circles".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                //set current tool
                                tools_clone.select("circle");
                                status_clone.text("Drawing circles...click on center, move cursor to set radius, click again.");
@@ -816,14 +808,14 @@ fn main() {
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                
                                //toggle tool in toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               unsafe{(*toolbar1_clone).toggle();}
                                //make invisible toolbar2
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               unsafe{(*toolbar2_clone).visible(false);}
                                //make toolbar3 visible
                                unsafe{(&mut *toolbar3_clone).visible(true);}
                                });
-            window.add(&image);
-            toolbar_obj.push(image.clone());
+
+            toolbar1.add(&image,parent_window);
 
             x += image.rect.get().width as i32 + 2;
         }
@@ -845,8 +837,8 @@ fn main() {
             let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, point: Point| {
                                size_bar_clone.visible(true);
@@ -870,17 +862,19 @@ fn main() {
                                 size_bar_clone.value.set(s);
                                 size_label_clone.text(format!("Size: {}",s));
                                //toggle tool in toolbar TODO move into Toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               //unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               unsafe{(*toolbar1_clone).toggle();}
                                //make invisible toolbar2  TODO move into Toolbar
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               //unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+                               unsafe{(*toolbar2_clone).visible(false);}
                                //make toolbar3 invisible
-                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               unsafe{(*toolbar3_clone).visible(false);}
                                
                            });
             
-            window.add(&image);
-            toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
-
+            //window.add(&image);
+            //toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
+            toolbar1.add(&image,parent_window);
            x += image.rect.get().width as i32 + 2;
         }
         Err(err) => {
@@ -891,33 +885,30 @@ fn main() {
 
     match ToolbarIcon::from_path("select.png") {
         Ok(image) => {
-            image.position(x, y)
-                .text("Select canvas region".to_owned());
-                
+
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
-            let toolbar_obj_clone = &mut toolbar_obj as *mut Vec<Arc<ToolbarIcon>>;
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
-            image.on_click(move |_image: &ToolbarIcon, _point: Point| {
+            image.position(x, y)
+                .tooltip("Select canvas region".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.select("marquee");
                                status_clone.text("Selecting...");
                                size_bar_clone.visible(false);
                                size_label_clone.visible(false);
 
                                //toggle tool in toolbar TODO move into Toolbar
-                               unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
+                               unsafe{(*toolbar1_clone).toggle();}
                                //make invisible toolbar2  TODO move into Toolbar
-                               unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
-                               //make toolbar3 invisible
-                               unsafe{(&mut *toolbar3_clone).visible(false);}
+                               unsafe{(*toolbar2_clone).visible(false);}
                            });
             
-            window.add(&image);
-            toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
+            toolbar1.add(&image,parent_window);
 
             //x += image.rect.get().width as i32 + 2;
         }
@@ -926,25 +917,22 @@ fn main() {
         }
     }
 
-
-
 //2nd toolbar
     x=500;
-    
+
     match ToolbarIcon::from_path("circle.png") {
         Ok(item) => {
             let tools_clone = tools.clone();
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             item.position(x, y)
-                 .text("Circular shape".to_owned())
+                 .tooltip("Circular shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.set("brush","Shape",0);
                                //toggle shape in toolbar2
-                               unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
+                               unsafe{(*toolbar2_clone).toggle();}
                                });
-            window.add(&item);
-            toolbar2_obj.push(item.clone());
-            
+            toolbar2.add(&item,parent_window);
+
             x += item.rect.get().width as i32 + 2;
         }
         Err(err) => {
@@ -955,17 +943,17 @@ fn main() {
     match ToolbarIcon::from_path("smooth_circle.png") {
         Ok(item) => {
             let tools_clone = tools.clone();
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             item.position(x, y)
-                 .text("Smooth edges circular shape".to_owned())
+                 .tooltip("Smooth edges circular shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.set("brush","Shape",3);
 
                                //toggle shape in toolbar2
-                               unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
+                               unsafe{(*toolbar2_clone).toggle();}
                                });
-            window.add(&item);
-            toolbar2_obj.push(item.clone());
+
+            toolbar2.add(&item,parent_window);
 
             x += item.rect.get().width as i32 + 2;
         }
@@ -977,17 +965,17 @@ fn main() {
     match ToolbarIcon::from_path("block.png") {
         Ok(item) => {
             let tools_clone = tools.clone();
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             item.position(x, y)
-                 .text("Blocky shape".to_owned())
+                 .tooltip("Blocky shape".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.set("brush","Shape",1);
 
                                //toggle shape in toolbar2
-                               unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
+                               unsafe{(*toolbar2_clone).toggle();}
                                });
-            window.add(&item);
-            toolbar2_obj.push(item.clone());
+
+            toolbar2.add(&item,parent_window);
 
             x += item.rect.get().width as i32 + 2;
         }
@@ -999,17 +987,17 @@ fn main() {
     match ToolbarIcon::from_path("buffer.png") {
         Ok(item) => {
             let tools_clone = tools.clone();
-            let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
+            let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             item.position(x, y)
-                 .text("custom brush from buffer".to_owned())
+                 .tooltip("custom brush from buffer".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.set("brush","Shape",2);
                                
                                //toggle shape in toolbar2
-                               unsafe {toggle_toolbar(&mut *toolbar2_obj_clone);}
+                               unsafe{(*toolbar2_clone).toggle();}
                                });
-            window.add(&item);
-            toolbar2_obj.push(item.clone());
+
+            toolbar2.add(&item,parent_window);
             
             //x += item.rect.get().width as i32 + 2;
         }
@@ -1019,8 +1007,7 @@ fn main() {
     }
 
     // set 2nd toolbar not visible at start
-    let toolbar2_obj_clone = &mut toolbar2_obj as *mut Vec<Arc<ToolbarIcon>>;
-    unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
+    toolbar2.visible(false);
 
     x = 500;
 
@@ -1028,16 +1015,14 @@ fn main() {
     match ToolbarIcon::from_path("rectangle.png") {
         Ok(item) => {
             let tools_clone = tools.clone();
-            //let toolbar3_clone = toolbar3.clone(); //does not work properly!!
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
-                 .text("Not filled".to_owned()) 
+                 .tooltip("Not filled".to_owned()) 
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.set("rectangle","Filled",0);
                                tools_clone.set("circle","Filled",0);
                                //toggle item in toolbar3
-                               //toolbar3_clone.toggle(); //does not work properly !!
-                               unsafe{(&mut *toolbar3_clone).toggle();}  
+                               unsafe{(*toolbar3_clone).toggle();}  
                                });
 
             toolbar3.add(&item,parent_window);
@@ -1054,13 +1039,12 @@ fn main() {
             let tools_clone = tools.clone();
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
-                 .text("Filled".to_owned())
+                 .tooltip("Filled".to_owned())
                  .on_click(move |_image: &ToolbarIcon, _point: Point| {
                                tools_clone.set("rectangle","Filled",1);
                                tools_clone.set("circle","Filled",1);
                                //toggle item in toolbar3  
-                               //toolbar3_clone.toggle();
-                               unsafe{(&mut *toolbar3_clone).toggle();}  
+                               unsafe{(*toolbar3_clone).toggle();} 
                                });
 
             toolbar3.add(&item,parent_window);
@@ -1772,7 +1756,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.30, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.31, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1783,9 +1767,8 @@ fn main() {
     let click_pos_clone = click_pos.clone();
     let selection_clone = selection.clone();
     let marquee_clone = marquee.clone();
-    //let tool_clone = tool.clone();
     let tools_clone = tools.clone();
-    
+
     canvas
     .position(0, CANVASOFFSET)
     .on_shortcut(move |canvas: &Canvas, key: char| {
@@ -2039,7 +2022,7 @@ fn main() {
     window.add(&menuimage);
     window.add(&menupalette);
     window.add(&menuhelp);
-    
+
     window.exec();
 }
 
@@ -2076,60 +2059,3 @@ fn load_buffer(path: &str) -> orbimage::Image {
         }
     }
 }    
-
-/*
-///get tool property value
-fn property_get( properties: &Vec<Arc<Property>>  , name: &str) -> Option<i32> {
-    for a in properties {
-        if &a.name.get() == name {
-            return Some(a.value.get().parse::<i32>().unwrap());
-        }
-    } 
-    None
-}
-
-fn property_get_text( properties: &Vec<Arc<Property>>  , name: &str) -> Option<String> {
-    for a in properties {
-        if &a.name.get() == name {
-            return Some(a.value.get());
-        }
-    } 
-    None
-}
-
-///set tool property value
-fn property_set( properties: &Vec<Arc<Property>>  , name: &str, value: i32) {
-    for a in properties {
-        if &a.name.get() == name {
-            a.value.set(value.to_string());
-        }
-    } 
-}
-
-fn property_set_text( properties: &Vec<Arc<Property>>  , name: &str, value: &str) {
-    for a in properties {
-        if &a.name.get() == name {
-            a.value.set(value.to_string());
-        }
-    } 
-}
-*/
-
-///unselect all toolbar items
-fn toggle_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>) {
-    for i in 0..toolbar_obj.len(){
-        if let Some(toolbar) = toolbar_obj.get(i) {
-            toolbar.selected(false);
-        }
-    }
-}
-    
-///set visibility for all toolbar items
-fn visible_toolbar (toolbar_obj: &mut Vec<Arc<ToolbarIcon>>, v: bool) {
-    for i in 0..toolbar_obj.len(){
-        if let Some(toolbar) = toolbar_obj.get(i) {
-            toolbar.visible(v);
-        }
-    }
-}
-

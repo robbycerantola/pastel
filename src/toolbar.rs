@@ -10,7 +10,7 @@ use std::sync::Arc;
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
-use orbtk::traits::{Click, Place, Text}; //TODO create traits Tooltip , for now use Text
+use orbtk::traits::{Click, Place, Text};
 use orbtk::widgets::Widget;
 use orbtk::window::Window;
 
@@ -39,7 +39,7 @@ impl Toolbar {
             selected : Cell::new(true)
         }
     }
-    
+    /// add item to toolbar (and also to window)
     pub fn add(&self, toolbar_icon: &Arc<ToolbarIcon>, window:*mut Window ) -> usize {
         let mut items = self.items.borrow_mut();
         let id = items.len();
@@ -48,7 +48,7 @@ impl Toolbar {
         unsafe{(&mut *window).add(&toolbar_icon.clone());}
         id
     }
-    
+    /// Make visible/invisible toolbar
     pub fn visible (&self, v: bool) {
         //set visibility for all items of toolbar 
         let items = self.items.borrow_mut();
@@ -58,7 +58,7 @@ impl Toolbar {
             }
         }
     }
-    
+    /// Enable/disable toolbar
     pub fn enabled (&self, e: bool) {
         let items = self.items.borrow_mut();
         for i in 0..items.len(){
@@ -67,16 +67,15 @@ impl Toolbar {
             }
         }
     }
-    
+    /// Deselect all items from toolbar
     pub fn toggle (&self) {
-        //deselect all items from toolbar 
         let items = self.items.borrow_mut();
         for i in 0..items.len(){
             if let Some(toolbar_icon) = items.get(i) {
                 toolbar_icon.selected(false);
             }
         }
-    }    
+    }
 }
 
 pub struct ToolbarIcon {
@@ -123,20 +122,24 @@ impl ToolbarIcon {
             border: Cell::new(true),
             border_radius: Cell::new(0),
             tooltip_time : Cell::new(None),
-            
         })
     }
 
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Arc<Self>, String> {
         Ok(Self::from_image(orbimage::Image::from_path(path)?))
     }
-
+    ///Select tool
     pub fn selected(&self, flag: bool) {
         self.selected.set(flag);
     }
-
+    /// Enable/disable tool
     pub fn enabled(&self, flag: bool) {
         self.enabled.set(flag);
+    }
+    /// Set tooltip text for tool
+    pub fn tooltip<S: Into<String>>(&self, text: S) -> &Self {
+        self.tooltip_text.set(text.into());
+        self
     }
 }
 

@@ -11,7 +11,7 @@ const WINDOW_GREY: Color = hex(0xF5F6F7);
 const BUTTON_WHITE: Color = hex(0xFBFBFC);
 const WHITE: Color = hex(0xFFFFFF);
 
-pub static WINDOW_BACKGROUND: Color = WINDOW_GREY;
+//pub static WINDOW_BACKGROUND: Color = WINDOW_GREY;
 
 pub static LABEL_BACKGROUND: Color = WINDOW_GREY;
 pub static LABEL_BORDER: Color = BORDER_GREY;
@@ -25,10 +25,10 @@ pub static BUTTON_FG_SELECTION: Color = WHITE;
 
 pub static ITEM_BACKGROUND: Color = WHITE;
 pub static ITEM_BORDER: Color = BORDER_GREY;
-pub static ITEM_FOREGROUND: Color = BLACK;
+//pub static ITEM_FOREGROUND: Color = BLACK;
 pub static ITEM_SELECTION: Color = SELECT_BLUE;
 
-pub static TEXT_BACKGROUND: Color = WHITE;
-pub static TEXT_BORDER: Color = BORDER_GREY;
-pub static TEXT_FOREGROUND: Color = BLACK;
-pub static TEXT_SELECTION: Color = SELECT_BLUE;
+//pub static TEXT_BACKGROUND: Color = WHITE;
+//pub static TEXT_BORDER: Color = BORDER_GREY;
+//pub static TEXT_FOREGROUND: Color = BLACK;
+//pub static TEXT_SELECTION: Color = SELECT_BLUE;

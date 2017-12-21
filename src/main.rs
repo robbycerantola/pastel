@@ -3,7 +3,6 @@ simple image editor in Rust for Redox
 */
 #![feature(const_fn)]  //needed for fixing theme 
 #![allow(dead_code)]
-//#![allow(unused_imports)]
 #![allow(unused_variables)]
 
 extern crate orbtk;
@@ -16,15 +15,13 @@ use orbtk::{Color, Action, Button, Image, Label, Menu, Point,
              Window, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
 use orbtk::traits::{Click, Place, Text};  //Border, Enter
-use orbtk::cell::CloneCell;
 
 use std::rc::Rc;
-use std::cell::{Cell, RefCell}; //, RefMut, Cell
+use std::cell::RefCell; //, RefMut, Cell
 use std::sync::Arc;
 use std::process;
 use std::process::Command;
 use std::env;
-use std::collections::HashMap;
 use std::path::{Path,PathBuf};
 use std::fs;
 
@@ -51,110 +48,17 @@ use toolbar::{Toolbar, ToolbarIcon};
 
 mod progress_bar;
 use progress_bar::ProgressBar;
+
 /*
 mod control_knob;
 use control_knob::ControlKnob;
 */
+
 mod theme;  //#FIXME use local theme to temporary fix compilation with last orbtk 0.2.26 pull which has moved to css theme, pastel has to move to css too
 
-//structure to store property values 
-struct Property{
-    name: CloneCell<String>,
-    value: CloneCell<String>,
-}
+mod tools;
+use tools::{Property,Tools};
 
-impl Property {
-    fn new(name: &str, value: &str) -> Arc<Self> {
-        Arc::new(Property {
-        name: CloneCell::new(name.to_owned()),
-        value: CloneCell::new(value.to_owned()),
-        })
-    }
-/*
-    fn name<S: Into<String>>(&self, text: S) -> &Self {
-        self.name.set(text.into());
-        self
-    }
-
-    fn value<S: Into<String>>(&self, value: S) -> &Self {
-        self.value.set(value.into());
-        self
-    }
-*/
-}
-
-// Trait to use either str or i32 
-trait MyTrait: std::string::ToString {}
-impl MyTrait for i32 {}
-impl MyTrait for str {}
-impl MyTrait for &'static str {}
-impl MyTrait for String {}
-
-//structure to store tools with properties
-#[derive(Clone)]
-struct Tools {
-    tools: HashMap<&'static str,Vec<Arc<Property>>>,
-    selected: Cell<&'static str>,
-}
-
-impl Tools {
-    fn new() -> Self {
-       Tools {
-            tools: HashMap::new(),
-            selected: Cell::new(""),
-        }
-    }
-
-    fn insert(&mut self, key : &'static str, properties: Vec<Arc<Property>>) {
-        self.tools.insert(key,properties);
-    }
-
-        ///get tool property as i32 value
-    fn get(&self, tool_name: &str  , property: &str) -> Option<i32> {
-        let properties = &self.tools[tool_name];
-        for a in properties {
-            if &a.name.get() == property {
-                return Some(a.value.get().parse::<i32>().unwrap());
-            }
-        } 
-        None
-    }
-    
-    /// get tool property as string
-    fn get_str(&self, tool_name: &str  , property: &str) -> Option<String> {
-        let properties = &self.tools[tool_name];
-        for a in properties {
-            if &a.name.get() == property {
-                return Some(a.value.get());
-            }
-        } 
-        None
-    }
-
-    ///set tool property as i32 value or str 
-    fn set <T: MyTrait> (&self, tool_name: &str, property: &str, value: T){
-        let properties = &self.tools[tool_name];
-        for a in properties {
-            if &a.name.get() == property {
-                a.value.set(value.to_string());
-            }
-        } 
-    }
-
-    ///get current active tool
-    fn current(&self) -> String {
-        self.get_str("tool","Current").unwrap()
-        //self.selected.get().to_string()
-        
-    }
-
-    ///select active tool
-    fn select(&self, tool_name: &'static str) {
-        self.set("tool","Current",tool_name);
-        //self.selected.set(tool_name); //#FIXME does not work
-    }
-
-}
 
 #[derive(Clone)]
 struct MySize {
@@ -171,6 +75,7 @@ const UNDODEPTH :usize = 10;
 // enable disable help and status line
 const STATUSLINE :bool = true;
 
+//default font location
 #[cfg(target_os = "linux")]
 const DEFAULTFONT : &'static str = "/usr/share/fonts/gnu-free/FreeMonoBold.ttf";
 #[cfg(target_os = "redox")]
@@ -179,7 +84,6 @@ const DEFAULTFONT : &'static str = "/ui/fonts/Mono/Fira/Bold.ttf";
 const DEFAULTFONT : &'static str = "C:/Windows/Fonts/arial.ttf";
 
 fn main() {
-
     // deal with icons path under diferent os
     #[cfg(target_os = "linux")]
     let root = Path::new("./res/");
@@ -388,7 +292,6 @@ fn main() {
                           let b = (progress as f32 * 2.56) as u8;
                           let r = (red_bar_clone_b.value.get() as f32 * 2.56) as u8;
                           let g = (green_bar_clone_b.value.get() as f32 * 2.56) as u8;
-                          //swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
                           swatch_clone.color(orbtk::Color::rgb(r,g,b));
                           
                       });
@@ -428,7 +331,6 @@ fn main() {
     let trans_label = Label::new();
     trans_label.text("Opacity: 100%").position(x+340, 90).size(120, 16);
     trans_label.visible(true);
-    //blue_label.fg.set(orbtk::Color::rgb(0,0,255));
     window.add(&trans_label);
 
     let trans_bar = ProgressBar::new();
@@ -570,8 +472,6 @@ fn main() {
 
     match ToolbarIcon::from_path("pencil2.png") {
         Ok(image) => {
-
-
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let size_label_clone = size_label.clone();

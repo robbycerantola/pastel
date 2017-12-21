@@ -128,7 +128,7 @@ impl ToolbarIcon {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Arc<Self>, String> {
         Ok(Self::from_image(orbimage::Image::from_path(path)?))
     }
-    ///Select tool
+    ///Select/unselect tool
     pub fn selected(&self, flag: bool) {
         self.selected.set(flag);
     }

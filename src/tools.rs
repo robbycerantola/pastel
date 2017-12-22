@@ -4,7 +4,7 @@ use std::cell::Cell;
 use orbtk::cell::CloneCell;
 
 //structure to store properties 
-pub struct Property{
+pub struct Property {
     name: CloneCell<String>,
     value: CloneCell<String>,
 }

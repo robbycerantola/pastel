@@ -12,6 +12,7 @@ use image::{GenericImage, ImageBuffer, Pixel};
 
 use orbclient::{Color, Renderer};
 use orbimage::Image;
+use orbimage::ResizeType;
 use orbtk::Window;
 use orbtk::event::Event;
 use orbtk::point::Point;
@@ -39,6 +40,8 @@ use AddOnsToOrbimage;
 
 use UNDODEPTH;
 use CANVASOFFSET;
+use ZOOMSTEP;
+
 
 pub struct Canvas {
     pub rect: Cell<Rect>,
@@ -52,6 +55,7 @@ pub struct Canvas {
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     shortcut_callback: RefCell<Option<Arc<Fn(&Canvas, char)>>>,
+    pub zoom_factor: Cell<f32>,
 }
 
 impl Canvas {
@@ -75,7 +79,8 @@ impl Canvas {
             click_callback: RefCell::new(None),
             right_click_callback: RefCell::new(None),
             clear_click_callback: RefCell::new(None),
-            shortcut_callback:RefCell::new(None), 
+            shortcut_callback:RefCell::new(None),
+            zoom_factor: Cell::new(1.0),
         })
     }
 
@@ -84,9 +89,11 @@ impl Canvas {
     }
     
     pub fn save(&self, filename: &String) -> Result <i32, Error>{
-        let width = self.rect.get().width as u32;
-        let height = self.rect.get().height as u32;
-        
+        //let width = self.rect.get().width as u32;
+        //let height = self.rect.get().height as u32;
+        let width = self.width() as u32;
+        let height = self.height() as u32;
+
         //get image data in form of [Color] slice
         let image_data = self.image.clone().into_inner().into_data();
 
@@ -186,10 +193,11 @@ impl Canvas {
         if cod == "resize" {
             width = a as u32;
             height = b as u32;
+            self.rect.set(Rect::new(0,CANVASOFFSET,width,height));
         }
-        
+        image.clear();
         if cod == "rotate90" {
-            image.clear();
+            
             image.image(0, 0, height, width, &new_slice[..]);
         }else{
             image.image(0, 0, width, height, &new_slice[..]);
@@ -215,6 +223,7 @@ impl Canvas {
         if cod == "resize" {
             width = a as u32;
             height = b as u32;
+            
         }
         
         if cod == "rotate90" {
@@ -289,7 +298,7 @@ impl Canvas {
         new_slice
     } 
 
-/// convert grayscale format image to rgba format
+    /// convert grayscale format image to rgba format
     fn gray2rgba (&self, 
                     grayimage: image::ImageBuffer<image::Luma<u8>, Vec<u8>>,
                     r_factor : f32,
@@ -475,6 +484,27 @@ impl Canvas {
             shortcut_callback(self, c);
         }
     }
+    
+    pub fn zoom_in(&self) {
+        let mut image = self.image.borrow_mut();
+        self.zoom_factor.set(self.zoom_factor.get() + ZOOMSTEP);
+        
+        let zoomed = image.resize((image.width() as f32 * (1.0 + ZOOMSTEP )) as u32,
+                                  (image.height() as f32* (1.0 + ZOOMSTEP )) as u32,
+                                  ResizeType::Lanczos3 ).unwrap();
+        *image = zoomed;
+        self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
+    }
+
+    pub fn zoom_out(&self) {
+        let mut image = self.image.borrow_mut();
+        let zoomed = image.resize((image.width() as f32 / (1.0 + ZOOMSTEP)) as u32,
+                                  (image.height() as f32 / (1.0 + ZOOMSTEP)) as u32,
+                                  ResizeType::Triangle ).unwrap();
+        *image = zoomed;
+        self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
+        self.zoom_factor.set(self.zoom_factor.get() - ZOOMSTEP);
+    }
 
     /// save image state to undo stack 
     pub fn undo_save(&self) {
@@ -492,7 +522,7 @@ impl Canvas {
         let l = newundo_image.len();
         if l > 1 {
             let mut image = self.image.borrow_mut();
-            *image=newundo_image[l-1].clone();
+            *image = newundo_image[l-1].clone();
             newundo_image.pop();
         }
     }
@@ -503,7 +533,7 @@ impl Canvas {
         let mut image = self.image.borrow_mut();
         image.fill(x,y,color);
     }
-   
+
     /// wrapper for paste_selection (paste an external image)
     pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, newimage: Image, ){
         self.undo_save();  //save state for undo
@@ -879,9 +909,11 @@ impl Canvas {
 
         let mut err = if dx > dy { dx } else {-dy} / 2;
         let mut err_tolerance;
+        let r = (radius as f32 * self.zoom_factor.get()) as i32;
+        
 
         loop {
-            self.circle(x, y, radius, color);
+            self.circle(x, y, r, color);
 
             if x == argx2 && y == argy2 { break };
 
@@ -1088,6 +1120,19 @@ impl Widget for Canvas {
                     self.emit_shortcut(c);
                 }
             },
+            Event::Resize{..} => {
+                self.emit_shortcut('@');
+            }
+
+/*            Event::Scroll {x,y} => {
+                if y == 1 {
+                    self.zoom_in();
+                }
+                if y == -1 {
+                    self.zoom_out();
+                }
+            },
+*/
             _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {()}, 
         }
         focused

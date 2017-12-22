@@ -70,10 +70,12 @@ struct MySize {
 const CANVASOFFSET: i32 = 200;
 
 // undo stack depth
-const UNDODEPTH :usize = 10;
+const UNDODEPTH: usize = 5;
 
 // enable disable help and status line
-const STATUSLINE :bool = true;
+const STATUSLINE: bool = true;
+
+const ZOOMSTEP: f32 = 0.1;
 
 //default font location
 #[cfg(target_os = "linux")]
@@ -132,8 +134,8 @@ fn main() {
     //load canvas from existing file or create new one with filename size
     let canvas = load_image(&filename, &size);
     canvas.undo_save();
-    size.x = canvas.rect.get().width;
-    size.y = canvas.rect.get().height;
+    size.x = canvas.width();
+    size.y = canvas.height();
 
     //Tools and properties 
     //create new tool with some properties and initial values
@@ -166,10 +168,11 @@ fn main() {
     
     let mut x = 10;
     let mut y = 56;
+    let wy = &size.y + CANVASOFFSET as u32 + 18;
     let title = format!("Pastel: {}", filename);
 
     //resizable main window
-    let mut window = Window::new_flags(Rect::new(100, 100, 1024, 718),
+    let mut window = Window::new_flags(Rect::new(100, 100, 1024, wy),
                                        &title.to_owned(),
                                        &[orbclient::WindowFlag::Resizable ]);
 
@@ -433,7 +436,7 @@ fn main() {
     match ToolbarIcon::from_path("pencil1.png") {
         Ok(image) => {
             image.position(x, y)
-                .text("Draft painting".to_owned())
+                .tooltip("Draft painting".to_owned())
                 .selected(true);
 
             let status_clone = status.clone();
@@ -454,11 +457,11 @@ fn main() {
                                trans_bar_clone.value.set(o);
                                trans_label_clone.text(format!("Opacity: {}%",o));
                                //toggle tool in toolbar TODO move into Toolbar
-                               unsafe{(*toolbar1_clone).toggle();}
+                               unsafe{(*toolbar1_clone).toggle()}
                                //make  toolbar2 invisible
-                               unsafe{(*toolbar2_clone).visible(false);}
+                               unsafe{(*toolbar2_clone).visible(false)}
                                //make toolbar3 invisible
-                               unsafe{(*toolbar3_clone).visible(false);}
+                               unsafe{(*toolbar3_clone).visible(false)}
                            });
 
             toolbar1.add(&image,parent_window);
@@ -1353,6 +1356,30 @@ fn main() {
         menutools.add(&action);
     }
 
+    {
+        let action = Action::new("Zoom in");
+        //let tools_clone = tools.clone();
+        let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.zoom_in();
+                            status_clone.text(format!("Zoomed in ...({}%)",(100.0 * canvas_clone.zoom_factor.get()) as i32));
+                        });
+        menutools.add(&action);
+    }
+
+    {
+        let action = Action::new("Zoom out");
+        //let tools_clone = tools.clone();
+        let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.zoom_out();
+                            status_clone.text(format!("Zoomed out ...({}%)",(100.0 * canvas_clone.zoom_factor.get())as i32));
+                        });
+        menutools.add(&action);
+    }
+
     menutools.add(&Separator::new());
 
     {
@@ -1634,7 +1661,7 @@ fn main() {
     }
     menupalette.add(&Separator::new());
 
-     {
+    {
         let action = Action::new("Reset");
         let palette_clone = palette.clone();
         action.on_click(move |_action: &Action, _point: Point| {
@@ -1668,6 +1695,7 @@ fn main() {
     let selection_clone = selection.clone();
     let marquee_clone = marquee.clone();
     let tools_clone = tools.clone();
+    let status_clone = status.clone();
 
     canvas
     .position(0, CANVASOFFSET)
@@ -1678,7 +1706,6 @@ fn main() {
         //manage shortcuts
         match key {
         'v' => {
-                //tool_clone.text.set("paste".to_owned());
                 tools_clone.select("paste");
                 canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
                     y: (canvas.rect.get().height/2) as i32});
@@ -1686,12 +1713,14 @@ fn main() {
                     y: (canvas.rect.get().height/2) as i32});
                },
         'c' => {
-                //tool_clone.text.set("copy".to_owned());
                 tools_clone.select("copy");
                 canvas.emit_click(Point{x: 0, y: 0});
                },
         'Q' => {
                 canvas.paint_on_mask();
+               },
+        '@' => {
+                status_clone.position(4,(canvas.height()as i32 + CANVASOFFSET ) );
                },
           _ => (),
         }
@@ -1860,6 +1889,7 @@ fn main() {
                                             canvas.text(&text, &font_path, point.x, point.y - CANVASOFFSET, color, size );
                                             
                                             },
+                               // "zoom" => {canvas.zoom()},
                         _ => (),
                 }
 

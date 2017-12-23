@@ -16,7 +16,7 @@ pub trait AddOnsToOrbimage {
     fn pixcol(&self, x:i32, y:i32) -> Color;
     fn pixraw(&self, x:i32, y:i32) -> u32;
     //fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, width: i32, window: &mut Window) ->Option<Rect>;
-    fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut Window);
+    fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut Window) ->Option<(i32, i32, i32, i32)>;
     fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut Window) -> Option<(i32,f32)>;
     fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut Window);
     fn select_rect(&mut self, x: i32 , y: i32, window: &mut Window) ->Option<Rect>;
@@ -724,14 +724,14 @@ impl AddOnsToOrbimage for orbimage::Image {
     }
     
     /// draws interactive polyline 
-    fn interact_line(&mut self, x: i32 , y: i32, color: Color, width: i32, antialias: bool, window: &mut Window) {
+    fn interact_line(&mut self, x: i32 , y: i32, color: Color, width: i32, antialias: bool, window: &mut Window) ->Option<(i32, i32, i32, i32)> {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
          let mut lx =0;
          let mut ly =0;
-         let mut ox = x;
-         let mut oy = y;
+         let ox = x;
+         let oy = y;
          let mut w = false;
         'events: loop{
             for event in orbclient.events() { 
@@ -766,19 +766,17 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     if btn.left {
                                                         //quick and dirty workaround to trace thick lines
                                                         //#TODO implement new line method to deal with thickness properly
-                                                        for d in 0..width {
-                                                            if antialias {
-                                                                self.wu_line(ox+d ,oy,lx+d, ly ,color);
-                                                            }else{
-                                                                self.line(ox+d ,oy,lx+d, ly ,color); //update image
-                                                            }
+                                                        {
                                                             
-                                                            orbclient.line(ox+d ,oy+CANVASOFFSET,lx+d, ly+CANVASOFFSET ,color); //update preview 
+                                                            
+                                                            orbclient.line(ox ,oy+CANVASOFFSET,lx, ly+CANVASOFFSET ,color); //update preview 
+                                                            return Some((ox ,oy,lx, ly))
                                                         }
-                                                        orbclient.sync();
-                                                        ox=lx;
-                                                        oy=ly;
-                                                        w =false;
+                                                        //orbclient.sync();
+                                                        //ox=lx;
+                                                        //oy=ly;
+                                                        //w =false;
+                                                        
                                                     }
                                                     if btn.right{
                                                         break 'events
@@ -789,7 +787,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                 }
           }
         }
-        
+        None
     }
 /* fix moved to mainstream orbclient 0.3.9 
     fn mycircle(&mut self, x0: i32, y0: i32, radius: i32, color: Color) {

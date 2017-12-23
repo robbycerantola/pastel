@@ -10,7 +10,7 @@ use image;
 use image::{GenericImage, ImageBuffer, Pixel};
 
 
-use orbclient::{Color, Renderer};
+use orbclient::{Color, Renderer, EventOption};
 use orbimage::Image;
 use orbimage::ResizeType;
 use orbtk::Window;
@@ -30,6 +30,7 @@ use std::f32::consts::PI;
 //use std::io;
 use std::io::prelude::*;
 use std::fs::File;
+use std::cmp;
 
 //use self::imageproc::math::cast;
 //use self::imageproc::definitions::Clamp;
@@ -45,6 +46,7 @@ use ZOOMSTEP;
 
 pub struct Canvas {
     pub rect: Cell<Rect>,
+    view: Cell<Rect>,
     pub image: RefCell<Image>,
     newundo_image: RefCell<Vec<Image>>,
     mask: RefCell<Image>,
@@ -56,6 +58,7 @@ pub struct Canvas {
     clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     shortcut_callback: RefCell<Option<Arc<Fn(&Canvas, char)>>>,
     pub zoom_factor: Cell<f32>,
+
 }
 
 impl Canvas {
@@ -70,6 +73,7 @@ impl Canvas {
     pub fn from_image(image: Image) -> Arc<Self> {
         Arc::new(Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
+            view: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             newundo_image: RefCell::new(vec!(Image::new(image.width(),image.height()))),
             mask: RefCell::new(Image::from_color(image.width(), image.height(), Color::rgba(255,0,0,50))),
             mask_flag: Cell::new(false),
@@ -81,6 +85,7 @@ impl Canvas {
             clear_click_callback: RefCell::new(None),
             shortcut_callback:RefCell::new(None),
             zoom_factor: Cell::new(1.0),
+            
         })
     }
 
@@ -286,8 +291,7 @@ impl Canvas {
         let mut b: u8 ;
         let mut a: u8 ;
         let mut new_slice = Vec::new();
-        while i <= vec_image_buffer.len() - 4 {        
-            
+        while i <= vec_image_buffer.len() - 4 {
             r = vec_image_buffer[i];
             g = vec_image_buffer[i+1];
             b = vec_image_buffer[i+2];
@@ -296,7 +300,7 @@ impl Canvas {
             i += 4;
         }
         new_slice
-    } 
+    }
 
     /// convert grayscale format image to rgba format
     fn gray2rgba (&self, 
@@ -313,9 +317,8 @@ impl Canvas {
         let mut new_buffer = Vec::new();
         let width = grayimage.width();
         let height = grayimage.height();
-        
+
         for luma in image::ImageBuffer::into_raw (grayimage) {
-            
             if luma == 255 {
                 r=255;
                 g=255;
@@ -494,6 +497,7 @@ impl Canvas {
                                   ResizeType::Lanczos3 ).unwrap();
         *image = zoomed;
         self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
+        self.view.set(Rect::new(0,0,image.width(),image.height()));
     }
 
     pub fn zoom_out(&self) {
@@ -503,7 +507,17 @@ impl Canvas {
                                   ResizeType::Triangle ).unwrap();
         *image = zoomed;
         self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
+        self.view.set(Rect::new(0,0,image.width(),image.height()));
         self.zoom_factor.set(self.zoom_factor.get() - ZOOMSTEP);
+    }
+
+    pub fn pan(&self,pan_x: i32, pan_y: i32) {
+        let image = self.image.borrow_mut();
+        let mut pan_x = self.view.get().x - pan_x;
+        let mut pan_y = self.view.get().y - pan_y;
+        if pan_y < 0 { pan_y = 0;}
+        if pan_x < 0 { pan_x = 0;}
+        self.view.set(Rect::new(pan_x, pan_y, image.width(),image.height()));
     }
 
     /// save image state to undo stack 
@@ -533,18 +547,52 @@ impl Canvas {
         let mut image = self.image.borrow_mut();
         image.fill(x,y,color);
     }
-
+/*
     /// wrapper for paste_selection (paste an external image)
     pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, newimage: Image, ){
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.paste_selection(x,y,opacity,newimage);
     }
+*/
+    ///draws an image into current image starting at x,y (paste) with transparency , mask and view
+    fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: Image, ){
+        let w = buffer.width() as i32;
+        let h = buffer.height() as i32;
+        let xc=x-w/2; //center buffer at cursor 
+        let yc=y-h/2;
+        let data = buffer.into_data();
+        let mut i:usize = 0;
+        let mut r;
+        let mut g;
+        let mut b;
+        let mut a;
+        let x1:i32;
+        let y1:i32;
+        
+        for y1 in yc..yc+h {
+            for x1 in xc..xc+w {
+                if i < data.len(){
+                    r = data[i].r();
+                    g = data[i].g();
+                    b = data[i].b();
+                    a = data[i].a();
+                    if a != 0 {a = opacity}
+                    self.pixel(x1,y1,Color::rgba(r,g,b,a));
+                }
+                i += 1;
+            }
+        }
+    }
 
-    /// paste internal copy buffer into canvas
+
+    /// paste internal copy buffer into canvas with view but without mask
     pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8){
         let mut image = self.image.borrow_mut();
-        image.paste_selection(x, y, opacity, self.copy_buffer.borrow().clone());
+        image.paste_selection(x + self.view.get().x, 
+                              y + self.view.get().y,
+                              opacity,
+                              self.copy_buffer.borrow().clone());
     }
 
     /// wrapper interactive paste
@@ -624,7 +672,7 @@ impl Canvas {
         let opacity = color.a() as f32;
         for glyph in font.layout(text, scale, start) {
             if let Some(bounding_box) = glyph.pixel_bounding_box() {
-                glyph.draw(|x, y, v| self.image.borrow_mut().pixel(
+                glyph.draw(|x, y, v| self.pixel(    //self.image.borrow_mut().pixel
                     x as i32 + bounding_box.min.x ,
                     y as i32 + bounding_box.min.y ,
                     Color::rgba(color.r(), color.g(), color.b(), (v * opacity) as u8)
@@ -637,9 +685,11 @@ impl Canvas {
    take care of mask but also the other graphics functions
    because in rust I cannot override the pixel function !! 
 */ 
-    ///pixel function with mask support
+    ///pixel function with mask and pan support
     pub fn pixel(&self , x: i32, y: i32, color: Color) {
         let mut color = color;
+        let panx = self.view.get().x;
+        let pany = self.view.get().y;
         //if we are not painting the mask apply mask to pixel
         if self.mask_enabled.get(){
             //read from mask tranparency value 
@@ -647,7 +697,7 @@ impl Canvas {
             // add mask transparency to color
             color = Color::rgba(color.r(),color.g(),color.b(),alpha_mask & color.a());
         }
-        self.image.borrow_mut().pixel(x, y, color);
+        self.image.borrow_mut().pixel(x+panx, y+pany, color);
     }
 
     ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very fast.
@@ -1071,7 +1121,22 @@ impl Widget for Canvas {
     fn draw(&self, renderer: &mut Renderer, _focused: bool, _theme: &Theme) {
         let rect = self.rect.get();
         let image = self.image.borrow();
-        renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
+        //render entire image
+        //renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
+
+        //render only the view of the image (ROI) so we can pan and zoom
+        let x = rect.x;
+        let mut y = rect.y;
+        let stride = image.width() as usize;
+        let mut offset = self.view.get().y as usize * stride + self.view.get().x as usize;
+        let last_offset = cmp::min(((self.view.get().y as usize + self.view.get().height as usize) * stride + self.view.get().x as usize), image.data().len());
+        while offset < last_offset {
+            let next_offset = offset + stride;
+            renderer.image(x, y, self.view.get().width, 1, &image.data()[offset..]);
+            offset = next_offset;
+            y += 1;
+        }
+
         //#TODO render mask only when needed
        /*if self.mask_enabled.get() {
            let image = self.image.borrow();

@@ -14,19 +14,18 @@ use orbtk::{Color, Action, Button, Image, Label, Menu, Point,
             Rect, Separator,
              Window, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
-use orbtk::traits::{Click, Place, Text};  //Border, Enter
+use orbtk::traits::{ Click, Place, Text };  //Border, Enter
 
 use std::rc::Rc;
 use std::cell::RefCell; //, RefMut, Cell
 use std::sync::Arc;
 use std::process;
 use std::process::Command;
-use std::env;
-use std::path::{Path,PathBuf};
-use std::fs;
+use std::path::{ Path,PathBuf };
+use std::{ env, fs, cmp };
 
 mod dialogs;
-use dialogs::{dialog,popup,new_dialog,text_dialog};
+use dialogs::{ dialog, popup, new_dialog, text_dialog };
 
 mod palette;
 use palette::Palette;
@@ -44,7 +43,7 @@ mod color_swatch;
 use color_swatch::ColorSwatch;
 
 mod toolbar;
-use toolbar::{Toolbar, ToolbarIcon};
+use toolbar::{ Toolbar, ToolbarIcon };
 
 mod progress_bar;
 use progress_bar::ProgressBar;
@@ -57,7 +56,7 @@ use control_knob::ControlKnob;
 mod theme;  //#FIXME use local theme to temporary fix compilation with last orbtk 0.2.26 pull which has moved to css theme, pastel has to move to css too
 
 mod tools;
-use tools::{Property,Tools};
+use tools::{ Property,Tools };
 
 
 #[derive(Clone)]
@@ -151,6 +150,7 @@ fn main() {
     tools.insert("marquee",vec![Property::new("Opacity","100")]); //#FIXME quick dirty fix to 'no entry found for key'
     tools.insert("polygon",vec![Property::new("Opacity","100"),Property::new("Sides","6")]);
     tools.insert("text",vec![Property::new("Opacity","100"),Property::new("Size","8"),Property::new("Text","Pastel"),Property::new("Font",DEFAULTFONT)]);
+    tools.insert("pan",vec![Property::new("Opacity","100")]); //#FIXME quick dirty fix to 'no entry found for key'
     tools.insert("preferences",vec![Property::new("Antialias","1")]); // not a real tool but a way to store general preferences
     tools.insert("tool",vec![Property::new("Current","pen")]); // store current active tool
 
@@ -1339,7 +1339,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                             match text_dialog("Text", "text:","") {
                                 Some(response) => {
-                                    tools_clone.set("tool","Current","text");
+                                    tools_clone.select("text");
                                     tools_clone.set("text","Text",response.0.to_owned());
                                     tools_clone.set("text","Font",response.1.to_owned());
                                     let s = tools_clone.get("text","Size").unwrap();
@@ -1356,29 +1356,7 @@ fn main() {
         menutools.add(&action);
     }
 
-    {
-        let action = Action::new("Zoom in");
-        //let tools_clone = tools.clone();
-        let canvas_clone = canvas.clone();
-        let status_clone = status.clone();
-        action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.zoom_in();
-                            status_clone.text(format!("Zoomed in ...({}%)",(100.0 * canvas_clone.zoom_factor.get()) as i32));
-                        });
-        menutools.add(&action);
-    }
 
-    {
-        let action = Action::new("Zoom out");
-        //let tools_clone = tools.clone();
-        let canvas_clone = canvas.clone();
-        let status_clone = status.clone();
-        action.on_click(move |_action: &Action, _point: Point| {
-                            canvas_clone.zoom_out();
-                            status_clone.text(format!("Zoomed out ...({}%)",(100.0 * canvas_clone.zoom_factor.get())as i32));
-                        });
-        menutools.add(&action);
-    }
 
     menutools.add(&Separator::new());
 
@@ -1672,10 +1650,69 @@ fn main() {
     
     menupalette.add(&Separator::new());
 
+    //Menu view
+    let menuview = Menu::new("View");
+    menuview.position(295, 0).size(32, 16);
+    
+    //menu entries for view
+    {
+        let action = Action::new("Zoom in");
+        let window_clone = &mut window as *mut Window;
+        let size_clone = size.clone();
+        //let tools_clone = tools.clone();
+        let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.zoom_in();
+                            //resize window to fit image + status bar
+                            let newx = *cmp::max(&size_clone.x, &canvas_clone.width());
+                            let newy = *cmp::max(&size_clone.y, &(canvas_clone.height() + 18 + CANVASOFFSET as u32));
+                            unsafe{ (*window_clone).set_size(newx, newy) }
+                            status_clone.text(format!("Zoomed in ...({}%)",(100.0 * canvas_clone.zoom_factor.get()) as i32));
+                            status_clone.position(4,(canvas_clone.height()as i32 + CANVASOFFSET ) );
+                        });
+        menuview.add(&action);
+    }
+
+    {
+        let action = Action::new("Zoom out");
+        let window_clone = &mut window as *mut Window;
+        let size_clone = size.clone();
+        //let tools_clone = tools.clone();
+        let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            canvas_clone.zoom_out();
+                            //resize window to fit image + status bar
+                            let newx = *cmp::max(&size_clone.x, &canvas_clone.width());
+                            let newy = *cmp::max(&size_clone.y, &(canvas_clone.height() + 18 + CANVASOFFSET as u32));
+                            unsafe{ (*window_clone).set_size(newx, newy) }
+                            status_clone.text(format!("Zoomed out ...({}%)",(100.0 * canvas_clone.zoom_factor.get())as i32));
+                            status_clone.position(4,(canvas_clone.height()as i32 + CANVASOFFSET ) );
+                        });
+        menuview.add(&action);
+    }
+
+    {
+        let action = Action::new("Pan");
+        //let window_clone = &mut window as *mut Window;
+        //let size_clone = size.clone();
+        let tools_clone = tools.clone();
+        //let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                            //canvas_clone.pan(100,100);
+                            tools_clone.select("pan");
+                            status_clone.text("Panning ...");
+                        });
+        menuview.add(&action);
+    }
+    
+
     //Menu help
 
     let menuhelp = Menu::new("Help");
-    menuhelp.position(300, 0).size(32, 16);
+    menuhelp.position(335, 0).size(32, 16);
 
     //menu entries for help
 
@@ -1683,7 +1720,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.31, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.32, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1786,15 +1823,24 @@ fn main() {
             "polyline" => { 
                             canvas.undo_save();
                             let width = tools_clone.get("polyline","Size").unwrap();
-                            unsafe{
-                                    canvas.image.borrow_mut().interact_line(point.x,
-                                                point.y,
-                                                color,
-                                                width,
-                                                antialias == 1,
-                                                &mut *window_clone
-                                                );
-                            }
+                            let mut tu = (0,0,0,0);
+                            if let Some(tuple) =
+                                unsafe {canvas.image.borrow_mut().interact_line(point.x,
+                                                    point.y,
+                                                    color,
+                                                    width,
+                                                    antialias == 1,
+                                                    &mut *window_clone
+                                        )} { tu = tuple} 
+                                let (x1,y1,x2,y2) = tu;
+                                for d in 0..width {
+                                    if antialias == 1 {
+                                        canvas.wu_line(x1 + d, y1, x2 + d, y2, color);
+                                    } else {
+                                        canvas.line(x1 + d, y1, x2 + d, y2, color);
+                                    }
+                                }
+                                                    
                            },
                 "copy" =>  {
                                 let mut image = canvas.image.borrow_mut();
@@ -1832,6 +1878,7 @@ fn main() {
                                 },
                 "paste" => {
                             unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)};
+                            
                             },
                "circle" => {
                                 canvas.undo_save();
@@ -1896,6 +1943,7 @@ fn main() {
             //tools that need prev_position to work
             if let Some(prev_position) = *prev_opt {
                 match selected_tool.as_ref() {
+                     "pan" => {canvas.pan(point.x - prev_position.x, point.y - prev_position.y);},
                     "line" => { 
                                 if antialias == 1 {
                                     canvas.wu_line(prev_position.x,
@@ -1951,6 +1999,7 @@ fn main() {
     window.add(&menumask);
     window.add(&menuimage);
     window.add(&menupalette);
+    window.add(&menuview);
     window.add(&menuhelp);
 
     window.exec();

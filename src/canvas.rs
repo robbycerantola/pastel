@@ -1,8 +1,8 @@
 //canvas widget based on image widget
 
 extern crate rusttype;
-extern crate imageproc;
-extern crate conv;
+//extern crate imageproc;
+//extern crate conv;
 
 use self::rusttype::{FontCollection, Scale, point};
 
@@ -31,9 +31,9 @@ use std::f32::consts::PI;
 use std::io::prelude::*;
 use std::fs::File;
 
-use self::imageproc::math::cast;
-use self::imageproc::definitions::Clamp;
-use self::conv::ValueInto;
+//use self::imageproc::math::cast;
+//use self::imageproc::definitions::Clamp;
+//use self::conv::ValueInto;
 
 
 use AddOnsToOrbimage;
@@ -425,7 +425,7 @@ impl Canvas {
             //self.blend(tl, tr, bl, br, right_weight, bottom_weight)
         }
     }
-*/
+
     fn blend<P>(&self,
         top_left: P,
         top_right: P,
@@ -450,7 +450,7 @@ impl Canvas {
             P::Subpixel::clamp((1f32 - bottom_weight) * cast(u) + bottom_weight * cast(v))
         })
     }
-
+*/
 
     pub fn on_right_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
         *self.right_click_callback.borrow_mut() = Some(Arc::new(func));

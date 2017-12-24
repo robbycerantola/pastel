@@ -10,7 +10,7 @@ use image;
 use image::{GenericImage, ImageBuffer, Pixel};
 
 
-use orbclient::{Color, Renderer, EventOption};
+use orbclient::{Color, Renderer};
 use orbimage::Image;
 use orbimage::ResizeType;
 use orbtk::Window;
@@ -547,15 +547,8 @@ impl Canvas {
         let mut image = self.image.borrow_mut();
         image.fill(x,y,color);
     }
-/*
-    /// wrapper for paste_selection (paste an external image)
-    pub fn paste_selection (&self, x: i32, y:i32, opacity: u8, newimage: Image, ){
-        self.undo_save();  //save state for undo
-        let mut image = self.image.borrow_mut();
-        image.paste_selection(x,y,opacity,newimage);
-    }
-*/
-    ///draws an image into current image starting at x,y (paste) with transparency , mask and view
+
+    ///draws an image into current image starting at x,y (paste) with transparency , mask and view support
     fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: Image, ){
         let w = buffer.width() as i32;
         let h = buffer.height() as i32;
@@ -586,7 +579,7 @@ impl Canvas {
     }
 
 
-    /// paste internal copy buffer into canvas with view but without mask
+    /// paste internal copy buffer into canvas with view but without mask support
     pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8){
         let mut image = self.image.borrow_mut();
         image.paste_selection(x + self.view.get().x, 
@@ -672,7 +665,7 @@ impl Canvas {
         let opacity = color.a() as f32;
         for glyph in font.layout(text, scale, start) {
             if let Some(bounding_box) = glyph.pixel_bounding_box() {
-                glyph.draw(|x, y, v| self.pixel(    //self.image.borrow_mut().pixel
+                glyph.draw(|x, y, v| self.pixel(
                     x as i32 + bounding_box.min.x ,
                     y as i32 + bounding_box.min.y ,
                     Color::rgba(color.r(), color.g(), color.b(), (v * opacity) as u8)
@@ -1032,6 +1025,7 @@ impl Canvas {
         let rgba = self.pixcol(x,y);
         self.flood_fill_scanline(x,y,color.data,rgba.data);  //use rgba and color as i32 values 
     }
+    
     ///stack friendly and fast floodfill algorithm that works with transparency too 
     fn flood_fill_scanline( &self, x:i32, y:i32, new_color: u32, old_color:u32) {
         if old_color == new_color {
@@ -1175,29 +1169,50 @@ impl Widget for Canvas {
                     } 
                 }
             },
+            //Short cuts 
              // Ctrl+z => Undo   
             Event::Text {c} => {
                 if c == 'z' {
                     self.undo();
                     *redraw = true;
                 }
+                //dispatch shortcut out of Canvas
                 if ['v','c','x','Q'].contains(&c) {
                     self.emit_shortcut(c);
                 }
             },
+            
             Event::Resize{..} => {
                 self.emit_shortcut('@');
-            }
-
-/*            Event::Scroll {x,y} => {
+            },
+            // Short cuts executed in place
+            Event::DownArrow => {
+                self.pan(0, 10);
+                *redraw = true;
+            },
+            Event::UpArrow => {
+                self.pan(0, -10);
+                *redraw = true;
+            },
+            Event::LeftArrow => {
+                self.pan(-10, 0);
+                *redraw = true;
+            },
+            Event::RightArrow => {
+                self.pan(10, 0);
+                *redraw = true;
+            },
+            Event::Scroll {x,y} => {
                 if y == 1 {
                     self.zoom_in();
+                    *redraw = true;
                 }
                 if y == -1 {
                     self.zoom_out();
+                    *redraw = true;
                 }
             },
-*/
+
             _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {()}, 
         }
         focused

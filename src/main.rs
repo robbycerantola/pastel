@@ -69,7 +69,7 @@ struct MySize {
 const CANVASOFFSET: i32 = 200;
 
 // undo stack depth
-const UNDODEPTH: usize = 5;
+const UNDODEPTH: usize = 10;
 
 // enable disable help and status line
 const STATUSLINE: bool = true;
@@ -1823,7 +1823,7 @@ fn main() {
             "polyline" => { 
                             canvas.undo_save();
                             let width = tools_clone.get("polyline","Size").unwrap();
-                            let mut tu = (0,0,0,0);
+                            let mut tu = (point.x,point.y,point.x,point.y);
                             if let Some(tuple) =
                                 unsafe {canvas.image.borrow_mut().interact_line(point.x,
                                                     point.y,

@@ -3,7 +3,7 @@ use orbclient;
 use orbtk::{Color, Rect, Renderer, Window}; //Action, Button, Image, Label, Menu, Point, ProgressBar,ControlKnob,Toolbar, ToolbarIcon,Separator,TextBox, Window,InnerWindow,, ColorSwatch
 use orbclient::EventOption;
 
-use std::f32::consts::PI;
+//use std::f32::consts::PI;
 
 use CANVASOFFSET;
 
@@ -18,15 +18,15 @@ pub trait AddOnsToOrbimage {
     //fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, width: i32, window: &mut Window) ->Option<Rect>;
     fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut Window) ->Option<(i32, i32, i32, i32)>;
     fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut Window) -> Option<(i32,f32)>;
-    fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut Window);
+    fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut Window) -> Option<(i32,i32)>;
     fn select_rect(&mut self, x: i32 , y: i32, window: &mut Window) ->Option<Rect>;
     fn new_select_rect(&mut self, x: i32 , y: i32, color: Color, pattern: i32, window: &mut Window) ->Option<Rect>;
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
     fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
     fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
-    fn wu_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color);
-    fn wu_circle(&mut self, x0: i32, y0: i32, radius: i32, color: Color);
-    fn polygon(&mut self, x: i32, y: i32, r: i32, sides: u32, angle: f32,color: Color, antialias: bool);
+//    fn wu_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color);
+//    fn wu_circle(&mut self, x0: i32, y0: i32, radius: i32, color: Color);
+//    fn polygon(&mut self, x: i32, y: i32, r: i32, sides: u32, angle: f32,color: Color, antialias: bool);
     
 }
 
@@ -167,6 +167,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
     }
 
+/*
     /// draws antialiased line
      //adapted from https://rosettacode.org/wiki/Xiaolin_Wu's_line_algorithm#C.23   
     fn wu_line (&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
@@ -254,6 +255,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         }           
     }
 
+
     ///Draws antialiased circle
     fn wu_circle (&mut self, x0: i32, y0: i32, radius: i32, color: Color){
         let r = color.r();
@@ -302,6 +304,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
     }
 
+
     ///Draws a regular polygon
     fn polygon(&mut self, x0: i32, y0: i32, r: i32, sides: u32, angle: f32, color: Color, antialias: bool ) {
         let mut x:Vec<i32> = Vec::new();
@@ -329,6 +332,7 @@ impl AddOnsToOrbimage for orbimage::Image {
             
             
     }
+*/
 
     ///crop new image from current image (copy) tranforming pure white into transparent
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
@@ -676,7 +680,7 @@ impl AddOnsToOrbimage for orbimage::Image {
     }
 
     /// interactive paste 
-    fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut Window) {
+    fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut Window) -> Option<(i32,i32)> {
     
          //gets events from orbclient and render helping lines directly into orbclient window 
          let mut orbclient = window.inner.borrow_mut();
@@ -708,8 +712,9 @@ impl AddOnsToOrbimage for orbimage::Image {
                     EventOption::Button(btn) => {
                                                 if btn.left {
                                                     //self.image(x, y , width, height, &data); //without transparency
-                                                    self.paste_selection(x, y , opacity, buffer);
-                                                    break 'events 
+                                                    //self.paste_selection(x, y , opacity, buffer);
+                                                    //break 'events
+                                                    return Some((x,y)); 
                                                 }
                                                 if btn.right{
                                                     break 'events
@@ -720,7 +725,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                 }
           }
         }
-        
+        None
     }
     
     /// draws interactive polyline 

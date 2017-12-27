@@ -1,27 +1,29 @@
 //canvas widget based on image widget
 
 extern crate rusttype;
+extern crate resize;
+
 //extern crate imageproc;
 //extern crate conv;
 
-use self::rusttype::{FontCollection, Scale, point};
+use self::rusttype::{ FontCollection, Scale, point };
+use self::resize::Filter;
 
 use image;
-use image::{GenericImage, ImageBuffer, Pixel};
+use image::{ GenericImage, ImageBuffer, Pixel };
 
-
-use orbclient::{Color, Renderer};
+use orbclient::{ Color, Renderer };
 use orbimage::Image;
 use orbimage::ResizeType;
 use orbtk::Window;
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
-use orbtk::traits::{Click, Place};
+use orbtk::traits::{ Click, Place };
 use orbtk::widgets::Widget;
-use orbtk::theme::{Theme};
+use orbtk::theme::{ Theme };
 
-use std::cell::{Cell, RefCell};
+use std::cell::{ Cell, RefCell };
 use std::path::Path;
 use std::sync::Arc;
 use std::slice;
@@ -491,10 +493,12 @@ impl Canvas {
     pub fn zoom_in(&self) {
         let mut image = self.image.borrow_mut();
         self.zoom_factor.set(self.zoom_factor.get() + ZOOMSTEP);
+        fn kernel(x: f32) ->f32 { f32::max(1.0 - x.abs(),0.0) }
+        let filter = Filter::new(Box::new(kernel), 1.0);
         
         let zoomed = image.resize((image.width() as f32 * (1.0 + ZOOMSTEP )) as u32,
                                   (image.height() as f32* (1.0 + ZOOMSTEP )) as u32,
-                                  ResizeType::Lanczos3 ).unwrap();
+                                  ResizeType::Custom(filter)).unwrap();  //Lanczos3
         *image = zoomed;
         self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
         self.view.set(Rect::new(0,0,image.width(),image.height()));
@@ -502,9 +506,11 @@ impl Canvas {
 
     pub fn zoom_out(&self) {
         let mut image = self.image.borrow_mut();
+        fn kernel(x: f32) ->f32 { f32::max(1.0 - x.abs(),0.0) }
+        let filter = Filter::new(Box::new(kernel), 1.0);
         let zoomed = image.resize((image.width() as f32 / (1.0 + ZOOMSTEP)) as u32,
                                   (image.height() as f32 / (1.0 + ZOOMSTEP)) as u32,
-                                  ResizeType::Triangle ).unwrap();
+                                  ResizeType::Custom(filter)).unwrap();  //Triangle
         *image = zoomed;
         self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
         self.view.set(Rect::new(0,0,image.width(),image.height()));
@@ -548,8 +554,39 @@ impl Canvas {
         image.fill(x,y,color);
     }
 
-    ///draws an image into current image starting at x,y (paste) with transparency , mask and view support
-    fn paste_selection (&mut self, x: i32, y:i32, opacity: u8, buffer: Image, ){
+    ///paste an image into current canvas starting at x,y with transparency , mask and view support
+    pub fn paste_image (&self, x: i32, y:i32, opacity: u8, buffer: Image, ){
+        let w = buffer.width() as i32;
+        let h = buffer.height() as i32;
+        let xc=x-w/2; //center buffer at cursor 
+        let yc=y-h/2;
+        let data = buffer.into_data();
+        let mut i:usize = 0;
+        let mut r;
+        let mut g;
+        let mut b;
+        let mut a;
+        let x1:i32;
+        let y1:i32;
+        
+        for y1 in yc..yc+h {
+            for x1 in xc..xc+w {
+                if i < data.len(){
+                    r = data[i].r();
+                    g = data[i].g();
+                    b = data[i].b();
+                    a = data[i].a();
+                    if a != 0 {a = opacity}
+                    self.pixel(x1,y1,Color::rgba(r,g,b,a));
+                }
+                i += 1;
+            }
+        }
+    }
+    
+    ///paste internal copy buffer into current canvas starting at x,y with transparency , mask and view support
+    pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8 ){
+        let buffer = self.copy_buffer.borrow().clone();
         let w = buffer.width() as i32;
         let h = buffer.height() as i32;
         let xc=x-w/2; //center buffer at cursor 
@@ -578,29 +615,22 @@ impl Canvas {
         }
     }
 
-
-    /// paste internal copy buffer into canvas with view but without mask support
-    pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8){
-        let mut image = self.image.borrow_mut();
-        image.paste_selection(x + self.view.get().x, 
-                              y + self.view.get().y,
-                              opacity,
-                              self.copy_buffer.borrow().clone());
-    }
-
     /// wrapper interactive paste
-    pub fn interact_paste (&self, x: i32, y:i32, opacity: u8, window: &mut Window){
+    pub fn interact_paste (&self, x: i32, y:i32, opacity: u8, window: &mut Window) -> Option<(i32,i32)>{
         let mut image = self.image.borrow_mut();
-        image.interact_paste(x, y, opacity, self.copy_buffer.borrow().clone(), window);
-        
+        if let Some(tuple) = image.interact_paste(x, y, opacity, self.copy_buffer.borrow().clone(), window) {
+            return Some(tuple);}
+        None
     }
 
+/*
     /// wrapper for interactive circle
     pub fn interact_circle (&mut self, x: i32 , y: i32, color: Color, window: &mut Window) {
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
         image.interact_circle(x,y,color,window);
     }
+*/
 
     pub fn paint_on_mask(&self) {
         let mut image = self.image.borrow_mut();
@@ -1118,30 +1148,19 @@ impl Widget for Canvas {
         //render entire image
         //renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
 
-        //render only the view of the image (ROI) so we can pan and zoom
+        //render only the view of the image (ROI) so we can pan  #TODO find a way to render zoomed 
         let x = rect.x;
         let mut y = rect.y;
+        let width = self.view.get().width;
         let stride = image.width() as usize;
         let mut offset = self.view.get().y as usize * stride + self.view.get().x as usize;
         let last_offset = cmp::min(((self.view.get().y as usize + self.view.get().height as usize) * stride + self.view.get().x as usize), image.data().len());
         while offset < last_offset {
             let next_offset = offset + stride;
-            renderer.image(x, y, self.view.get().width, 1, &image.data()[offset..]);
+            renderer.image(x, y, width, 1, &image.data()[offset..]);
             offset = next_offset;
             y += 1;
         }
-
-        //#TODO render mask only when needed
-       /*if self.mask_enabled.get() {
-           let image = self.image.borrow();
-           renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
-           let mask = self.mask.borrow();
-           renderer.image(rect.x, rect.y, mask.width(), mask.height(), mask.data());
-       } else {
-           let image = self.image.borrow();
-           renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
-       }*/
-        
     }
 
     fn event(&self, event: Event, focused: bool, redraw: &mut bool) -> bool {
@@ -1181,7 +1200,6 @@ impl Widget for Canvas {
                     self.emit_shortcut(c);
                 }
             },
-            
             Event::Resize{..} => {
                 self.emit_shortcut('@');
             },
@@ -1212,7 +1230,6 @@ impl Widget for Canvas {
                     *redraw = true;
                 }
             },
-
             _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {()}, 
         }
         focused

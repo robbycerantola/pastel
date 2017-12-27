@@ -1877,8 +1877,12 @@ fn main() {
                                     }
                                 },
                 "paste" => {
-                            unsafe{ canvas.interact_paste(point.x, point.y, a.clone(),&mut *window_clone)};
-                            
+                            canvas.undo_save();
+                            if let Some(tuple) = unsafe { canvas.interact_paste(point.x,
+                                                                                point.y,
+                                                                                a.clone(),
+                                                                                &mut *window_clone
+                                                        )} { canvas.paste_buffer(tuple.0, tuple.1 , a.clone()); }
                             },
                "circle" => {
                                 canvas.undo_save();

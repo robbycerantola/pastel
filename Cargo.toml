@@ -9,11 +9,13 @@ authors = ["Robby <robbycerantola@gmail.com>"]
 
 [dependencies]
 orbclient = "0.3.12"
+#orbtk = { git = "https://github.com/redox-os/orbtk.git" }
 orbtk = { git = "https://github.com/robbycerantola/orbtk.git", branch = "resync" }
 #orbtk = { path = "/home/robby/orbtk"}
 orbimage = "0.1.15"
 image = "0.12.4"
 rusttype = "0.2.3"
+resize = "0.2"
 #imageproc = "0.7"
 #conv = "*"
 

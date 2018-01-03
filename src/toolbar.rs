@@ -158,7 +158,7 @@ impl Click for ToolbarIcon {
 
 impl Place for ToolbarIcon {}
 
-// TODO create new traits Tooltip , for now workaround using Text
+// Implement Text trait as Tooltip text
 impl Text for ToolbarIcon {
     fn text<S: Into<String>>(&self, text: S) -> &Self {
         self.tooltip_text.set(text.into());
@@ -239,14 +239,13 @@ impl Widget for ToolbarIcon {
                         //FIXME after 2 sec shows up tooltip but only if mouse is moved 
                             match self.tooltip_time.get() {
                                 Some(time) => {
-                                                if !self.tooltip.get(){
-                                                    if (Instant::now()-time) > Duration::new(0,8){
-                                                        //println!("Tooltip: {} time:{:?}",self.tooltip_text.get(),time);
-                                                        self.tooltip.set(true);
-                                                        *redraw = true;
-                                                        }
-                                                    }
-                                                },
+                                    if !self.tooltip.get(){
+                                        if (Instant::now()-time) > Duration::new(0,8){
+                                            self.tooltip.set(true);
+                                            *redraw = true;
+                                        }
+                                    }
+                                },
                                 None       => self.tooltip_time.set(Some(Instant::now())),
                             }
                         //self.tooltip.set(true);

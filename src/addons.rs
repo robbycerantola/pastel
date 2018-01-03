@@ -1,9 +1,7 @@
 use orbimage;
 use orbclient;
-use orbtk::{Color, Rect, Renderer, Window}; //Action, Button, Image, Label, Menu, Point, ProgressBar,ControlKnob,Toolbar, ToolbarIcon,Separator,TextBox, Window,InnerWindow,, ColorSwatch
+use orbtk::{Color, Rect, Renderer, Window}; 
 use orbclient::EventOption;
-
-//use std::f32::consts::PI;
 
 use CANVASOFFSET;
 
@@ -15,7 +13,6 @@ pub trait AddOnsToOrbimage {
     fn flood_fill_line(&mut self, x:i32, y:i32, new_color: u32 , old_color: u32);
     fn pixcol(&self, x:i32, y:i32) -> Color;
     fn pixraw(&self, x:i32, y:i32) -> u32;
-    //fn interact_rect(&mut self, x: i32 , y: i32, color: Color, filled: bool, width: i32, window: &mut Window) ->Option<Rect>;
     fn interact_line(&mut self, x: i32 , y: i32, color: Color,width: i32, antialias: bool, window: &mut Window) ->Option<(i32, i32, i32, i32)>;
     fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut Window) -> Option<(i32,f32)>;
     fn interact_paste(&mut self, x: i32 , y: i32, opacity: u8, buffer: orbimage::Image, window: &mut Window) -> Option<(i32,i32)>;
@@ -24,21 +21,10 @@ pub trait AddOnsToOrbimage {
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
     fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
     fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
-//    fn wu_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color);
-//    fn wu_circle(&mut self, x0: i32, y0: i32, radius: i32, color: Color);
-//    fn polygon(&mut self, x: i32, y: i32, r: i32, sides: u32, angle: f32,color: Color, antialias: bool);
-    
 }
 
 impl AddOnsToOrbimage for orbimage::Image {
-/*
-    ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very quick.
-    fn pixcol(&self, x:i32, y:i32) -> Color {
-        let p = self.width()as i32 * y + x;
-        let rgba = self.data()[p as usize];
-        rgba
-    }
-*/
+    ///return pixel color
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = (self.width()as i32 * y + x) as usize;
         if p < self.data().len() {
@@ -50,6 +36,7 @@ impl AddOnsToOrbimage for orbimage::Image {
     fn pixraw (&self, x:i32, y:i32) -> u32 {
         self.pixcol(x,y).data 
     }
+    
     ///wrapper for flood fill 
     fn fill(&mut self, x: i32, y: i32 , color: Color) {
         //get current pixel color 
@@ -78,7 +65,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
         //});
     }
-    
+
     ///stack friendly and fast floodfill algorithm that works with transparency too 
     fn flood_fill_scanline( &mut self, x:i32, y:i32, new_color: u32, old_color:u32) {
         if old_color == new_color {
@@ -87,17 +74,17 @@ impl AddOnsToOrbimage for orbimage::Image {
         if self.pixcol(x,y).data  != old_color  {
             return;
         }
-        
+
         let w = self.width() as i32;
         let h = self.height() as i32;
-        
+
         //draw current scanline from start position to the right
         let mut x1 = x;
-        
+
         while x1 < w && self.pixcol(x1,y).data  == old_color  {
             self.pixel(x1,y,Color{data:new_color});
             x1 +=1;
-        } 
+        }
         //get resulted color because of transparency and use this for comparison 
         let res_color = self.pixcol(x,y).data;
         
@@ -166,173 +153,6 @@ impl AddOnsToOrbimage for orbimage::Image {
             self.flood_fill_line(x,y-1,new_color,old_color);
         }
     }
-
-/*
-    /// draws antialiased line
-     //adapted from https://rosettacode.org/wiki/Xiaolin_Wu's_line_algorithm#C.23   
-    fn wu_line (&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
-        
-        let mut x0 = x0 as f64;
-        let mut y0 = y0 as f64;
-        let mut x1 = x1 as f64;
-        let mut y1 = y1 as f64;
-        let r = color.r();
-        let g = color.g();
-        let b = color.b();
-        let a = color.a() as f64;
-        
-        fn ipart (x: f64) -> i32 {
-            x.trunc() as i32
-        }
-        fn round (x: f64) -> i32 {
-            ipart(x+0.5) as i32
-        }
-        fn fpart (x: f64) -> f64 {
-            if x <0.0 { return 1.0-(x-x.floor());}
-            x-x.floor() 
-        }
-        fn rfpart(x: f64) -> f64 {
-            1.0-fpart(x)
-        }
-        fn chkalpha (mut alpha :f64) -> u8 {
-             if alpha > 255.0 { alpha = 255.0};
-             if alpha < 0.0 {alpha = 0.0};
-             alpha as u8
-        }
-        
-        let steep :bool = (y1-y0).abs() > (x1-x0).abs();
-        let mut temp;
-        if steep {
-            temp = x0; x0 = y0; y0 = temp;
-            temp = x1; x1 = y1; y1 = temp;
-        }
-        if x0 > x1 {
-            temp = x0; x0 = x1; x1 = temp;
-            temp = y0; y0 = y1; y1 = temp;
-        }
-        let dx = x1 -x0;
-        let dy = y1- y0;
-        let gradient = dy/dx;
-        
-        let mut xend: f64 = (x0 as f64).round() ;
-        let mut yend: f64 = y0 + gradient * (xend - x0);
-        let mut xgap: f64 = rfpart(x0+0.5);
-        let xpixel1 = xend as i32;
-        let ypixel1 = (ipart (yend)) as i32;
-        
-        if steep {
-            self.pixel(ypixel1, xpixel1, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
-            self.pixel(ypixel1+1, xpixel1, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
-        }else{
-            self.pixel(xpixel1, ypixel1, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
-            self.pixel(xpixel1+1, ypixel1, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
-        }
-        let mut intery :f64 = yend + gradient;
-        xend = x1.round();
-        yend = y1 + gradient * (xend-x1);
-        xgap = fpart(x1 + 0.5);
-        let xpixel2 = xend as i32;
-        let ypixel2 = ipart(yend) as i32;
-        if steep {
-            self.pixel(ypixel2, xpixel2, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
-            self.pixel(ypixel2+1, xpixel2, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
-        }else{
-            self.pixel(xpixel2, ypixel2, Color::rgba(r,g,b,chkalpha(rfpart(yend)*xgap*a)));
-            self.pixel(xpixel2+1, ypixel2, Color::rgba(r,g,b,chkalpha(fpart(yend)*xgap*a)));
-        }
-        if steep {
-            for x in (xpixel1+1)..(xpixel2) {
-                self.pixel(ipart(intery) as i32 , x, Color::rgba(r,g,b,chkalpha(a*rfpart(intery))));
-                self.pixel(ipart(intery) as i32 + 1, x, Color::rgba(r,g,b,chkalpha(a*fpart(intery))));
-                intery += gradient;
-            }
-        }else{
-            for x in (xpixel1+1)..(xpixel2) {
-                self.pixel(x, ipart(intery) as i32, Color::rgba(r,g,b,chkalpha(a*rfpart(intery))));
-                self.pixel(x, ipart(intery) as i32 + 1, Color::rgba(r,g,b,chkalpha(a*fpart(intery))));
-                intery += gradient;
-            } 
-        }           
-    }
-
-
-    ///Draws antialiased circle
-    fn wu_circle (&mut self, x0: i32, y0: i32, radius: i32, color: Color){
-        let r = color.r();
-        let g = color.g();
-        let b = color.b();
-        let a = color.a();
-        let mut y =0;
-        let mut x = radius;
-        let mut d =0_f64;
-        
-        self.pixel (x0+x,y0+y,color);
-        self.pixel (x0-x,y0-y,color);
-        self.pixel (x0+y,y0-x,color);
-        self.pixel (x0-y,y0+x,color);
-        
-        while x > y {
-            let di = dist(radius,y);
-            if di < d { x -= 1;}
-            let col = Color::rgba(r,g,b,(a as f64*(1.0-di)) as u8);
-            let col2 = Color::rgba(r,g,b,(a as f64*di) as u8);
-            
-            self.pixel(x0+x, y0+y, col);
-            self.pixel(x0+x-1, y0+y, col2);//-
-            self.pixel(x0-x, y0+y, col);
-            self.pixel(x0-x+1, y0+y, col2);//+
-            self.pixel(x0+x, y0-y, col);
-            self.pixel(x0+x-1, y0-y, col2);//-
-            self.pixel(x0-x, y0-y, col);
-            self.pixel(x0-x+1, y0-y, col2);//+
-            
-            self.pixel(x0+y, y0+x, col);
-            self.pixel(x0+y, y0+x-1, col2);
-            self.pixel(x0-y, y0+x, col);
-            self.pixel(x0-y, y0+x-1, col2);
-            self.pixel(x0+y, y0-x, col);
-            self.pixel(x0+y, y0-x+1, col2);
-            self.pixel(x0-y, y0-x, col);
-            self.pixel(x0-y, y0-x+1, col2);
-            d = di;
-            y += 1;
-        }
-        
-        fn dist(r: i32, y: i32) -> f64{
-            let x :f64 = ((r*r-y*y)as f64).sqrt();
-            x.ceil()-x
-        }
-    }
-
-
-    ///Draws a regular polygon
-    fn polygon(&mut self, x0: i32, y0: i32, r: i32, sides: u32, angle: f32, color: Color, antialias: bool ) {
-        let mut x:Vec<i32> = Vec::new();
-        let mut y:Vec<i32> = Vec::new();
-        let i :usize = 0;
-        let sides = sides as usize;
-        //find vertices
-        for i in 0..sides+1 {
-            let t :f32 =angle + 2.0*PI* i as f32 /sides as f32;
-            x.push((r as f32 * t.cos()) as i32 + x0);
-            y.push((r as f32 * t.sin()) as i32 + y0);
-        }
-        
-        if antialias {
-        for i in 0..sides {
-            self.wu_line(x[i],y[i],x[i+1],y[i+1],color);
-        }
-        self.wu_line(x[sides],y[sides],x[0],y[0],color);    
-        }else{
-        for i in 0..sides-1 {
-            self.line(x[i],y[i],x[i+1],y[i+1],color);
-        }
-        self.line(x[sides],y[sides],x[0],y[0],color);
-        }
-            
-            
-    }
-*/
 
     ///crop new image from current image (copy) tranforming pure white into transparent
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image {
@@ -545,86 +365,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
         None  
     }
-/*
-    /// draws interactive rectangle 
-    fn interact_rect(&mut self, x: i32 , y: i32, color: Color,filled:bool, width: i32, window: &mut Window) ->Option<Rect> {
-    
-         //gets events from orbclient and render helping lines directly into orbclient window 
-         let mut orbclient = window.inner.borrow_mut();
-         let mut lx = 0;
-         let mut ly = 0;
-         let mut w = false;
-        'events: loop{
-            for event in orbclient.events() { 
-                match event.to_option() {
-                    EventOption::Key(key_event) => {println!("{:?}",key_event); break 'events;},
-                    EventOption::Quit(_quit_event) => break 'events,
-                    EventOption::Scroll(scroll_event) => println!("Scroll not implemented yet..{:?}",scroll_event),
-                    EventOption::Mouse(evt) => {
-                                                if evt.y < CANVASOFFSET{
-                                                    break 'events
-                                                };
-                                                if w {
-                                                    orbclient.rect_marquee(x,
-                                                    y+CANVASOFFSET,
-                                                    lx,
-                                                    ly+CANVASOFFSET,
-                                                    Color::rgba(100, 100, 100, 0),0);
-                                                }
-                                                w=true;
-                                                
-                                                orbclient.rect_marquee(x,
-                                                y+CANVASOFFSET,
-                                                evt.x,
-                                                evt.y,
-                                                Color::rgba(100, 100, 100, 0),0);
-                                                lx=evt.x;
-                                                ly=evt.y-CANVASOFFSET;
-                                                
-                                                orbclient.sync();
-                                                   
-                                                },
-                    EventOption::Button(btn) => {if btn.left {
-                                                    if filled {
-                                                        let dx=lx-x;
-                                                        let dy=ly-y;
-                                                        if dx >0 && dy>0 {
-                                                            self.rect(x ,y,dx as u32, dy as u32 ,color);
-                                                        }
-                                                        if dx<0 && dy > 0 {
-                                                            self.rect(x+dx ,y ,-dx as u32, dy as u32, color);
-                                                        }
-                                                        if dx<0 && dy <0 {
-                                                            self.rect(x+dx ,y+dy ,-dx as u32, -dy as u32, color);
-                                                        }
-                                                        if dx>0 && dy <0 {
-                                                            self.rect(x ,y+dy ,dx as u32, (-dy) as u32, color);
-                                                        }
-                                                        break 'events
-                                                    } else {
-                                                        for i in 0..width {
-                                                            self.line(x-i,y-i,lx+i,y-i,color);
-                                                            self.line(lx+i,y-i,lx+i,ly+i,color);
-                                                            self.line(lx+i,ly+i,x-i,ly+i,color);
-                                                            self.line(x-i,ly+i,x-i,y-i,color);
-                                                        
-                                                        }
-                                                        break 'events
-                                                    }
-                                                }
-                                                if btn.right{
-                                                        break 'events
-                                                    }
-                                                },
-                    event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
-                                    else{ ()}
-                }
-          }
-          
-        }
-        None
-    }
-*/ 
+
     /// by drawing an interactive circle in preview window , return a tuple with radius and cursor angular position  
     fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut Window) -> Option<(i32,f32)>{
     

@@ -10,9 +10,7 @@ extern crate orbimage;
 extern crate image;
 extern crate orbclient;
 
-use orbtk::{Color, Action, Button, Image, Label, Menu, Point, 
-            Rect, Separator,
-             Window, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
+use orbtk::{Color, Action, Button, Image, Label, Menu, Point, Rect, Separator, Window, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
 use orbtk::traits::{ Click, Place, Text };  //Border, Enter
 
@@ -21,7 +19,7 @@ use std::cell::RefCell; //, RefMut, Cell
 use std::sync::Arc;
 use std::process;
 use std::process::Command;
-use std::path::{ Path,PathBuf };
+use std::path::{ Path, PathBuf };
 use std::{ env, fs, cmp };
 
 mod dialogs;
@@ -56,7 +54,7 @@ use control_knob::ControlKnob;
 mod theme;  //#FIXME use local theme to temporary fix compilation with last orbtk 0.2.26 pull which has moved to css theme, pastel has to move to css too
 
 mod tools;
-use tools::{ Property,Tools };
+use tools::{ Property, Tools };
 
 
 #[derive(Clone)]
@@ -101,15 +99,17 @@ fn main() {
     let mut home_dir = String::new();
     match env::home_dir() {
         Some(path) => {
-                home_dir.push_str(path.to_str().unwrap());
-                home_dir.push_str("/");
-                if cfg!(feature = "debug"){println!("Home path:{}", home_dir);}
-                },
+            home_dir.push_str(path.to_str().unwrap());
+            home_dir.push_str("/");
+            if cfg!(feature = "debug") {
+                println!("Home path:{}", home_dir);
+            }
+        },
         None => println!("Impossible to get your home dir!"),
     }
 
     //canvas default size
-    let mut size = MySize{x: 1024, y:500};
+    let mut size = MySize { x: 1024, y:500 };
 
     let filename;//#FIXME change filename type to Box so we can update
 
@@ -147,12 +147,14 @@ fn main() {
     tools.insert("rectangle",vec![Property::new("Opacity","100"),Property::new("Size","1"),Property::new("Filled","0")]);
     tools.insert("circle",vec![Property::new("Opacity","100"),Property::new("Size","1"),Property::new("Filled","0")]);
     tools.insert("paste",vec![Property::new("Opacity","100")]);
-    tools.insert("marquee",vec![Property::new("Opacity","100")]); //#FIXME quick dirty fix to 'no entry found for key'
+    tools.insert("marquee",vec![Property::new("Opacity","100")]);
     tools.insert("polygon",vec![Property::new("Opacity","100"),Property::new("Sides","6")]);
     tools.insert("text",vec![Property::new("Opacity","100"),Property::new("Size","8"),Property::new("Text","Pastel"),Property::new("Font",DEFAULTFONT)]);
-    tools.insert("pan",vec![Property::new("Opacity","100")]); //#FIXME quick dirty fix to 'no entry found for key'
-    tools.insert("preferences",vec![Property::new("Antialias","1")]); // not a real tool but a way to store general preferences
-    tools.insert("tool",vec![Property::new("Current","pen")]); // store current active tool
+    tools.insert("pan",vec![Property::new("Opacity","100")]);
+    // not a real tool but a way to store general preferences
+    tools.insert("preferences",vec![Property::new("Antialias","1")]); 
+    // where to store current active tool
+    tools.insert("tool",vec![Property::new("Current","pen")]); 
 
     //set initial active tool
     tools.select("pen");
@@ -172,9 +174,11 @@ fn main() {
     let title = format!("Pastel: {}", filename);
 
     //resizable main window
-    let mut window = Window::new_flags(Rect::new(100, 100, 1024, wy),
-                                       &title.to_owned(),
-                                       &[orbclient::WindowFlag::Resizable ]);
+    let mut window = Window::new_flags(
+        Rect::new(100, 100, 1024, wy),
+        &title.to_owned(),
+        &[orbclient::WindowFlag::Resizable ]
+    );
 
     /*
     //2nd method to open a new window
@@ -193,7 +197,8 @@ fn main() {
 
     // define status line
     let status = Label::new();
-    status.position(4, (window.height()-18) as i32)
+    status
+        .position(4, (window.height()-18) as i32)
         .size(window.width(),16)
         .text("Ready")
         .visible(STATUSLINE);
@@ -214,7 +219,8 @@ fn main() {
     let green_bar = ProgressBar::new();
     let blue_bar = ProgressBar::new();
     let red_label = Label::new();
-    red_label.text("R: 0")
+    red_label
+        .text("R: 0")
         .position(x, y)
         .size(48, 16);//        .fg.set(orbtk::Color::rgb(255,0,0));
     window.add(&red_label);
@@ -228,17 +234,19 @@ fn main() {
         red_bar
             .position(x+48, y)
             .size(256, 16)
-            .on_click(move |red_bar: &ProgressBar, point: Point| {
-                          let progress = point.x * 100 / red_bar.rect.get().width as i32;
-                          red_label.text.set(format!("R: {}%", progress));
-                          red_bar.value.set(progress);
-                          //refresh color swatch
-                          let r = (progress as f32 * 2.56) as u8;
-                          let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
-                          let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
-                          
-                          swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
-                      });
+            .on_click(
+                move |red_bar: &ProgressBar, point: Point| {
+                  let progress = point.x * 100 / red_bar.rect.get().width as i32;
+                  red_label.text.set(format!("R: {}%", progress));
+                  red_bar.value.set(progress);
+                  //refresh color swatch
+                  let r = (progress as f32 * 2.56) as u8;
+                  let g = (green_bar_clone_r.value.get() as f32 * 2.56) as u8;
+                  let b = (blue_bar_clone_r.value.get() as f32 * 2.56) as u8;
+                  
+                  swatch_clone.bg.set(orbtk::Color::rgb(r,g,b));
+                },
+            );
         window.add(&red_bar);
     }
     y += red_bar.rect.get().height as i32 + 2;
@@ -435,7 +443,8 @@ fn main() {
     //toolbar items
     match ToolbarIcon::from_path("pencil1.png") {
         Ok(image) => {
-            image.position(x, y)
+            image
+                .position(x, y)
                 .tooltip("Draft painting".to_owned())
                 .selected(true);
 
@@ -449,20 +458,20 @@ fn main() {
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.select("pen");
-                               status_clone.text("");
-                               size_bar_clone.visible(false);
-                               size_label_clone.visible(false);
-                               let o = tools_clone.get("pen","Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                               //toggle tool in toolbar TODO move into Toolbar
-                               unsafe{(*toolbar1_clone).toggle()}
-                               //make  toolbar2 invisible
-                               unsafe{(*toolbar2_clone).visible(false)}
-                               //make toolbar3 invisible
-                               unsafe{(*toolbar3_clone).visible(false)}
-                           });
+               tools_clone.select("pen");
+               status_clone.text("");
+               size_bar_clone.visible(false);
+               size_label_clone.visible(false);
+               let o = tools_clone.get("pen","Opacity").unwrap();
+               trans_bar_clone.value.set(o);
+               trans_label_clone.text(format!("Opacity: {}%",o));
+               //toggle tool in toolbar TODO move into Toolbar
+               unsafe{(*toolbar1_clone).toggle()}
+               //make  toolbar2 invisible
+               unsafe{(*toolbar2_clone).visible(false)}
+               //make toolbar3 invisible
+               unsafe{(*toolbar3_clone).visible(false)}
+            });
 
             toolbar1.add(&image,parent_window);
 
@@ -484,26 +493,27 @@ fn main() {
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
-            image.position(x, y)
+            image
+                .position(x, y)
                 .tooltip("Draw lines".to_owned())
                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               //set current tool
-                               tools_clone.select("line");
-                               status_clone.text("");
-                               //get previous settings
-                               size_bar_clone.visible(false);
-                               size_label_clone.visible(false);
-                               let o = tools_clone.get("line","Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                               
-                               //toggle tool in toolbar
-                               unsafe{(*toolbar1_clone).toggle();}
-                               //make invisible toolbar2
-                               unsafe{(*toolbar2_clone).visible(false);}
-                               //make toolbar3 invisible
-                               unsafe{(*toolbar3_clone).visible(false);}
-                               });
+                   //set current tool
+                   tools_clone.select("line");
+                   status_clone.text("");
+                   //get previous settings
+                   size_bar_clone.visible(false);
+                   size_label_clone.visible(false);
+                   let o = tools_clone.get("line","Opacity").unwrap();
+                   trans_bar_clone.value.set(o);
+                   trans_label_clone.text(format!("Opacity: {}%",o));
+                   
+                   //toggle tool in toolbar
+                   unsafe{(*toolbar1_clone).toggle();}
+                   //make invisible toolbar2
+                   unsafe{(*toolbar2_clone).visible(false);}
+                   //make toolbar3 invisible
+                   unsafe{(*toolbar3_clone).visible(false);}
+                });
 
             toolbar1.add(&image,parent_window);
             
@@ -525,28 +535,30 @@ fn main() {
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
-            image.position(x, y)
-                 .tooltip("Paint brush".to_owned())
-                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.select("brush");
-                               status_clone.text("");
-                               size_label_clone.visible(true);
-                               size_bar_clone.visible(true);
-                               let v = tools_clone.get("brush","Size").unwrap();
-                               size_bar_clone.value.set(v);
-                               size_label_clone.text(format!("Size: {}",v));
-                               
-                               let o = tools_clone.get("brush","Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                               
-                               //toggle tool in toolbar
-                               unsafe{(*toolbar1_clone).toggle();}
-                               //make visible toolbar2
-                               unsafe{(*toolbar2_clone).visible(true);}
-                               //make toolbar3 invisible
-                               unsafe{(*toolbar3_clone).visible(false);}
-                               });
+
+            image
+                .position(x, y)
+                .tooltip("Paint brush".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                    tools_clone.select("brush");
+                    status_clone.text("");
+                    size_label_clone.visible(true);
+                    size_bar_clone.visible(true);
+                    let v = tools_clone.get("brush","Size").unwrap();
+                    size_bar_clone.value.set(v);
+                    size_label_clone.text(format!("Size: {}",v));
+
+                    let o = tools_clone.get("brush","Opacity").unwrap();
+                    trans_bar_clone.value.set(o);
+                    trans_label_clone.text(format!("Opacity: {}%",o));
+
+                    //toggle tool in toolbar
+                    unsafe{(*toolbar1_clone).toggle();}
+                    //make visible toolbar2
+                    unsafe{(*toolbar2_clone).visible(true);}
+                    //make toolbar3 invisible
+                    unsafe{(*toolbar3_clone).visible(false);}
+                });
 
             toolbar1.add(&image,parent_window);
 
@@ -569,24 +581,24 @@ fn main() {
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
-                 .tooltip("Fill up area with color".to_owned())
-                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.select("fill");
-                               status_clone.text("Filling...");
-                               size_label_clone.visible(false);
-                               size_bar_clone.visible(false);
-                               
-                               let o = tools_clone.get("fill","Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                               
-                               //toggle tool in toolbar
-                               unsafe{(*toolbar1_clone).toggle();}
-                               //make invisible toolbar2
-                               unsafe{(*toolbar2_clone).visible(false);}
-                               //make toolbar3 invisible
-                               unsafe{(*toolbar3_clone).visible(false);}
-                               });
+                .tooltip("Fill up area with color".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                    tools_clone.select("fill");
+                    status_clone.text("Filling...");
+                    size_label_clone.visible(false);
+                    size_bar_clone.visible(false);
+                   
+                    let o = tools_clone.get("fill","Opacity").unwrap();
+                    trans_bar_clone.value.set(o);
+                    trans_label_clone.text(format!("Opacity: {}%",o));
+                   
+                    //toggle tool in toolbar
+                    unsafe{(*toolbar1_clone).toggle();}
+                    //make invisible toolbar2
+                    unsafe{(*toolbar2_clone).visible(false);}
+                    //make toolbar3 invisible
+                    unsafe{(*toolbar3_clone).visible(false);}
+                });
 
             toolbar1.add(&item,parent_window);
             
@@ -612,26 +624,26 @@ fn main() {
             image.position(x, y)
                 .tooltip("Draw polylines".to_owned())
                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               //set current tool
-                               tools_clone.select("polyline");
-                               status_clone.text("Drawing polylines... right click to exit.");
-                               //get previous settings
-                               size_bar_clone.visible(true);
-                               size_label_clone.visible(true);
-                               let o = tools_clone.get("polyline","Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                               let s = tools_clone.get("polyline","Size").unwrap();
-                               size_bar_clone.value.set(s);
-                               size_label_clone.text(format!("Size: {}",s));
-                               
-                               //toggle tool in toolbar
-                               unsafe{(*toolbar1_clone).toggle();}
-                               //make visible toolbar2
-                               unsafe{(*toolbar2_clone).visible(false);}
-                               //make toolbar3 invisible
-                               unsafe{(*toolbar3_clone).visible(false);}
-                               });
+                    //set current tool
+                    tools_clone.select("polyline");
+                    status_clone.text("Drawing polylines... right click to exit.");
+                    //get previous settings
+                    size_bar_clone.visible(true);
+                    size_label_clone.visible(true);
+                    let o = tools_clone.get("polyline","Opacity").unwrap();
+                    trans_bar_clone.value.set(o);
+                    trans_label_clone.text(format!("Opacity: {}%",o));
+                    let s = tools_clone.get("polyline","Size").unwrap();
+                    size_bar_clone.value.set(s);
+                    size_label_clone.text(format!("Size: {}",s));
+
+                    //toggle tool in toolbar
+                    unsafe{(*toolbar1_clone).toggle();}
+                    //make visible toolbar2
+                    unsafe{(*toolbar2_clone).visible(false);}
+                    //make toolbar3 invisible
+                    unsafe{(*toolbar3_clone).visible(false);}
+                });
 
             toolbar1.add(&image,parent_window);
 
@@ -656,26 +668,26 @@ fn main() {
             image.position(x, y)
                 .tooltip("Draw rectangles".to_owned())
                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               //set current tool
-                               tools_clone.select("rectangle");
-                               status_clone.text("Drawing rectangles...");
-                               //get previous settings
-                               size_bar_clone.visible(true);
-                               size_label_clone.visible(true);
-                               let o = tools_clone.get("rectangle","Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                               let w = tools_clone.get("rectangle","Size").unwrap();
-                               size_bar_clone.value.set(w);
-                               size_label_clone.text(format!("Size: {}",w));
-                               
-                               //toggle tool in toolbar
-                               unsafe{(*toolbar1_clone).toggle();}
-                               //make invisible toolbar2
-                               unsafe{(*toolbar2_clone).visible(false);}
-                               //make toolbar3 visible
-                               unsafe{(*toolbar3_clone).visible(true);}
-                               });
+                    //set current tool
+                    tools_clone.select("rectangle");
+                    status_clone.text("Drawing rectangles...");
+                    //get previous settings
+                    size_bar_clone.visible(true);
+                    size_label_clone.visible(true);
+                    let o = tools_clone.get("rectangle","Opacity").unwrap();
+                    trans_bar_clone.value.set(o);
+                    trans_label_clone.text(format!("Opacity: {}%",o));
+                    let w = tools_clone.get("rectangle","Size").unwrap();
+                    size_bar_clone.value.set(w);
+                    size_label_clone.text(format!("Size: {}",w));
+
+                    //toggle tool in toolbar
+                    unsafe{(*toolbar1_clone).toggle();}
+                    //make invisible toolbar2
+                    unsafe{(*toolbar2_clone).visible(false);}
+                    //make toolbar3 visible
+                    unsafe{(*toolbar3_clone).visible(true);}
+                });
 
             toolbar1.add(&image,parent_window);
 
@@ -700,23 +712,23 @@ fn main() {
             image.position(x, y)
                 .tooltip("Draw circles".to_owned())
                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               //set current tool
-                               tools_clone.select("circle");
-                               status_clone.text("Drawing circles...click on center, move cursor to set radius, click again.");
-                               //get previous settings
-                               size_bar_clone.visible(false);
-                               size_label_clone.visible(false);
-                               let o = tools_clone.get("circle","Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                               
-                               //toggle tool in toolbar
-                               unsafe{(*toolbar1_clone).toggle();}
-                               //make invisible toolbar2
-                               unsafe{(*toolbar2_clone).visible(false);}
-                               //make toolbar3 visible
-                               unsafe{(&mut *toolbar3_clone).visible(true);}
-                               });
+                    //set current tool
+                    tools_clone.select("circle");
+                    status_clone.text("Drawing circles...click on center, move cursor to set radius, click again.");
+                    //get previous settings
+                    size_bar_clone.visible(false);
+                    size_label_clone.visible(false);
+                    let o = tools_clone.get("circle","Opacity").unwrap();
+                    trans_bar_clone.value.set(o);
+                    trans_label_clone.text(format!("Opacity: {}%",o));
+
+                    //toggle tool in toolbar
+                    unsafe{(*toolbar1_clone).toggle();}
+                    //make invisible toolbar2
+                    unsafe{(*toolbar2_clone).visible(false);}
+                    //make toolbar3 visible
+                    unsafe{(&mut *toolbar3_clone).visible(true);}
+                });
 
             toolbar1.add(&image,parent_window);
 
@@ -800,16 +812,16 @@ fn main() {
             image.position(x, y)
                 .tooltip("Select canvas region".to_owned())
                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.select("marquee");
-                               status_clone.text("Selecting...");
-                               size_bar_clone.visible(false);
-                               size_label_clone.visible(false);
+                    tools_clone.select("marquee");
+                    status_clone.text("Selecting...");
+                    size_bar_clone.visible(false);
+                    size_label_clone.visible(false);
 
-                               //toggle tool in toolbar TODO move into Toolbar
-                               unsafe{(*toolbar1_clone).toggle();}
-                               //make invisible toolbar2  TODO move into Toolbar
-                               unsafe{(*toolbar2_clone).visible(false);}
-                           });
+                    //toggle tool in toolbar TODO move into Toolbar
+                    unsafe{(*toolbar1_clone).toggle();}
+                    //make invisible toolbar2  TODO move into Toolbar
+                    unsafe{(*toolbar2_clone).visible(false);}
+                });
             
             toolbar1.add(&image,parent_window);
 
@@ -828,12 +840,12 @@ fn main() {
             let tools_clone = tools.clone();
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             item.position(x, y)
-                 .tooltip("Circular shape".to_owned())
-                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.set("brush","Shape",0);
-                               //toggle shape in toolbar2
-                               unsafe{(*toolbar2_clone).toggle();}
-                               });
+                .tooltip("Circular shape".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                    tools_clone.set("brush","Shape",0);
+                    //toggle shape in toolbar2
+                    unsafe{(*toolbar2_clone).toggle();}
+                    });
             toolbar2.add(&item,parent_window);
 
             x += item.rect.get().width as i32 + 2;
@@ -848,13 +860,13 @@ fn main() {
             let tools_clone = tools.clone();
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             item.position(x, y)
-                 .tooltip("Smooth edges circular shape".to_owned())
-                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.set("brush","Shape",3);
+                .tooltip("Smooth edges circular shape".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                    tools_clone.set("brush","Shape",3);
 
-                               //toggle shape in toolbar2
-                               unsafe{(*toolbar2_clone).toggle();}
-                               });
+                    //toggle shape in toolbar2
+                    unsafe{(*toolbar2_clone).toggle();}
+                });
 
             toolbar2.add(&item,parent_window);
 
@@ -870,13 +882,13 @@ fn main() {
             let tools_clone = tools.clone();
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             item.position(x, y)
-                 .tooltip("Blocky shape".to_owned())
-                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.set("brush","Shape",1);
+                .tooltip("Blocky shape".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                    tools_clone.set("brush","Shape",1);
 
-                               //toggle shape in toolbar2
-                               unsafe{(*toolbar2_clone).toggle();}
-                               });
+                    //toggle shape in toolbar2
+                    unsafe{(*toolbar2_clone).toggle();}
+                });
 
             toolbar2.add(&item,parent_window);
 
@@ -892,13 +904,13 @@ fn main() {
             let tools_clone = tools.clone();
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             item.position(x, y)
-                 .tooltip("custom brush from buffer".to_owned())
-                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.set("brush","Shape",2);
+                .tooltip("custom brush from buffer".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                    tools_clone.set("brush","Shape",2);
                                
-                               //toggle shape in toolbar2
-                               unsafe{(*toolbar2_clone).toggle();}
-                               });
+                    //toggle shape in toolbar2
+                    unsafe{(*toolbar2_clone).toggle();}
+                });
 
             toolbar2.add(&item,parent_window);
             
@@ -920,13 +932,13 @@ fn main() {
             let tools_clone = tools.clone();
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
-                 .tooltip("Not filled".to_owned()) 
-                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.set("rectangle","Filled",0);
-                               tools_clone.set("circle","Filled",0);
-                               //toggle item in toolbar3
-                               unsafe{(*toolbar3_clone).toggle();}  
-                               });
+                .tooltip("Not filled".to_owned()) 
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                    tools_clone.set("rectangle","Filled",0);
+                    tools_clone.set("circle","Filled",0);
+                    //toggle item in toolbar3
+                    unsafe{(*toolbar3_clone).toggle();}  
+                });
 
             toolbar3.add(&item,parent_window);
             
@@ -942,13 +954,13 @@ fn main() {
             let tools_clone = tools.clone();
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             item.position(x, y)
-                 .tooltip("Filled".to_owned())
-                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
-                               tools_clone.set("rectangle","Filled",1);
-                               tools_clone.set("circle","Filled",1);
-                               //toggle item in toolbar3  
-                               unsafe{(*toolbar3_clone).toggle();} 
-                               });
+                .tooltip("Filled".to_owned())
+                .on_click(move |_image: &ToolbarIcon, _point: Point| {
+                    tools_clone.set("rectangle","Filled",1);
+                    tools_clone.set("circle","Filled",1);
+                    //toggle item in toolbar3  
+                    unsafe{(*toolbar3_clone).toggle();} 
+                });
 
             toolbar3.add(&item,parent_window);
             
@@ -970,24 +982,24 @@ fn main() {
     {
         let action = Action::new("New");
         action.on_click(move |_action: &Action, _point: Point| {
-                           match new_dialog(&"New file".to_owned()) { 
-                                Some(resolution) => {
-                                            let path: &str; //="";
-                                            if cfg!(target_os = "redox"){
-                                                path="/ui/bin/pastel";
-                                            } else{
-                                                path="../target/release/pastel"; 
-                                            }
-                                                Command::new(&path)
-                                                .arg("new.png")
-                                                .arg(resolution.to_owned())
-                                                .spawn()
-                                                .expect("Command executed with failing error code");
-                                                println!("New image opened.");
-                                                },
-                                    None => println!("New image cancelled"),
-                                }
-                        });
+            match new_dialog(&"New file".to_owned()) { 
+                Some(resolution) => {
+                    let path: &str; //="";
+                    if cfg!(target_os = "redox"){
+                        path="/ui/bin/pastel";
+                    } else{
+                        path="../target/release/pastel"; 
+                    }
+                    Command::new(&path)
+                        .arg("new.png")
+                        .arg(resolution.to_owned())
+                        .spawn()
+                        .expect("Command executed with failing error code");
+                    println!("New image opened.");
+                },
+                None => println!("New image cancelled"),
+            }
+        });
 
         menufile.add(&action);
     }
@@ -1074,8 +1086,8 @@ fn main() {
         let canvas_clone = canvas.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.undo();
-                          });
+            canvas_clone.undo();
+        });
         menuedit.add(&action);
     }
 
@@ -1086,9 +1098,9 @@ fn main() {
         let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        tools_clone.select("marquee");
-                        status_clone.text("Selecting... (click on canvas, move cursor to define a rectangle than click again)");
-                          });
+            tools_clone.select("marquee");
+            status_clone.text("Selecting... (click on canvas, move cursor to define a rectangle than click again)");
+        });
         menuedit.add(&action);
     }
 
@@ -1100,9 +1112,9 @@ fn main() {
         let marquee_clone = marquee.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        *selection_clone.borrow_mut()=None;
-                        marquee_clone.visible(false);
-                        });
+            *selection_clone.borrow_mut()=None;
+            marquee_clone.visible(false);
+        });
         menuedit.add(&action);
     }
 
@@ -1114,10 +1126,10 @@ fn main() {
         let canvas_clone = canvas.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        tools_clone.select("copy");
-                        canvas_clone.emit_click(Point{x:0,y:0}); //trigger buffer saving without clicking effectively on canvas
-                        status_clone.text("Copying...");
-                          });
+            tools_clone.select("copy");
+            canvas_clone.emit_click(Point{x:0,y:0}); //trigger buffer saving without clicking effectively on canvas
+            status_clone.text("Copying...");
+        });
         menuedit.add(&action);
     }
     
@@ -1127,10 +1139,10 @@ fn main() {
         let canvas_clone = canvas.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        *canvas_clone.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
-                        tools_clone.select("paste");
-                        status_clone.text("Pasting... (click on canvas, move cursor to refine the position than click again)");
-                          });
+            *canvas_clone.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
+            tools_clone.select("paste");
+            status_clone.text("Pasting... (click on canvas, move cursor to refine the position than click again)");
+        });
         menuedit.add(&action);
     }
 
@@ -1139,21 +1151,20 @@ fn main() {
     {
         let action = Action::new("Load Buffer");
         let home_dir_clone = home_dir.clone();
-        //let buffer_clone = buffer.clone();
         let canvas_clone = canvas.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        let mut f= FileDialog::new();
-                        f.title="Load Buffer from file".to_owned();
-                        f.path=PathBuf::from(home_dir_clone.to_owned());
-                        match f.exec() {
-                        Some(response) => {
-                            let bf = load_buffer(&(response.display().to_string())[..]);
-                            *canvas_clone.copy_buffer.borrow_mut() = bf;
-                            },
-                        None => println!("Cancelled"),
-                        }
-                          });
+            let mut f= FileDialog::new();
+            f.title="Load Buffer from file".to_owned();
+            f.path=PathBuf::from(home_dir_clone.to_owned());
+            match f.exec() {
+                Some(response) => {
+                    let bf = load_buffer(&(response.display().to_string())[..]);
+                    *canvas_clone.copy_buffer.borrow_mut() = bf;
+                },
+                None => println!("Cancelled"),
+            }
+        });
         menuedit.add(&action);
     }
 
@@ -1241,9 +1252,9 @@ fn main() {
         let status_clone = status.clone();
 
         action.on_click(move |_action: &Action, _point: Point| {
-                            tools_clone.select("pen");
-                            status_clone.text("Drawing points ...");
-                        });
+            tools_clone.select("pen");
+            status_clone.text("Drawing points ...");
+        });
         menutools.add(&action);
     }
 
@@ -1252,9 +1263,9 @@ fn main() {
         let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            tools_clone.select("line");
-                            status_clone .text("Drawing...");
-                        });
+            tools_clone.select("line");
+            status_clone .text("Drawing...");
+        });
         menutools.add(&action);
     }
 
@@ -1263,20 +1274,36 @@ fn main() {
         let tools_clone = tools.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            tools_clone.select("polyline");
-                            status_clone.text("Drawing polylines...");
-                        });
+            tools_clone.select("polyline");
+            status_clone.text("Drawing polylines...");
+            
+        });
         menutools.add(&action);
     }
+
 
     {
         let action = Action::new("Brush");
         let tools_clone = tools.clone();
         let status_clone = status.clone();
+        let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
+        let size_bar_clone = size_bar.clone();
+        let size_label_clone = size_label.clone();
+        let trans_bar_clone = trans_bar.clone();
+        let trans_label_clone = trans_label.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            tools_clone.select("brush");
-                            status_clone.text("Painting...");
-                        });
+            tools_clone.select("brush");
+            status_clone.text("Painting...");
+            size_label_clone.visible(true);
+            size_bar_clone.visible(true);
+            let v = tools_clone.get("brush","Size").unwrap();
+            size_bar_clone.value.set(v);
+            size_label_clone.text(format!("Size: {}",v));
+            let o = tools_clone.get("brush","Opacity").unwrap();
+            trans_bar_clone.value.set(o);
+            trans_label_clone.text(format!("Opacity: {}%",o));
+            unsafe{(*toolbar2_clone).visible(true);}
+        });
         menutools.add(&action);
     }
 
@@ -1534,10 +1561,10 @@ fn main() {
         let canvas_clone = canvas.clone();
         let selection_clone = selection.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                        canvas_clone.trans_selection(selection_clone.borrow()
-                        .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
-                             height: canvas_clone.rect.get().height-1}),"invert",0.0,0);
-                    });
+            canvas_clone.trans_selection(selection_clone.borrow()
+                .unwrap_or(Rect{x:0,y:0, width: canvas_clone.rect.get().width -1 ,
+                    height: canvas_clone.rect.get().height-1}),"invert",0.0,0);
+        });
         menuimage.add(&action);
     }
     //menuimage.add(&Separator::new());
@@ -1735,32 +1762,32 @@ fn main() {
     let status_clone = status.clone();
 
     canvas
-    .position(0, CANVASOFFSET)
-    .on_shortcut(move |canvas: &Canvas, key: char| {
-        if cfg!(feature = "debug"){
-            println!("Pressed {} key ",key);
-        }
-        //manage shortcuts
-        match key {
-        'v' => {
-                tools_clone.select("paste");
-                canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
-                    y: (canvas.rect.get().height/2) as i32});
-                canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
-                    y: (canvas.rect.get().height/2) as i32});
-               },
-        'c' => {
-                tools_clone.select("copy");
-                canvas.emit_click(Point{x: 0, y: 0});
-               },
-        'Q' => {
-                canvas.paint_on_mask();
-               },
-        '@' => {
-                status_clone.position(4,(canvas.height()as i32 + CANVASOFFSET ) );
-               },
-          _ => (),
-        }
+        .position(0, CANVASOFFSET)
+        .on_shortcut(move |canvas: &Canvas, key: char| {
+            if cfg!(feature = "debug"){
+                println!("Pressed {} key ",key);
+            }
+            //manage shortcuts
+            match key {
+                'v' => {
+                        tools_clone.select("paste");
+                        canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+                            y: (canvas.rect.get().height/2) as i32});
+                        canvas.emit_click(Point{x:(canvas.rect.get().width/2) as i32 ,
+                            y: (canvas.rect.get().height/2) as i32});
+                },
+                'c' => {
+                        tools_clone.select("copy");
+                        canvas.emit_click(Point{x: 0, y: 0});
+                },
+                'Q' => {
+                        canvas.paint_on_mask();
+                },
+                '@' => {
+                        status_clone.position(4,(canvas.height()as i32 + CANVASOFFSET ) );
+                },
+                _ => (),
+            }
         
     })
 
@@ -1796,152 +1823,171 @@ fn main() {
             match selected_tool.as_ref() {
                 "pen"  => canvas.pixel(point.x, point.y, color),
                 "fill" => canvas.fill(point.x, point.y,color),
-           "rectangle" => {
-                            canvas.undo_save();
-                            let filled = tools_clone.get("rectangle","Filled").unwrap();
-                            let mut width = tools_clone.get("rectangle","Size").unwrap();
-                            let mut myselection = Rect::new(0,0,0,0);
-                            if let Some(selection) = unsafe{canvas.image.borrow_mut().new_select_rect(point.x,
-                                                point.y, Color::rgb(100,100,100), 0, &mut *window_clone)}
-                                {
-                                    myselection = selection;
-                                }
-                                if filled == 1 {
-                                    if myselection.height > myselection.width {
-                                        width = 1+(myselection.width/2) as i32;
-                                    }
-                                    else {
-                                          width = 1+(myselection.height/2) as i32;
-                                    }
-                                        
-                                }
-                                for i in 0..width {
-                                    canvas.rect(myselection.x+i,myselection.y+i,
-                                                myselection.width- (2*i) as u32,myselection.height- (2*i) as u32,color);
-                                }
-                           },
-            "polyline" => { 
-                            canvas.undo_save();
-                            let width = tools_clone.get("polyline","Size").unwrap();
-                            let mut tu = (point.x,point.y,point.x,point.y);
-                            if let Some(tuple) =
-                                unsafe {canvas.image.borrow_mut().interact_line(point.x,
-                                                    point.y,
-                                                    color,
-                                                    width,
-                                                    antialias == 1,
-                                                    &mut *window_clone
-                                        )} { tu = tuple} 
-                                let (x1,y1,x2,y2) = tu;
-                                for d in 0..width {
-                                    if antialias == 1 {
-                                        canvas.wu_line(x1 + d, y1, x2 + d, y2, color);
-                                    } else {
-                                        canvas.line(x1 + d, y1, x2 + d, y2, color);
-                                    }
-                                }
-                                                    
-                           },
-                "copy" =>  {
-                                let mut image = canvas.image.borrow_mut();
-                                match *selection_clone.borrow() {
-                                    Some(selection) => {
-                                         *canvas.copy_buffer.borrow_mut() = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
-                                         //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
-                                         let newcanvas= Canvas::from_image(canvas.copy_buffer.borrow().clone());
-                                         let path = "/tmp/pastel_copy_buffer.png".to_string();
-                                         if let Ok(_) = newcanvas.save(&path){}
-                                     },
-                                     None => if let Some(selection) = unsafe { 
-                                                            image.select_rect(point.x,
-                                                                point.y,&mut *window_clone)
-                                                         } {
-                                     *canvas.copy_buffer.borrow_mut() = image.copy_selection(selection.x,selection.y,selection.width,selection.height);
-                                     //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
-                                     let newcanvas= Canvas::from_image(canvas.copy_buffer.borrow().clone());
-                                     let path = "/tmp/pastel_copy_buffer.png".to_string();
-                                     if let Ok(_) = newcanvas.save(&path){}
-                                    },
-                                }
-                            },
-               "marquee"=> {    marquee_clone.visible(false);
-                                canvas.undo_save();
-                                let mut image = canvas.image.borrow_mut();
-                                if let Some(selection) = unsafe{image.select_rect(point.x,
-                                                point.y,&mut *window_clone)}
-                                    {
-                                    *selection_clone.borrow_mut()= Some(selection);
-                                    marquee_clone.position(selection.x,selection.y+CANVASOFFSET)
-                                                .size(selection.width,selection.height);
-                                    marquee_clone.visible(true);
-                                    }
-                                },
+                "rectangle" => {
+                    canvas.undo_save();
+                    let filled = tools_clone.get("rectangle","Filled").unwrap();
+                    let mut width = tools_clone.get("rectangle","Size").unwrap();
+                    let mut myselection = Rect::new(0,0,0,0);
+                    if let Some(selection) = unsafe {
+                        canvas.image.borrow_mut().new_select_rect(
+                            point.x,
+                            point.y,
+                            Color::rgb(100,100,100),
+                            0,
+                            &mut *window_clone
+                        )
+                        } {
+                            myselection = selection;
+                        }
+                        if filled == 1 {
+                            if myselection.height > myselection.width {
+                                width = 1+(myselection.width/2) as i32;
+                            } else {
+                                width = 1+(myselection.height/2) as i32;
+                            }
+                        }
+                        for i in 0..width {
+                            canvas.rect(
+                                myselection.x+i,
+                                myselection.y+i,
+                                myselection.width- (2*i) as u32,
+                                myselection.height- (2*i) as u32,
+                                color
+                            );
+                        }
+                },
+                "polyline" => { 
+                    canvas.undo_save();
+                    let width = tools_clone.get("polyline","Size").unwrap();
+                    let mut tu = (point.x,point.y,point.x,point.y);
+                    if let Some(tuple) = unsafe {
+                        canvas.image.borrow_mut().interact_line(point.x,
+                            point.y,
+                            color,
+                            width,
+                            antialias == 1,
+                            &mut *window_clone
+                        )
+                    } { tu = tuple }
+                    let (x1, y1, x2, y2) = tu;
+                    for d in 0..width {
+                        if antialias == 1 {
+                            canvas.wu_line(x1 + d, y1, x2 + d, y2, color);
+                        } else {
+                            canvas.line(x1 + d, y1, x2 + d, y2, color);
+                        }
+                    }
+                },
+                "copy" => {
+                    let mut image = canvas.image.borrow_mut();
+                    match *selection_clone.borrow() {
+                        Some(selection) => {
+                             *canvas.copy_buffer.borrow_mut() = image.copy_selection(
+                                selection.x,
+                                selection.y,
+                                selection.width,
+                                selection.height
+                            );
+                             //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
+                             let newcanvas = Canvas::from_image(canvas.copy_buffer.borrow().clone());
+                             let path = "/tmp/pastel_copy_buffer.png".to_string();
+                             if let Ok(_) = newcanvas.save(&path) {}
+                         },
+                        None => if let Some(selection) =
+                            unsafe { image.select_rect(point.x, point.y,&mut *window_clone)} 
+                        {       
+                            *canvas.copy_buffer.borrow_mut() = image.copy_selection(
+                                selection.x,
+                                selection.y,
+                                selection.width,
+                                selection.height
+                            );
+                            //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
+                            let newcanvas = Canvas::from_image(canvas.copy_buffer.borrow().clone());
+                            let path = "/tmp/pastel_copy_buffer.png".to_string();
+                            if let Ok(_) = newcanvas.save(&path){}
+                        },
+                    }
+                },
+               "marquee"=> {
+                    marquee_clone.visible(false);
+                    canvas.undo_save();
+                    let mut image = canvas.image.borrow_mut();
+                    if let Some(selection) =
+                        unsafe{ image.select_rect(point.x, point.y,&mut *window_clone) }
+                    {
+                        *selection_clone.borrow_mut() = Some(selection);
+                        marquee_clone
+                            .position(selection.x,selection.y+CANVASOFFSET)
+                            .size(selection.width,selection.height)
+                            .visible(true);
+                    }
+                },
                 "paste" => {
-                            canvas.undo_save();
-                            if let Some(tuple) = unsafe { canvas.interact_paste(point.x,
-                                                                                point.y,
-                                                                                a.clone(),
-                                                                                &mut *window_clone
-                                                        )} { canvas.paste_buffer(tuple.0, tuple.1 , a.clone()); }
-                            },
-               "circle" => {
-                                canvas.undo_save();
-                                let filled = tools_clone.get("circle","Filled").unwrap();
-                                let width = tools_clone.get("circle","Size").unwrap();
-                                let radius;
-                                let mut myr = 0;
-                                {
-                                    let mut image = canvas.image.borrow_mut();
-                                    if let Some((r,angle)) = unsafe {image.interact_circle(point.x,
-                                                point.y,
-                                                color,
-                                                &mut *window_clone
-                                                )}
-                                    {myr = r;}
-                                }
-                                
-                                {
-                                    if filled == 1 {
-                                        radius = -myr;
-                                        canvas.circle(point.x, point.y, radius, color);
-                                    }else{
-                                        radius=myr;
-                                        if antialias == 1 {
-                                            canvas.wu_circle(point.x, point.y, radius, color);
-                                        }else{
-                                            canvas.circle(point.x, point.y, radius, color);
-                                        }
-                                    }
-                             }
-                            },
+                    canvas.undo_save();
+                    if let Some(tuple) = unsafe {
+                        canvas.interact_paste(
+                            point.x,
+                            point.y,
+                            a.clone(),
+                            &mut *window_clone
+                        )
+                    } {
+                        canvas.paste_buffer(tuple.0, tuple.1 , a.clone());
+                    }
+                },
+                "circle" => {
+                    canvas.undo_save();
+                    let filled = tools_clone.get("circle","Filled").unwrap();
+                    let width = tools_clone.get("circle","Size").unwrap();
+                    let radius;
+                    let mut myr = 0;
+                    {
+                        let mut image = canvas.image.borrow_mut();
+                        if let Some((r,angle)) = unsafe {
+                            image.interact_circle(point.x, point.y, color, &mut *window_clone)
+                        } {myr = r;}
+                    }
+                    {
+                        if filled == 1 {
+                            radius = -myr;
+                            canvas.circle(point.x, point.y, radius, color);
+                        }else{
+                            radius=myr;
+                            if antialias == 1 {
+                                canvas.wu_circle(point.x, point.y, radius, color);
+                            }else{
+                                canvas.circle(point.x, point.y, radius, color);
+                            }
+                        }
+                    }
+                },
                 "polygon" => {
-                                let sides = tools_clone.get("polygon","Sides").unwrap();
-                                canvas.undo_save();
-                                let mut aangle=0_f32;
-                                let mut rr=0;
-                                {
-                                let mut image = canvas.image.borrow_mut();
-                                if let Some((r,angle)) = unsafe{
-                                 image.interact_circle(point.x,
-                                                point.y,
-                                                color,
-                                                &mut *window_clone
-                                                )}
-                                {aangle = angle;
-                                  rr = r;  }
-                                }
-                                    canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color, antialias==1);
-                             },
-                                 "text" => {
-                                            //let text = text_clone.text.get();
-                                            //let font_path = text_clone.font.get();
-                                            let text = tools_clone.get_str("text","Text").unwrap();
-                                            let font_path = tools_clone.get_str("text","Font").unwrap();
-                                            canvas.text(&text, &font_path, point.x, point.y - CANVASOFFSET, color, size );
-                                            
-                                            },
-                               // "zoom" => {canvas.zoom()},
-                        _ => (),
+                    let sides = tools_clone.get("polygon","Sides").unwrap();
+                    canvas.undo_save();
+                    let mut aangle=0_f32;
+                    let mut rr=0;
+                    {
+                        let mut image = canvas.image.borrow_mut();
+                        if let Some((r,angle)) = unsafe{
+                            image.interact_circle(
+                                point.x,
+                                point.y,
+                                color,
+                                &mut *window_clone
+                            )
+                        } {aangle = angle; rr = r;  }
+                    }
+                    canvas.polygon(point.x,point.y,rr,sides as u32, aangle, color, antialias==1);
+                },
+                "text" => {
+                    //let text = text_clone.text.get();
+                    //let font_path = text_clone.font.get();
+                    let text = tools_clone.get_str("text","Text").unwrap();
+                    let font_path = tools_clone.get_str("text","Font").unwrap();
+                    canvas.text(&text, &font_path, point.x, point.y - CANVASOFFSET, color, size );
+                },
+                _ => (),
                 }
 
             //tools that need prev_position to work
@@ -1949,45 +1995,46 @@ fn main() {
                 match selected_tool.as_ref() {
                      "pan" => {canvas.pan(point.x - prev_position.x, point.y - prev_position.y);},
                     "line" => { 
-                                if antialias == 1 {
-                                    canvas.wu_line(prev_position.x,
+                        if antialias == 1 {
+                            canvas.wu_line(prev_position.x,
+                                            prev_position.y,
+                                            point.x,
+                                            point.y,
+                                            color);
+                        }else{
+                            canvas.line(prev_position.x,
                                         prev_position.y,
                                         point.x,
                                         point.y,
                                         color);
-                                }else{
-                                    canvas.line(prev_position.x,
-                                        prev_position.y,
-                                        point.x,
-                                        point.y,
-                                        color);
-                                    }
-                               },
-                   "brush" => {
-                                match tools.clone().get("brush","Shape") {
-                                    Some(0) => canvas.brush_line(prev_position.x,
+                        }
+                    },
+                    "brush" => {
+                        match tools.clone().get("brush","Shape") {
+                            Some(0) => canvas.brush_line(prev_position.x,
                                             prev_position.y,
                                             point.x,
                                             point.y,
                                             -size,
                                             color),
-                                    Some(1) => canvas.rect_line(prev_position.x,
+                            Some(1) => canvas.rect_line(prev_position.x,
                                             prev_position.y,point.x ,point.y,size as u32, size as u32,
                                                     color),
-                                    Some(2) => canvas.paste_buffer(point.x,point.y,
+                            Some(2) => canvas.paste_buffer(point.x,point.y,
                                                     a.clone()),
-                                    Some(3) => canvas.smooth_circle(point.x,point.y,
+                            Some(3) => canvas.smooth_circle(point.x,point.y,
                                                     size as u32, color),
-                             None | Some(_) => println!("no Shape match!"),
-                                }
-                              },
-
-                        _ => (),
+                            None | Some(_) => println!("no Shape match!"),
+                        }
+                    },
+                    _ => (),
                     }
                 *prev_opt = Some(point);
             } else {
                 *prev_opt = Some(point);
-                if selected_tool == "line" || selected_tool =="pen" || selected_tool =="brush" || selected_tool=="brush_line" || selected_tool=="text" {canvas.undo_save();} //prepare for undo
+                if selected_tool == "line" || selected_tool =="pen" || selected_tool =="brush"
+                    || selected_tool=="brush_line"
+                    || selected_tool=="text" {canvas.undo_save();} //prepare for undo
             }
         }
     });

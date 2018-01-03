@@ -3,41 +3,32 @@
 extern crate rusttype;
 extern crate resize;
 
-//extern crate imageproc;
-//extern crate conv;
-
-use self::rusttype::{ FontCollection, Scale, point };
+use self::rusttype::{FontCollection, Scale, point};
 use self::resize::Filter;
 
 use image;
-use image::{ GenericImage, ImageBuffer, Pixel };
+use image::{GenericImage, ImageBuffer, Pixel};
 
-use orbclient::{ Color, Renderer };
+use orbclient::{Color, Renderer};
 use orbimage::Image;
 use orbimage::ResizeType;
 use orbtk::Window;
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
-use orbtk::traits::{ Click, Place };
+use orbtk::traits::{Click, Place};
 use orbtk::widgets::Widget;
-use orbtk::theme::{ Theme };
+use orbtk::theme::{Theme};
 
-use std::cell::{ Cell, RefCell };
+use std::cell::{Cell, RefCell};
 use std::path::Path;
 use std::sync::Arc;
 use std::slice;
 use std::io::Error;
 use std::f32::consts::PI;
-//use std::io;
 use std::io::prelude::*;
 use std::fs::File;
 use std::cmp;
-
-//use self::imageproc::math::cast;
-//use self::imageproc::definitions::Clamp;
-//use self::conv::ValueInto;
-
 
 use AddOnsToOrbimage;
 
@@ -159,31 +150,6 @@ impl Canvas {
     pub fn width(&self) -> u32 {
         self.image.borrow().width()
     }
-
-/*
-    ///crop new image from curent canvas (copy)
-    pub fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> Image {
-        let image = self.image.borrow();
-        let data = image.data();
-        let mut vec = vec![];
-        
-        for y1 in y..y+h as i32 {
-            for x1 in x..x+w as i32 {
-                vec.push(self.pixcol(x1,y1));
-            }
-        }
-        //println!("len {} w*h {}",vec.len(), w*h);
-        Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap()
-    }
-   
-    ///return rgba color of pixel at canvas position (x,y)
-    pub fn pixcol(&self, x:i32, y:i32) -> Color {
-        let image = self.image.borrow();
-        let p = image.width()as i32 * y + x;
-        let rgba = image.data()[p as usize];
-        rgba
-    }
-*/
 
     ///apply some transformations to entire canvas
     pub fn transformation(&self, cod: &str, a: f32, b:i32){
@@ -399,64 +365,6 @@ impl Canvas {
         }
     }
 
-/*
-    fn interpolate<P: Pixel + 'static, I: GenericImage + 'static>(&self, image: &I, x: f32, y: f32, default: P)
-     -> P
-    where
-        P: Pixel + 'static,
-        <P as Pixel>::Subpixel: ValueInto<f32> + Clamp<f32>,
-    {
-        let left = x.floor();
-        let right = left + 1f32;
-        let top = y.floor();
-        let bottom = top + 1f32;
-
-        let right_weight = x - left;
-        let bottom_weight = y - top;
-
-        // default if out of bound
-        let (width, height) = image.dimensions();
-        if left < 0f32 || right >= width as f32 || top < 0f32 || bottom >= height as f32 {
-            default
-        } else {
-            let (tl, tr, bl, br) = unsafe {
-                (
-                    image.unsafe_get_pixel(left as u32, top as u32),
-                    image.unsafe_get_pixel(right as u32, top as u32),
-                    image.unsafe_get_pixel(left as u32, bottom as u32),
-                    image.unsafe_get_pixel(right as u32, bottom as u32),
-                )
-            };
-            //self.blend(tl, tr, bl, br, right_weight, bottom_weight)
-        }
-    }
-
-    fn blend<P>(&self,
-        top_left: P,
-        top_right: P,
-        bottom_left: P,
-        bottom_right: P,
-        right_weight: f32,
-        bottom_weight: f32,
-    ) -> P
-    where
-        P: Pixel,
-        P::Subpixel: ValueInto<f32> + Clamp<f32>,
-    {
-        let top = top_left.map2(&top_right, |u, v| {
-            P::Subpixel::clamp((1f32 - right_weight) * cast(u) + right_weight * cast(v))
-        });
-
-        let bottom = bottom_left.map2(&bottom_right, |u, v| {
-            P::Subpixel::clamp((1f32 - right_weight) * cast(u) + right_weight * cast(v))
-        });
-
-        top.map2(&bottom, |u, v| {
-            P::Subpixel::clamp((1f32 - bottom_weight) * cast(u) + bottom_weight * cast(v))
-        })
-    }
-*/
-
     pub fn on_right_click<T: Fn(&Self, Point) + 'static>(&self, func: T) -> &Self {
         *self.right_click_callback.borrow_mut() = Some(Arc::new(func));
         self
@@ -547,11 +455,13 @@ impl Canvas {
         }
     }
 
-   ///wrapper for filling an image within a canvas
+   ///wrapper for filling an image within a canvas with pan support
     pub fn fill (&self, x: i32 , y: i32, color: Color){
         self.undo_save();  //save state for undo
         let mut image = self.image.borrow_mut();
-        image.fill(x,y,color);
+        //take care of panning
+        let Rect {x: panx, y: pany, ..} = self.view.get();
+        image.fill(x + panx, y + pany, color);
     }
 
     ///paste an image into current canvas starting at x,y with transparency , mask and view support
@@ -711,16 +621,15 @@ impl Canvas {
     ///pixel function with mask and pan support
     pub fn pixel(&self , x: i32, y: i32, color: Color) {
         let mut color = color;
-        let panx = self.view.get().x;
-        let pany = self.view.get().y;
+        let Rect {x: panx, y: pany, ..} = self.view.get();
         //if we are not painting the mask apply mask to pixel
         if self.mask_enabled.get(){
-            //read from mask tranparency value 
+            //read from mask red channel value and use it as alpha value 
             let alpha_mask = self.mask.borrow().pixcol(x,y).r();
-            // add mask transparency to color
+            // add alpha mask to color
             color = Color::rgba(color.r(),color.g(),color.b(),alpha_mask & color.a());
         }
-        self.image.borrow_mut().pixel(x+panx, y+pany, color);
+        self.image.borrow_mut().pixel(x + panx, y + pany, color);
     }
 
     ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very fast.

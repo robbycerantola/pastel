@@ -369,13 +369,13 @@ impl AddOnsToOrbimage for orbimage::Image {
     /// by drawing an interactive circle in preview window , return a tuple with radius and cursor angular position  
     fn interact_circle(&mut self, x: i32 , y: i32, color: Color, window: &mut Window) -> Option<(i32,f32)>{
     
-         //gets events from orbclient and render helping lines directly into orbclient window 
-         let mut orbclient = window.inner.borrow_mut();
-         let mut w = false;
-         let mut dx = 0_i32;
-         let mut dy = 0_i32;
-         let mut r = 0_i32;
-         let mut r_old = 0_i32;
+        //gets events from orbclient and render helping lines directly into orbclient window 
+        let mut orbclient = window.inner.borrow_mut();
+        let mut w = false;
+        let mut dx = 0_i32;
+        let mut dy = 0_i32;
+        let mut r = 0_i32;
+        let mut r_old = 0_i32;
         'events: loop{
             for event in orbclient.events() { 
                 match event.to_option() {

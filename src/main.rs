@@ -10,9 +10,10 @@ extern crate orbimage;
 extern crate image;
 extern crate orbclient;
 
-use orbtk::{Color, Action, Button, Image, Label, Menu, Point, Rect, Separator, Window, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
+use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, Rect, Separator, Window, WindowBuilder, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
-use orbtk::traits::{ Click, Place, Text };  //Border, Enter
+use orbtk::traits::{ Click, Place, Text, Style };  //Border, Enter
+use orbtk::theme::Theme;
 
 use std::rc::Rc;
 use std::cell::RefCell; //, RefMut, Cell
@@ -43,15 +44,15 @@ use color_swatch::ColorSwatch;
 mod toolbar;
 use toolbar::{ Toolbar, ToolbarIcon };
 
-mod progress_bar;
-use progress_bar::ProgressBar;
+//mod progress_bar;
+//use progress_bar::ProgressBar;
 
 /*
 mod control_knob;
 use control_knob::ControlKnob;
 */
 
-mod theme;  //#FIXME use local theme to temporary fix compilation with last orbtk 0.2.26 pull which has moved to css theme, pastel has to move to css too
+mod theme;
 
 mod tools;
 use tools::{ Property, Tools };
@@ -174,11 +175,19 @@ fn main() {
     let title = format!("Pastel: {}", filename);
 
     //resizable main window
-    let mut window = Window::new_flags(
+/*    let mut window = Window::new_flags(
         Rect::new(100, 100, 1024, wy),
         &title.to_owned(),
         &[orbclient::WindowFlag::Resizable ]
     );
+*/
+
+    //themed resizable main window
+    let theme = Theme::from_path("pasteltheme.css").unwrap();
+    let mut window_builder = WindowBuilder::new(Rect::new(100, 100, 1024, wy), &title);
+    window_builder = window_builder.theme(theme);
+    window_builder = window_builder.flags(&[orbclient::WindowFlag::Resizable ]);
+    let mut window = window_builder.build();
 
     /*
     //2nd method to open a new window
@@ -222,11 +231,12 @@ fn main() {
     red_label
         .text("R: 0")
         .position(x, y)
-        .size(48, 16);//        .fg.set(orbtk::Color::rgb(255,0,0));
+        .size(48, 16)
+        .with_class("red");
     window.add(&red_label);
 
     {
-        red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
+        //red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
         let swatch_clone = swatch.clone();
         let green_bar_clone_r = green_bar.clone();
         let blue_bar_clone_r = blue_bar.clone();
@@ -234,6 +244,7 @@ fn main() {
         red_bar
             .position(x+48, y)
             .size(256, 16)
+            .with_class("red")
             .on_click(
                 move |red_bar: &ProgressBar, point: Point| {
                   let progress = point.x * 100 / red_bar.rect.get().width as i32;
@@ -254,11 +265,12 @@ fn main() {
     let green_label = Label::new();
     green_label.text("G: 0")
         .position(x, y)
-        .size(48, 16);//.fg.set(orbtk::Color::rgb(0,255,0));
+        .size(48, 16)
+        .with_class("green");
     window.add(&green_label);
 
     {
-        green_bar.fg.set(orbtk::Color::rgb(0,255,0));
+        //green_bar.fg.set(orbtk::Color::rgb(0,255,0));
         let swatch_clone = swatch.clone();
         let red_bar_clone_g = red_bar.clone();
         let blue_bar_clone_g = blue_bar.clone();
@@ -266,6 +278,7 @@ fn main() {
         green_bar
             .position(x+48, y)
             .size(256, 16)
+            .with_class("green")
             .on_click(move |green_bar: &ProgressBar, point: Point| {
                           let progress = point.x * 100 / green_bar.rect.get().width as i32;
                           green_label.text.set(format!("G: {}%", progress ));
@@ -283,11 +296,12 @@ fn main() {
     let blue_label = Label::new();
     blue_label.text("B: 0")
         .position(x, y)
-        .size(48, 16);//.fg.set(orbtk::Color::rgb(0,0,255));
+        .size(48, 16)
+        .with_class("blue");
     window.add(&blue_label);
 
     {
-        blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
+        //blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
         let swatch_clone = swatch.clone();
         let green_bar_clone_b = green_bar.clone();
         let red_bar_clone_b = red_bar.clone();
@@ -295,6 +309,7 @@ fn main() {
         blue_bar
             .position(x+48, y)
             .size(256, 16)
+            .with_class("blue")
             .on_click(move |blue_bar: &ProgressBar, point: Point| {
                           let progress = point.x * 100 / blue_bar.rect.get().width as i32;
                           blue_label.text.set(format!("B: {}%", progress));
@@ -1747,7 +1762,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.32, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.33, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }

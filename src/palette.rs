@@ -1,7 +1,7 @@
-use orbtk::{Color,  Point, Rect, Window, Label}; //ProgressBar,Toolbar,Action, Button, Image, Label, Menu,ControlKnob,Toolbar, ToolbarIcon, Separator,TextBox,Renderer,
+use orbtk::{Color,  Point, Rect, Window, Label, ProgressBar}; //ProgressBar,Toolbar,Action, Button, Image, Label, Menu,ControlKnob,Toolbar, ToolbarIcon, Separator,TextBox,Renderer,
 use orbtk::traits::{Click, Place};  //Border, Enter, Text
 
-use progress_bar::ProgressBar;  //temporary workaround to have colored progressbar
+//use progress_bar::ProgressBar;  //temporary workaround to have colored progressbar
 
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;

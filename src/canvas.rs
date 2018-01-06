@@ -768,7 +768,9 @@ impl Canvas {
                 self.old_color.set(color);
             }
         }
-        self.image.borrow_mut().image(x,y,rb.width(),rb.height(),rb.data());
+        let Rect {x: panx, y: pany, ..} = self.view.get();
+        self.image.borrow_mut().image(x - size as i32 + panx, y - size as i32 + pany, 
+                                      rb.width(), rb.height(), rb.data());
     }
 
     //rectangle with mask support

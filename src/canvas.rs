@@ -10,8 +10,9 @@ use image;
 use image::{GenericImage, ImageBuffer, Pixel};
 
 use orbclient::{Color, Renderer};
-use orbimage::Image;
-use orbimage::ResizeType;
+use orbimage::{self, Image, ResizeType};
+//use orbimage::ResizeType;
+
 use orbtk::Window;
 use orbtk::event::Event;
 use orbtk::point::Point;
@@ -36,6 +37,7 @@ use UNDODEPTH;
 use CANVASOFFSET;
 use ZOOMSTEP;
 
+static SMOOTH_BRUSH: &'static [u8; 4242] = include_bytes!("../res/smooth_circle_black.png");
 
 pub struct Canvas {
     pub rect: Cell<Rect>,
@@ -51,6 +53,9 @@ pub struct Canvas {
     clear_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     shortcut_callback: RefCell<Option<Arc<Fn(&Canvas, char)>>>,
     pub zoom_factor: Cell<f32>,
+    brush: RefCell<Image>,
+    old_color: Cell<Color>,
+    old_size: Cell<u32>,
 
 }
 
@@ -78,7 +83,9 @@ impl Canvas {
             clear_click_callback: RefCell::new(None),
             shortcut_callback:RefCell::new(None),
             zoom_factor: Cell::new(1.0),
-            
+            brush: RefCell::new(Image::new(0,0)),
+            old_color: Cell::new(Color::rgb(0,0,0)),
+            old_size: Cell::new(0),
         })
     }
 
@@ -751,10 +758,19 @@ impl Canvas {
     }
     
     
-    pub fn smooth_circle( &self, x: i32, y: i32, radius: u32, color: Color){
-        self.image.borrow_mut().smooth_circle(x, y, radius, color);
+    pub fn smooth_circle( &self, x: i32, y: i32, size: u32, opacity: u8, color: Color){
+        let mut rb = self.brush.borrow_mut();
+        if self.old_size.get() != size || color.data != self.old_color.get().data {
+            if let Ok(sb) = orbimage::parse_png(SMOOTH_BRUSH) {
+                let qb = sb.resize(size*2, size*2, ResizeType::Lanczos3).unwrap().colorize(color,opacity);
+                *rb = qb;
+                self.old_size.set(size);
+                self.old_color.set(color);
+            }
+        }
+        self.image.borrow_mut().image(x,y,rb.width(),rb.height(),rb.data());
     }
-    
+
     //rectangle with mask support
     pub fn rect(&self, x: i32, y: i32 ,lenght: u32, width: u32, color: Color){
         //self.image.borrow_mut().rect(x ,y, lenght, width, color);
@@ -1151,4 +1167,17 @@ impl Widget for Canvas {
     fn name(&self) -> &str {
         "Canvas"
     }
+}
+
+pub fn colorize (color: Color, img: Image) -> Image {
+    let w = img.width();
+    let h = img.height();
+    let mut data = img.into_data();
+    //let i:usize = 0;
+    let mut a;
+    for i in 0..data.len() {
+        a = data[i].a();
+        data[i]=Color::rgba(color.r(),color.g(),color.b(),a)
+    }
+    orbimage::Image::from_data(w ,h ,data).unwrap()
 }

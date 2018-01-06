@@ -143,7 +143,7 @@ fn main() {
     tools.insert("pen",vec![Property::new("Size","1"),Property::new("Opacity","100")]);
     tools.insert("line",vec![Property::new("Opacity","100")]);
     tools.insert("polyline",vec![Property::new("Size","1"),Property::new("Opacity","100")]); 
-    tools.insert("brush",vec![Property::new("Size","4"),Property::new("Opacity","100"),Property::new("Shape","0")]);
+    tools.insert("brush",vec![Property::new("Size","10"),Property::new("Opacity","100"),Property::new("Shape","0")]);
     tools.insert("fill",vec![Property::new("Opacity","100")]);
     tools.insert("rectangle",vec![Property::new("Opacity","100"),Property::new("Size","1"),Property::new("Filled","0")]);
     tools.insert("circle",vec![Property::new("Opacity","100"),Property::new("Size","1"),Property::new("Filled","0")]);
@@ -1762,7 +1762,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.33, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.34, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -2038,7 +2038,7 @@ fn main() {
                             Some(2) => canvas.paste_buffer(point.x,point.y,
                                                     a.clone()),
                             Some(3) => canvas.smooth_circle(point.x,point.y,
-                                                    size as u32, color),
+                                                    size as u32, a.clone(), color),
                             None | Some(_) => println!("no Shape match!"),
                         }
                     },

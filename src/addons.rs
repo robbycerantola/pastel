@@ -1,4 +1,5 @@
 use orbimage;
+use orbimage::ResizeType;
 use orbclient;
 use orbtk::{Color, Rect, Renderer, Window}; 
 use orbclient::EventOption;
@@ -21,6 +22,7 @@ pub trait AddOnsToOrbimage {
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
     fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
     fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
+    fn colorize (&self, color: Color, opacity: u8) -> orbimage::Image;
 }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -207,12 +209,14 @@ impl AddOnsToOrbimage for orbimage::Image {
     //experimental smooth brush : work in progress....
     fn smooth_circle (&mut self, x: i32, y:i32, size: u32, color: Color) {
         //let mut sb= orbimage::Image::from_color(2*size, 2*size, Color::rgba(255,255,255,0));
-        let sb = orbimage::Image::from_path("smooth_circle_yellow.png").unwrap();
+        let sb = orbimage::Image::from_path("smooth_circle_black.png").unwrap();
+        let rb = sb.resize(size, size, ResizeType::Lanczos3).unwrap();
         
         let r = color.r();
         let g = color.g();
         let b = color.b();
         let a = color.a();
+        
         
         /*
         for n in 0..size {
@@ -222,7 +226,7 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
         */
         //self.paste_selection(x,y,80,sb);
-        self.image(x,y,sb.width(),sb.height(),sb.data());
+        self.image(x,y,rb.width(),rb.height(),rb.data());
         //println!("{:?}",sb.data());
         
     }
@@ -597,6 +601,20 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
     }
 */
+    fn colorize (&self, color: Color, opacity: u8) -> orbimage::Image {
+        let w = self.width();
+        let h = self.height();
+        let mut data = self.clone().into_data();
+        //let i:usize = 0;
+        let mut a;
+        for i in 0..data.len() {
+            a = data[i].a();
+            //data[i]=Color::rgba(color.r(),color.g(),color.b(),(a as f32 *(opacity as f32 /100.0))as u8)
+            data[i]=Color::rgba(color.r(),color.g(),color.b(),a);
+        }
+        orbimage::Image::from_data(w ,h ,data).unwrap()
+    }
+
 }
 
 pub trait AddOnsToOrbclient {

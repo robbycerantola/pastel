@@ -1,7 +1,10 @@
 use orbclient::WindowFlag;
-use orbtk::{ Button, Label, Point,  Rect, TextBox, Window, InnerWindow}; //Color, Action,ControlKnob, Image, Menu, ProgressBar, Separator, Renderer
+use orbtk::{ Button, Label, Point, Rect, TextBox, Window, InnerWindow}; //Color, Action,ControlKnob, Image, Menu, ProgressBar, Separator, Renderer
 use orbtk::traits::{Click, Enter, Place, Text};  //Border
+use orbtk::dialogs::FileDialog;
+
 use std::ops::Deref;
+use std::path::{Path,PathBuf};
 
 use DEFAULTFONT;
 
@@ -90,7 +93,7 @@ pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
 
 //dialog window for text tool
 pub fn text_dialog(title: &str, text: &str, suggestion: &str) -> Option<(String,String)> {
-    let mut orb_window = Some(InnerWindow::new(100, 100, 420, 200, title).unwrap());
+    let mut orb_window = Some(InnerWindow::new(100, 100, 480, 200, title).unwrap());
     let mut new_window = Box::new(Window::from_inner(orb_window.take().unwrap()));
 
     let x = 10;
@@ -111,14 +114,9 @@ pub fn text_dialog(title: &str, text: &str, suggestion: &str) -> Option<(String,
     //pressing enter in text_box closes popup window
     {
         let text_box = text_box.clone();
-        //let new_window_clone = &mut new_window as *mut Window;
         let new_window_clone = new_window.deref() as *const Window;
-        //let label = label.clone();
         text_box.on_enter(move |_| {
-            //text_box: &TextBox
-
             unsafe {
-                //(&mut *new_window_clone).close();
                 (*new_window_clone).close();
             }
         });
@@ -154,7 +152,35 @@ pub fn text_dialog(title: &str, text: &str, suggestion: &str) -> Option<(String,
     }
     new_window.add(&text_box2);
 
+
+    //Browse button
+    let browse_button = Button::new();
+    browse_button
+        .position(x + 10 + text_box.rect.get().width as i32 , y)
+        .size(70, text_box.rect.get().height)
+        .text("Browse")
+        .text_offset(6, 6);
+
+    {
+        let text_box2 = text_box2.clone();
+        browse_button.on_click(move |_button: &Button, _point: Point| { 
+            let mut p =PathBuf::from(font_path);// set font path accordingly with default font path
+            p.pop(); //get rid of name.ext
+            let mut f = FileDialog::new();
+            f.title = "Font selection".to_owned(); 
+            f.path = p; 
+            match f.exec() {
+                Some(response) => {
+                    text_box2.text(response.to_string_lossy());
+                },
+                None => println!("Cancelled"),
+            }
+        });
+    }
+    new_window.add(&browse_button);
+
     y += text_box.rect.get().height as i32 + 8;
+
 
     //OK button
     let ok_button = Button::new();
@@ -166,8 +192,7 @@ pub fn text_dialog(title: &str, text: &str, suggestion: &str) -> Option<(String,
 
     {
         let text_box = text_box.clone();
-        let button = ok_button.clone();
-        button.on_click(move |_button: &Button, _point: Point| { text_box.emit_enter(); });
+        ok_button.on_click(move |_button: &Button, _point: Point| { text_box.emit_enter(); });
     }
     new_window.add(&ok_button);
 

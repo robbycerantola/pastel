@@ -211,8 +211,9 @@ impl Widget for Marquee {
         focused
     }
     
-    fn visible(&self, flag: bool){
+    fn visible(&self, flag: bool) {
         self.visible.set(flag);
+        
     }
 
     fn name(&self) -> &str {

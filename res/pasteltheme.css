@@ -1,7 +1,7 @@
 /* Every element */
 * {
-    background: #FFFFFB;
-    border-color: #B5B5B5;
+    background: #F5F6F7;
+    border-color: #CFD6E6;
     border-radius: 1;
     border-width: 1;
     color: #000000;
@@ -23,6 +23,9 @@ button :hover {
 
 label {
     border-width: 0;
+}
+label.transparent {
+    background: transparent;
 }
 
 label.red {
@@ -92,11 +95,39 @@ selection {
     border-width: 0;
 }
 
-text-box {
-    background: #3c4c55;
+text-box, combo-box, combo-box-toggle {
+    background: white;
     border-radius: 2;
 }
 
 text-box :focus {
-    border-color: #5294E2;
+    border-color: blue;
+}
+
+
+combo-box-toggle :active {
+    background: #5294E2;
+}
+
+combo-box-entry {
+    border-radius: 0;
+    color: black;
+}
+
+combo-box-entry :hover {
+    background: #CFD6E6;
+}
+
+combo-box-entry :active {
+    background: #5294E2;
+    color: white;
+}
+
+combo-box-flyout {
+    color: black;
+    background: grey;
+}
+
+combo-box.red {
+    color: red;
 }

@@ -10,9 +10,9 @@ extern crate orbimage;
 extern crate image;
 extern crate orbclient;
 
-use orbtk::{Color, Action, Button, Image, Label, Menu, Point, ProgressBar, Rect, Separator, Window, WindowBuilder, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
+use orbtk::{Color, Action, Button, ComboBox, Image, Label, Menu, Point, ProgressBar, Rect, Separator, TextBox, Window, WindowBuilder, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
-use orbtk::traits::{ Click, Place, Text, Style };  //Border, Enter
+use orbtk::traits::{ Click, Enter, Place, Text, Style };  //Border, Enter
 use orbtk::theme::Theme;
 
 use std::rc::Rc;
@@ -73,7 +73,7 @@ const UNDODEPTH: usize = 10;
 // enable disable help and status line
 const STATUSLINE: bool = true;
 
-const ZOOMSTEP: f32 = 0.1;
+const ZOOMSTEP: f32 = 0.5;
 
 //default font location
 #[cfg(target_os = "linux")]
@@ -174,8 +174,9 @@ fn main() {
     let wy = &size.y + CANVASOFFSET as u32 + 18;
     let title = format!("Pastel: {}", filename);
 
+/*
     //resizable main window
-/*    let mut window = Window::new_flags(
+    let mut window = Window::new_flags(
         Rect::new(100, 100, 1024, wy),
         &title.to_owned(),
         &[orbclient::WindowFlag::Resizable ]
@@ -236,7 +237,6 @@ fn main() {
     window.add(&red_label);
 
     {
-        //red_bar.fg.set(orbtk::Color::rgb(255,0,0));  
         let swatch_clone = swatch.clone();
         let green_bar_clone_r = green_bar.clone();
         let blue_bar_clone_r = blue_bar.clone();
@@ -270,7 +270,6 @@ fn main() {
     window.add(&green_label);
 
     {
-        //green_bar.fg.set(orbtk::Color::rgb(0,255,0));
         let swatch_clone = swatch.clone();
         let red_bar_clone_g = red_bar.clone();
         let blue_bar_clone_g = blue_bar.clone();
@@ -301,7 +300,6 @@ fn main() {
     window.add(&blue_label);
 
     {
-        //blue_bar.fg.set(orbtk::Color::rgb(0,0,255));
         let swatch_clone = swatch.clone();
         let green_bar_clone_b = green_bar.clone();
         let red_bar_clone_b = red_bar.clone();
@@ -323,15 +321,15 @@ fn main() {
                       });
         window.add(&blue_bar);
     }
-    y += blue_bar.rect.get().height as i32 + 10;
+    //y += blue_bar.rect.get().height as i32 + 10;
 
     // tool size bar
     let size_label = Label::new();
     size_label.text("Size: 1")
-        .position(x+380, 56)
-        .size(64, 16)
+        .position(x+400, 56)
+        .size(80, 16)
+        .with_class("transparent")
         .visible(false);
-    window.add(&size_label);
 
     let size_bar = ProgressBar::new();
     let tools_clone = tools.clone();
@@ -339,25 +337,28 @@ fn main() {
     size_bar.value.set(1);
     size_bar.visible(false);
     size_bar
-        .position(x+450, 56)
-        .size(256, 16)
+        .position(x+360, 56)
+        .size(200, 16)
         .on_click(move |size_bar: &ProgressBar, point: Point| {
-                      let progress = point.x * 100 / size_bar.rect.get().width as i32;
+                      let progress = 1 + point.x * 100 / size_bar.rect.get().width as i32;
                       size_label_clone.text.set(format!("Size: {}", progress));
                       size_bar.value.set(progress);
                       
                       //save size value for current tool
                       let cur_tool = tools_clone.current();
-                      let a: &str = &cur_tool[..];  //convert String into &str                      
+                      let a: &str = &cur_tool[..];  //convert String into &str
                       tools_clone.set(a,"Size",progress);
                   });
     window.add(&size_bar);
+    window.add(&size_label);
 
     // tool transparency bar
     let trans_label = Label::new();
-    trans_label.text("Opacity: 100%").position(x+340, 90).size(120, 16);
-    trans_label.visible(true);
-    window.add(&trans_label);
+    trans_label.text("Opacity: 100%")
+        .position(x+400, 90)
+        .size(120, 16)
+        .with_class("transparent")
+        .visible(true);
 
     let trans_bar = ProgressBar::new();
     let tools_clone = tools.clone();
@@ -365,8 +366,8 @@ fn main() {
     trans_bar.value.set(100);
     trans_bar.visible(true);
     trans_bar
-        .position(x+450, 90)
-        .size(256, 16)
+        .position(x+360, 90)
+        .size(200, 16)
         .on_click(move |trans_bar: &ProgressBar, point: Point| {
                       let progress = 1 + point.x * 100 / trans_bar.rect.get().width as i32;
                       trans_label_clone.text.set(format!("Opacity: {}%", progress));
@@ -378,7 +379,44 @@ fn main() {
                       tools_clone.set(a,"Opacity", progress);
                   });
     window.add(&trans_bar);
+    window.add(&trans_label);
 
+    //tool text and font selector
+    let mut y = 56;
+    let combo_box = ComboBox::new();
+    let text_box = TextBox::new();
+
+    //workaround to loose focus after pressing enter : create another fake text_box
+    let fake_text_box = TextBox::new();
+    fake_text_box.position(1000,16).text_offset(6,6);
+    window.add(&fake_text_box);
+
+    let tools_clone = tools.clone();
+    let fake_text_box = fake_text_box.clone();
+    text_box.visible(false);
+    text_box.position(x+600, y)
+        .size(250, 24)
+        .text_offset(6, 6)
+        //.with_class("red")
+        .on_enter(move |text_box: &TextBox| {
+            tools_clone.set("text","Text",text_box.text.get().to_owned());
+            //grab focus on fake text box so cursor desaper from text_box after enter
+            fake_text_box.grab_focus(true);
+
+    });
+    window.add(&text_box);
+    
+    y += text_box.rect.get().height as i32 + 2;
+    
+    combo_box.position(x+600, y)
+        .size(250,24).visible(false);
+
+    for i in 1..4 {
+        combo_box.push(&format!("Entry {}", i));
+    }   
+    //combo_box.with_class("red");
+    combo_box.push("Font");
+    
 /*
     // tool Volume knob
     let volume_label = Label::new();
@@ -469,6 +507,8 @@ fn main() {
             let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
+            let text_box_clone = text_box.clone();
+            let combo_box_clone = combo_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
@@ -477,6 +517,8 @@ fn main() {
                status_clone.text("");
                size_bar_clone.visible(false);
                size_label_clone.visible(false);
+               combo_box_clone.visible(false);
+               text_box_clone.visible(false);
                let o = tools_clone.get("pen","Opacity").unwrap();
                trans_bar_clone.value.set(o);
                trans_label_clone.text(format!("Opacity: {}%",o));
@@ -505,6 +547,8 @@ fn main() {
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
+            let text_box_clone = text_box.clone();
+            let combo_box_clone = combo_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
@@ -518,6 +562,8 @@ fn main() {
                    //get previous settings
                    size_bar_clone.visible(false);
                    size_label_clone.visible(false);
+                   combo_box_clone.visible(false);
+                   text_box_clone.visible(false);
                    let o = tools_clone.get("line","Opacity").unwrap();
                    trans_bar_clone.value.set(o);
                    trans_label_clone.text(format!("Opacity: {}%",o));
@@ -547,6 +593,8 @@ fn main() {
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
+            let text_box_clone = text_box.clone();
+            let combo_box_clone = combo_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
@@ -559,6 +607,8 @@ fn main() {
                     status_clone.text("");
                     size_label_clone.visible(true);
                     size_bar_clone.visible(true);
+                    combo_box_clone.visible(false);
+                    text_box_clone.visible(false);
                     let v = tools_clone.get("brush","Size").unwrap();
                     size_bar_clone.value.set(v);
                     size_label_clone.text(format!("Size: {}",v));
@@ -592,6 +642,8 @@ fn main() {
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
+            let text_box_clone = text_box.clone();
+            let combo_box_clone = combo_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
@@ -602,6 +654,8 @@ fn main() {
                     status_clone.text("Filling...");
                     size_label_clone.visible(false);
                     size_bar_clone.visible(false);
+                    combo_box_clone.visible(false);
+                    text_box_clone.visible(false);
                    
                     let o = tools_clone.get("fill","Opacity").unwrap();
                     trans_bar_clone.value.set(o);
@@ -633,6 +687,8 @@ fn main() {
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
+            let text_box_clone = text_box.clone();
+            let combo_box_clone = combo_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
@@ -645,6 +701,8 @@ fn main() {
                     //get previous settings
                     size_bar_clone.visible(true);
                     size_label_clone.visible(true);
+                    combo_box_clone.visible(false);
+                    text_box_clone.visible(false);
                     let o = tools_clone.get("polyline","Opacity").unwrap();
                     trans_bar_clone.value.set(o);
                     trans_label_clone.text(format!("Opacity: {}%",o));
@@ -677,6 +735,8 @@ fn main() {
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
+            let text_box_clone = text_box.clone();
+            let combo_box_clone = combo_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
@@ -689,6 +749,8 @@ fn main() {
                     //get previous settings
                     size_bar_clone.visible(true);
                     size_label_clone.visible(true);
+                    combo_box_clone.visible(false);
+                    text_box_clone.visible(false);
                     let o = tools_clone.get("rectangle","Opacity").unwrap();
                     trans_bar_clone.value.set(o);
                     trans_label_clone.text(format!("Opacity: {}%",o));
@@ -721,6 +783,8 @@ fn main() {
             let trans_bar_clone = trans_bar.clone();
             let trans_label_clone = trans_label.clone();
             let tools_clone = tools.clone();
+            let text_box_clone = text_box.clone();
+            let combo_box_clone = combo_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
@@ -733,6 +797,8 @@ fn main() {
                     //get previous settings
                     size_bar_clone.visible(false);
                     size_label_clone.visible(false);
+                    combo_box_clone.visible(false);
+                    text_box_clone.visible(false);
                     let o = tools_clone.get("circle","Opacity").unwrap();
                     trans_bar_clone.value.set(o);
                     trans_label_clone.text(format!("Opacity: {}%",o));
@@ -753,57 +819,45 @@ fn main() {
             println!("Error loading toolbar element {}",err);
         }
     }
-/*
+
     match ToolbarIcon::from_path("text.png") {
         Ok(image) => {
             image.position(x, y)
             .text("Draw some text on canvas".to_owned());
-            let canvas_clone = canvas.clone();    
-            let tool_clone = tool.clone();
-            let text_clone = text.clone();
+            let canvas_clone = canvas.clone();
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let trans_bar_clone = trans_bar.clone();
             let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
+            let combo_box_clone = combo_box.clone();
+            let text_box_clone = text_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
             let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.on_click(move |_image: &ToolbarIcon, point: Point| {
-                               size_bar_clone.visible(true);
-                               size_label_clone.visible(true);
-                                match dialog("Text", "text:","") {
-                                    Some(response) => {
-                                    text_clone.text.set(response.to_owned());
-                                    canvas_clone.emit_right_click(point); //fix click bug
-                                },
-                                    None => {println!("Cancelled");},
-                                }   
-                               tool_clone.text.set("text".to_owned());
-                               tools_clone.set("tool","Current","text");
-                               status_clone.text("Drawing some text...");
+               size_bar_clone.visible(true);
+               size_label_clone.visible(true);
+               combo_box_clone.visible(true);
+               text_box_clone.visible(true);
+               tools_clone.select("text");
+               status_clone.text("Drawing some text...");
 
-
-                               let o = toola_clone.get("text","Opacity").unwrap();
-                               trans_bar_clone.value.set(o);
-                               trans_label_clone.text(format!("Opacity: {}%",o));
-                                let s = tools_clone.get("text","Size").unwrap();
-                                size_bar_clone.value.set(s);
-                                size_label_clone.text(format!("Size: {}",s));
-                               //toggle tool in toolbar TODO move into Toolbar
-                               //unsafe {toggle_toolbar(&mut *toolbar_obj_clone);}
-                               unsafe{(*toolbar1_clone).toggle();}
-                               //make invisible toolbar2  TODO move into Toolbar
-                               //unsafe{visible_toolbar(&mut *toolbar2_obj_clone,false);}
-                               unsafe{(*toolbar2_clone).visible(false);}
-                               //make toolbar3 invisible
-                               unsafe{(*toolbar3_clone).visible(false);}
-                               
-                           });
-            
-            //window.add(&image);
-            //toolbar_obj.push(image.clone());  //TODO toolbar.add(&image);
+               let o = tools_clone.get("text","Opacity").unwrap();
+               trans_bar_clone.value.set(o);
+               trans_label_clone.text(format!("Opacity: {}%",o));
+                let s = tools_clone.get("text","Size").unwrap();
+                size_bar_clone.value.set(s);
+                size_label_clone.text(format!("Size: {}",s));
+               //toggle tool in toolbar TODO move into Toolbar
+               unsafe{(*toolbar1_clone).toggle();}
+               //make invisible toolbar2  TODO move into Toolbar
+               unsafe{(*toolbar2_clone).visible(false);}
+               //make toolbar3 invisible
+               unsafe{(*toolbar3_clone).visible(false);}
+               
+            });
             toolbar1.add(&image,parent_window);
            x += image.rect.get().width as i32 + 2;
         }
@@ -811,19 +865,18 @@ fn main() {
             println!("Error loading toolbar element {}",err);
         }
     }
-*/
-
+    
     match ToolbarIcon::from_path("select.png") {
         Ok(image) => {
-
             let status_clone = status.clone();
             let size_bar_clone = size_bar.clone();
             let tools_clone = tools.clone();
             let size_label_clone = size_label.clone();
             let trans_label_clone = trans_label.clone();
+            let text_box_clone = text_box.clone();
+            let combo_box_clone = combo_box.clone();
             let toolbar1_clone = &mut toolbar1 as *mut Toolbar;
             let toolbar2_clone = &mut toolbar2 as *mut Toolbar;
-            let toolbar3_clone = &mut toolbar3 as *mut Toolbar;
             image.position(x, y)
                 .tooltip("Select canvas region".to_owned())
                 .on_click(move |_image: &ToolbarIcon, _point: Point| {
@@ -831,6 +884,8 @@ fn main() {
                     status_clone.text("Selecting...");
                     size_bar_clone.visible(false);
                     size_label_clone.visible(false);
+                    combo_box_clone.visible(false);
+                    text_box_clone.visible(false);
 
                     //toggle tool in toolbar TODO move into Toolbar
                     unsafe{(*toolbar1_clone).toggle();}
@@ -1147,7 +1202,7 @@ fn main() {
         });
         menuedit.add(&action);
     }
-    
+
     {
         let action = Action::new("Paste    Ctrl+V");
         let tools_clone = tools.clone();
@@ -1762,7 +1817,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.34, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.35, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -2057,6 +2112,7 @@ fn main() {
     window.add(&canvas);
     window.add(&marquee);
     window.add(&status);
+    window.add(&combo_box);
 
     // add menus
     window.add(&menufile);

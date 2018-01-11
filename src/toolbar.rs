@@ -265,6 +265,7 @@ impl Widget for ToolbarIcon {
 
     fn visible(&self, flag: bool) {
         self.visible.set(flag);
+        
     }
 
     fn name(&self) -> &str {

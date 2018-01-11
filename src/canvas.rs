@@ -30,6 +30,7 @@ use std::f32::consts::PI;
 use std::io::prelude::*;
 use std::fs::File;
 use std::cmp;
+use std::ops::Deref;
 
 use AddOnsToOrbimage;
 
@@ -407,29 +408,40 @@ impl Canvas {
     
     pub fn zoom_in(&self) {
         let mut image = self.image.borrow_mut();
-        self.zoom_factor.set(self.zoom_factor.get() + ZOOMSTEP);
+        
+        //define custom filter
         fn kernel(x: f32) ->f32 { f32::max(1.0 - x.abs(),0.0) }
         let filter = Filter::new(Box::new(kernel), 1.0);
         
-        let zoomed = image.resize((image.width() as f32 * (1.0 + ZOOMSTEP )) as u32,
-                                  (image.height() as f32* (1.0 + ZOOMSTEP )) as u32,
-                                  ResizeType::Custom(filter)).unwrap();  //Lanczos3
-        *image = zoomed;
-        self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
-        self.view.set(Rect::new(0,0,image.width(),image.height()));
+        //limits zoom in to factor 3
+        if self.zoom_factor.get() < 2.0 {
+            let zoomed = image.resize((image.width() as f32 * (1.0 + ZOOMSTEP )) as u32,
+                                      (image.height() as f32* (1.0 + ZOOMSTEP )) as u32,
+                                      ResizeType::Mitchell).unwrap();  //Mitchell
+            *image = zoomed;
+            self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
+            self.view.set(Rect::new(0,0,image.width(),image.height()));
+            self.zoom_factor.set(self.zoom_factor.get() + ZOOMSTEP);
+        }
     }
 
     pub fn zoom_out(&self) {
         let mut image = self.image.borrow_mut();
+        //define custom filter
         fn kernel(x: f32) ->f32 { f32::max(1.0 - x.abs(),0.0) }
         let filter = Filter::new(Box::new(kernel), 1.0);
-        let zoomed = image.resize((image.width() as f32 / (1.0 + ZOOMSTEP)) as u32,
-                                  (image.height() as f32 / (1.0 + ZOOMSTEP)) as u32,
-                                  ResizeType::Custom(filter)).unwrap();  //Triangle
-        *image = zoomed;
-        self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
-        self.view.set(Rect::new(0,0,image.width(),image.height()));
-        self.zoom_factor.set(self.zoom_factor.get() - ZOOMSTEP);
+
+        //limits zoom out to factor 1.0
+        if self.zoom_factor.get() > 1.0 {
+            let zoomed = image.resize((image.width() as f32 / (1.0 + ZOOMSTEP)) as u32,
+                                      (image.height() as f32 / (1.0 + ZOOMSTEP)) as u32,
+                                      //ResizeType::Custom(filter)).unwrap();  //Triangle
+                                      ResizeType::Lanczos3).unwrap();
+            *image = zoomed;
+            self.rect.set(Rect::new(0,CANVASOFFSET,image.width(),image.height()));
+            self.view.set(Rect::new(0,0,image.width(),image.height()));
+            self.zoom_factor.set(self.zoom_factor.get() - ZOOMSTEP);
+        }
     }
 
     pub fn pan(&self,pan_x: i32, pan_y: i32) {
@@ -485,7 +497,7 @@ impl Canvas {
         let mut a;
         let x1:i32;
         let y1:i32;
-        
+        let op = opacity as f32;
         for y1 in yc..yc+h {
             for x1 in xc..xc+w {
                 if i < data.len(){
@@ -493,7 +505,7 @@ impl Canvas {
                     g = data[i].g();
                     b = data[i].b();
                     a = data[i].a();
-                    if a != 0 {a = opacity}
+                    if a > 0 {a = (a as f32 /100.0 * op) as u8}
                     self.pixel(x1,y1,Color::rgba(r,g,b,a));
                 }
                 i += 1;
@@ -524,7 +536,7 @@ impl Canvas {
                     g = data[i].g();
                     b = data[i].b();
                     a = data[i].a();
-                    if a != 0 {a = opacity}
+                    if a > 0 {a = opacity}
                     self.pixel(x1,y1,Color::rgba(r,g,b,a));
                 }
                 i += 1;
@@ -769,8 +781,9 @@ impl Canvas {
             }
         }
         let Rect {x: panx, y: pany, ..} = self.view.get();
-        self.image.borrow_mut().image(x - size as i32 + panx, y - size as i32 + pany, 
-                                      rb.width(), rb.height(), rb.data());
+        //self.image.borrow_mut().image(x - size as i32 + panx, y - size as i32 + pany, 
+        //                              rb.width(), rb.height(), rb.data());
+        self.paste_image(x , y , opacity/5, rb.deref().to_owned());
     }
 
     //rectangle with mask support

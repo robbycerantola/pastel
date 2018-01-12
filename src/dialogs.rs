@@ -4,7 +4,7 @@ use orbtk::traits::{Click, Enter, Place, Text};  //Border
 use orbtk::dialogs::FileDialog;
 
 use std::ops::Deref;
-use std::path::{Path,PathBuf};
+use std::path::PathBuf;
 
 use DEFAULTFONT;
 

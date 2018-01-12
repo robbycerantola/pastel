@@ -6,7 +6,6 @@ use orbtk::cell::{CloneCell, CheckSet};
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
-use theme::{ BUTTON_BG_SELECTION, BUTTON_FOREGROUND, BUTTON_FG_SELECTION};
 use orbtk::traits::{Click, Place, Text}; //Border
 use orbtk::widgets::Widget;
 use orbtk::theme::{Theme};
@@ -14,9 +13,9 @@ use orbtk::theme::{Theme};
 pub struct Marquee {
     pub rect: Cell<Rect>,
     pub bg: Cell<Color>,
-    pub bg_selected: Color,
+    //pub bg_selected: Color,
     pub fg: Color,
-    pub fg_selected: Color,
+    //pub fg_selected: Color,
     pub fg_border: Color,
     pub border: Cell<bool>,
     pub border_radius: Cell<u32>,
@@ -33,9 +32,9 @@ impl Marquee {
         Arc::new(Marquee {
             rect: Cell::new(Rect::default()),
             bg: Cell::new(Color::rgba(0,0,0,0)),
-            bg_selected: BUTTON_BG_SELECTION,
-            fg: BUTTON_FOREGROUND,
-            fg_selected: BUTTON_FG_SELECTION,
+            //bg_selected: BUTTON_BG_SELECTION,
+            fg: Color::rgba(0,0,0,0),
+            //fg_selected: BUTTON_FG_SELECTION,
             fg_border: Color::rgba(200,0,0,100),
             border: Cell::new(true),
             border_radius: Cell::new(2),

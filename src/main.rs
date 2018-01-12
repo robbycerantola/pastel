@@ -10,9 +10,10 @@ extern crate orbimage;
 extern crate image;
 extern crate orbclient;
 
+
 use orbtk::{Color, Action, Button, ComboBox, Image, Label, Menu, Point, ProgressBar, Rect, Separator, TextBox, Window, WindowBuilder, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
-use orbtk::traits::{ Click, Enter, Place, Text, Style };  //Border, Enter
+use orbtk::traits::{Click, Enter, Place, Text, Style};  //Border, Enter
 use orbtk::theme::Theme;
 
 use std::rc::Rc;
@@ -20,11 +21,14 @@ use std::cell::RefCell; //, RefMut, Cell
 use std::sync::Arc;
 use std::process;
 use std::process::Command;
-use std::path::{ Path, PathBuf };
-use std::{ env, fs, cmp };
+use std::path::{Path, PathBuf};
+use std::{env, fs, cmp, io};
+//use std::fs::ReadDir;
+use std::cmp::Ordering;
+use std::ffi::OsStr;
 
 mod dialogs;
-use dialogs::{ dialog, popup, new_dialog, text_dialog };
+use dialogs::{dialog, popup, new_dialog, text_dialog};
 
 mod palette;
 use palette::Palette;
@@ -42,7 +46,7 @@ mod color_swatch;
 use color_swatch::ColorSwatch;
 
 mod toolbar;
-use toolbar::{ Toolbar, ToolbarIcon };
+use toolbar::{Toolbar, ToolbarIcon};
 
 //mod progress_bar;
 //use progress_bar::ProgressBar;
@@ -52,11 +56,8 @@ mod control_knob;
 use control_knob::ControlKnob;
 */
 
-mod theme;
-
 mod tools;
-use tools::{ Property, Tools };
-
+use tools::{Property, Tools};
 
 #[derive(Clone)]
 struct MySize {
@@ -383,7 +384,7 @@ fn main() {
 
     //tool text and font selector
     let mut y = 56;
-    let combo_box = ComboBox::new();
+
     let text_box = TextBox::new();
 
     //workaround to loose focus after pressing enter : create another fake text_box
@@ -407,15 +408,41 @@ fn main() {
     window.add(&text_box);
     
     y += text_box.rect.get().height as i32 + 2;
-    
-    combo_box.position(x+600, y)
-        .size(250,24).visible(false);
 
-    for i in 1..4 {
-        combo_box.push(&format!("Entry {}", i));
-    }   
-    //combo_box.with_class("red");
-    combo_box.push("Font");
+    let combo_box = ComboBox::new();
+    combo_box.position(x+600, y)
+        .size(250,28).visible(false);
+    let mut paths:Vec<String> = vec!();
+    //get only ttf fonts in default font directory
+    let mut p =PathBuf::from(DEFAULTFONT);// set font path accordingly with default font path
+    p.pop(); //get rid of name.ext
+    match FolderItem::scan(p) {
+        Ok(items) => for item_res in items {
+            match item_res {
+                Ok(item) => {
+                    let mut name = item.name.clone();
+                    if item.dir {
+                        name.push('/');
+                        continue
+                    }
+                    //filter ttf
+                    if item.path.extension() == Some(OsStr::new("ttf")) {
+                        combo_box.push(&name[..(name.len()-4)]);
+                        paths.push(item.path.display().to_string());
+                        if cfg!(feature = "debug") {
+                            println!("{:?}",item.path.display());
+                        }
+                    }
+                },
+                Err(err) => {
+                    println!("Error {}", err);
+                }
+            }
+        },
+        Err(err) => {
+            println!("Error {}", err);
+        }
+    }
     
 /*
     // tool Volume knob
@@ -1817,7 +1844,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.35, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.0.36, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1830,6 +1857,7 @@ fn main() {
     let marquee_clone = marquee.clone();
     let tools_clone = tools.clone();
     let status_clone = status.clone();
+    let combo_box_clone = combo_box.clone();
 
     canvas
         .position(0, CANVASOFFSET)
@@ -2055,7 +2083,9 @@ fn main() {
                     //let font_path = text_clone.font.get();
                     let text = tools_clone.get_str("text","Text").unwrap();
                     let font_path = tools_clone.get_str("text","Font").unwrap();
-                    canvas.text(&text, &font_path, point.x, point.y - CANVASOFFSET, color, size );
+                    let font_n = combo_box_clone.selected() as usize;
+                    let path = &paths[font_n];
+                    canvas.text(&text, &path, point.x, point.y - CANVASOFFSET, color, size );
                 },
                 _ => (),
                 }
@@ -2160,3 +2190,68 @@ fn load_buffer(path: &str) -> orbimage::Image {
         }
     }
 }    
+
+///return a list with full path for ttf fonts only in directory dir 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct FolderItem {
+    path: PathBuf,
+    name: String,
+    dir: bool,
+}
+
+impl Ord for FolderItem {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.dir && ! other.dir {
+            Ordering::Less
+        } else if ! self.dir && other.dir {
+            Ordering::Greater
+        } else {
+            self.name.cmp(&other.name)
+        }
+    }
+}
+
+impl PartialOrd for FolderItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl FolderItem {
+    fn scan<P: AsRef<Path>>(path: P) -> io::Result<Vec<Result<Self, String>>> {
+        let canon = path.as_ref().canonicalize()?;
+
+        let mut items = vec![];
+
+        if let Some(parent) = canon.parent() {
+            items.push(Ok(FolderItem {
+                path: parent.to_owned(),
+                name: "..".to_string(),
+                dir: true,
+            }));
+        }
+
+        for entry_res in fs::read_dir(&canon)? {
+            let item = match entry_res {
+                Ok(entry) => match entry.file_name().into_string() {
+                    Ok(name) => match entry.file_type() {
+                        Ok(file_type) => Ok(FolderItem {
+                            path: entry.path(),
+                            name: name,
+                            dir: file_type.is_dir(),
+                        }),
+                        Err(err) => Err(format!("{}", err))
+                    },
+                    Err(os_str) => Err(format!("Invalid filename: {:?}", os_str))
+                },
+                Err(err) => Err(format!("{}", err))
+            };
+
+            items.push(item);
+        }
+
+        items.sort();
+
+        Ok(items)
+    }
+}

@@ -15,7 +15,7 @@ use orbtk::widgets::Widget;
 use orbtk::window::Window;
 
 use orbtk::theme::{Theme};
-use theme::{LABEL_BACKGROUND, LABEL_BORDER, LABEL_FOREGROUND};
+//use theme::{LABEL_BACKGROUND, LABEL_BORDER, LABEL_FOREGROUND};
 
 #[allow(unused_imports)]
 use std::time::{Duration, Instant};
@@ -116,9 +116,9 @@ impl ToolbarIcon {
             tooltip: Cell::new(false),
             tooltip_text: CloneCell::new(String::new()),
             tooltip_offset: Cell::new(Point::default()),
-            bg: Cell::new(LABEL_BACKGROUND),
-            fg: Cell::new(LABEL_FOREGROUND),
-            fg_border: Cell::new(LABEL_BORDER),
+            bg: Cell::new(Color::rgb(245, 246, 247)),
+            fg: Cell::new(Color::rgb(0,0,0)),
+            fg_border: Cell::new(Color::rgb(207, 214, 230)),
             border: Cell::new(true),
             border_radius: Cell::new(0),
             tooltip_time : Cell::new(None),

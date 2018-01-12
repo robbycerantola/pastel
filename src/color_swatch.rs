@@ -6,7 +6,7 @@ use orbtk::cell::{CloneCell, CheckSet};
 use orbtk::event::Event;
 use orbtk::point::Point;
 use orbtk::rect::Rect;
-use theme::{BUTTON_BACKGROUND, BUTTON_BG_SELECTION, BUTTON_FOREGROUND, BUTTON_FG_SELECTION, BUTTON_BORDER};
+//use theme::{BUTTON_BACKGROUND, BUTTON_BG_SELECTION, BUTTON_FOREGROUND, BUTTON_FG_SELECTION, BUTTON_BORDER};
 use orbtk::traits::{Click, Place, Text}; //Border
 use orbtk::widgets::Widget;
 
@@ -15,9 +15,9 @@ use orbtk::theme::{Theme};
 pub struct ColorSwatch {
     pub rect: Cell<Rect>,
     pub bg: Cell<Color>,
-    pub bg_selected: Color,
+    //pub bg_selected: Color,
     pub fg: Color,
-    pub fg_selected: Color,
+    //pub fg_selected: Color,
     pub fg_border: Color,
     pub border: Cell<bool>,
     pub border_radius: Cell<u32>,
@@ -33,11 +33,11 @@ impl ColorSwatch {
     pub fn new() -> Arc<Self> {
         Arc::new(ColorSwatch {
             rect: Cell::new(Rect::default()),
-            bg: Cell::new(BUTTON_BACKGROUND),
-            bg_selected: BUTTON_BG_SELECTION,
-            fg: BUTTON_FOREGROUND,
-            fg_selected: BUTTON_FG_SELECTION,
-            fg_border: BUTTON_BORDER,
+            bg: Cell::new(Color::rgb(0,0,0)),
+            //bg_selected: BUTTON_BG_SELECTION,
+            fg: Color::rgb(0,0,0),
+            //fg_selected: BUTTON_FG_SELECTION,
+            fg_border: Color::rgb(207,214,230),
             border: Cell::new(true),
             border_radius: Cell::new(2),
             text: CloneCell::new(String::new()),

@@ -80,7 +80,8 @@ const ZOOMSTEP: f32 = 0.5;
 #[cfg(target_os = "linux")]
 const DEFAULTFONT : &'static str = "/usr/share/fonts/gnu-free/FreeMonoBold.ttf";
 #[cfg(target_os = "redox")]
-const DEFAULTFONT : &'static str = "/ui/fonts/Mono/Fira/Bold.ttf";
+//const DEFAULTFONT : &'static str = "/ui/fonts/Mono/Fira/Bold.ttf";
+const DEFAULTFONT : &'static str = "/ui/pastel/fonts/Pacifico-Regular.ttf";
 #[cfg(target_os = "windows")]
 const DEFAULTFONT : &'static str = "C:/Windows/Fonts/arial.ttf";
 
@@ -412,7 +413,7 @@ fn main() {
     let combo_box = ComboBox::new();
     combo_box.position(x+600, y)
         .size(250,28).visible(false);
-    let mut paths:Vec<String> = vec!();
+    let mut paths:RefCell<Vec<String>> = RefCell::new(Vec::new());
     //get only ttf fonts in default font directory
     let mut p =PathBuf::from(DEFAULTFONT);// set font path accordingly with default font path
     p.pop(); //get rid of name.ext
@@ -428,7 +429,7 @@ fn main() {
                     //filter ttf
                     if item.path.extension() == Some(OsStr::new("ttf")) {
                         combo_box.push(&name[..(name.len()-4)]);
-                        paths.push(item.path.display().to_string());
+                        paths.borrow_mut().push(item.path.display().to_string());
                         if cfg!(feature = "debug") {
                             println!("{:?}",item.path.display());
                         }
@@ -1454,18 +1455,23 @@ fn main() {
         menutools.add(&action);
     }
 
+/*
     {
         let action = Action::new("Text");
         let status_clone = status.clone();
         let size_bar_clone = size_bar.clone();
         let size_label_clone = size_label.clone();
         let tools_clone = tools.clone();
+        let combo_box_clone = combo_box.clone();
+        let paths_clone = paths.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                             match text_dialog("Text", "text:","") {
                                 Some(response) => {
                                     tools_clone.select("text");
                                     tools_clone.set("text","Text",response.0.to_owned());
-                                    tools_clone.set("text","Font",response.1.to_owned());
+                                    //tools_clone.set("text","Font",response.1.to_owned());
+                                    combo_box_clone.push(&response.1.to_owned());
+                                    paths_clone.borrow_mut().push(response.1.to_owned());
                                     let s = tools_clone.get("text","Size").unwrap();
                                     let o = tools_clone.get("text","Opacity").unwrap();
                                     size_bar_clone.visible(true);
@@ -1479,7 +1485,7 @@ fn main() {
         });
         menutools.add(&action);
     }
-
+*/
 
 
     menutools.add(&Separator::new());
@@ -1858,6 +1864,7 @@ fn main() {
     let tools_clone = tools.clone();
     let status_clone = status.clone();
     let combo_box_clone = combo_box.clone();
+    let paths_clone = paths.clone();
 
     canvas
         .position(0, CANVASOFFSET)
@@ -2084,7 +2091,7 @@ fn main() {
                     let text = tools_clone.get_str("text","Text").unwrap();
                     let font_path = tools_clone.get_str("text","Font").unwrap();
                     let font_n = combo_box_clone.selected() as usize;
-                    let path = &paths[font_n];
+                    let path = &paths_clone.borrow()[font_n];
                     canvas.text(&text, &path, point.x, point.y - CANVASOFFSET, color, size );
                 },
                 _ => (),

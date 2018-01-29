@@ -45,7 +45,7 @@ impl Toolbar {
         let id = items.len();
         items.push(toolbar_icon.clone());
         //add also to parent window
-        unsafe{(&mut *window).add(&toolbar_icon.clone());}
+        unsafe{(*window).add(&toolbar_icon.clone());}
         id
     }
     /// Make visible/invisible toolbar

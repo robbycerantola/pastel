@@ -77,12 +77,12 @@ const ZOOMSTEP: f32 = 0.5;
 
 //default font location
 #[cfg(target_os = "linux")]
-const DEFAULTFONT : &'static str = "/usr/share/fonts/gnu-free/FreeMonoBold.ttf";
+const DEFAULTFONT : &str = "/usr/share/fonts/gnu-free/FreeMonoBold.ttf";
 #[cfg(target_os = "redox")]
-//const DEFAULTFONT : &'static str = "/ui/fonts/Mono/Fira/Bold.ttf";
-const DEFAULTFONT : &'static str = "/ui/pastel/fonts/Pacifico-Regular.ttf";
+//const DEFAULTFONT : &str = "/ui/fonts/Mono/Fira/Bold.ttf";
+const DEFAULTFONT : &str = "/ui/pastel/fonts/Pacifico-Regular.ttf";
 #[cfg(target_os = "windows")]
-const DEFAULTFONT : &'static str = "C:/Windows/Fonts/arial.ttf";
+const DEFAULTFONT : &str = "C:/Windows/Fonts/arial.ttf";
 
 fn main() {
     // deal with icons path under diferent os
@@ -95,7 +95,7 @@ fn main() {
     #[cfg(target_os = "windows")]
     let root = Path::new("./res/");
     
-    if let Ok(_) = env::set_current_dir(&root) {}
+    if env::set_current_dir(&root).is_ok() {}
     
     //get user home directory (writable) 
     let mut home_dir = String::new();
@@ -127,7 +127,7 @@ fn main() {
 
     //size given
     if args.len() > 2 {
-       let k: Vec<_> = args[2].split("x").collect();
+       let k: Vec<_> = args[2].split('x').collect();
        size.x = (*k[0]).parse().unwrap() ;
        size.y = (*k[1]).parse().unwrap() ;
     }
@@ -172,7 +172,7 @@ fn main() {
     
     let mut x = 10;
     let mut y = 56;
-    let wy = &size.y + CANVASOFFSET as u32 + 18;
+    let wy = size.y + CANVASOFFSET as u32 + 18;
     let title = format!("Pastel: {}", filename);
 
 /*
@@ -835,7 +835,7 @@ fn main() {
                     //make invisible toolbar2
                     unsafe{(*toolbar2_clone).visible(false);}
                     //make toolbar3 visible
-                    unsafe{(&mut *toolbar3_clone).visible(true);}
+                    unsafe{(*toolbar3_clone).visible(true);}
                 });
 
             toolbar1.add(&image,parent_window);
@@ -1081,12 +1081,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
             match new_dialog(&"New file".to_owned()) { 
                 Some(resolution) => {
-                    let path: &str; //="";
-                    if cfg!(target_os = "redox"){
-                        path="/ui/bin/pastel";
-                    } else{
-                        path="../target/release/pastel"; 
-                    }
+                    let path = if cfg!(target_os = "redox") { "/ui/bin/pastel" } else { "../target/release/pastel" };
                     Command::new(&path)
                         .arg("new.png")
                         .arg(resolution.to_owned())
@@ -1110,20 +1105,15 @@ fn main() {
             f.path=PathBuf::from(home_dir_clone.to_owned());
             match f.exec() {
                 Some(response) => {
-                                    println!("Open {:?} ", response);
-                                    let path: &str ;//="";
-                                    if cfg!(target_os = "redox"){
-                                        path="/ui/bin/pastel";
-                                        } else{
-                                            path="../target/release/pastel"; 
-                                        }
-                                    
-                                    Command::new(&path)
-                                                .arg(response)
-                                                .spawn()
-                                                .expect("Command executed with failing error code");
-                                    },
-                        None => println!("Cancelled"),
+                    println!("Open {:?} ", response);
+                    let path = if cfg!(target_os = "redox") { "/ui/bin/pastel" } else { "../target/release/pastel" };
+                                                        
+                    Command::new(&path)
+                                .arg(response)
+                                .spawn()
+                                .expect("Command executed with failing error code");
+                },
+                None => println!("Cancelled"),
             }
         });
         menufile.add(&action);
@@ -1272,7 +1262,8 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                         match dialog("Save Buffer", "path:",&home_dir_clone[..]) {
                             Some(response) => {
-                                if let Ok(_) = fs::copy("/tmp/pastel_copy_buffer.png",&(response.to_string())[..] ) {}
+                                //if let Ok(_) = fs::copy("/tmp/pastel_copy_buffer.png",&(response.to_string())[..] ) {}
+                                if fs::copy("/tmp/pastel_copy_buffer.png",&(response.to_string())[..] ).is_ok() {}
                             },
                         
                             None => {println!("Cancelled");},
@@ -1701,7 +1692,7 @@ fn main() {
                         
                         match new_dialog(&"Resize".to_owned()) { 
                                 Some(resolution) => {
-                                    let val: Vec<&str> = resolution.split("x").collect();
+                                    let val: Vec<&str> = resolution.split('x').collect();
                                     let x: i32 = val[0].parse().unwrap_or(640);
                                     let y: i32 = val[1].parse().unwrap_or(480);
                                     canvas_clone.transformation("resize",x as f32,y);
@@ -1876,8 +1867,6 @@ fn main() {
     let status_clone = status.clone();
     let combo_box_clone = combo_box.clone();
     let paths_clone = paths.clone();
-    
-    
 
     canvas
         .position(0, CANVASOFFSET)
@@ -2009,7 +1998,7 @@ fn main() {
                              //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
                              let newcanvas = Canvas::from_image(canvas.copy_buffer.borrow().clone());
                              let path = "/tmp/pastel_copy_buffer.png".to_string();
-                             if let Ok(_) = newcanvas.save(&path) {}
+                             if newcanvas.save(&path).is_ok() {}
                          },
                         None => if let Some(selection) =
                             unsafe { image.select_rect(point.x, point.y,&mut *window_clone)} 
@@ -2023,7 +2012,7 @@ fn main() {
                             //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
                             let newcanvas = Canvas::from_image(canvas.copy_buffer.borrow().clone());
                             let path = "/tmp/pastel_copy_buffer.png".to_string();
-                            if let Ok(_) = newcanvas.save(&path){}
+                            if newcanvas.save(&path).is_ok() {}
                         },
                     }
                 },
@@ -2047,11 +2036,11 @@ fn main() {
                         canvas.interact_paste(
                             point.x,
                             point.y,
-                            a.clone(),
+                            a,
                             &mut *window_clone
                         )
                     } {
-                        canvas.paste_buffer(tuple.0, tuple.1 , a.clone());
+                        canvas.paste_buffer(tuple.0, tuple.1 , a);
                     }
                 },
                 "circle" => {
@@ -2105,7 +2094,7 @@ fn main() {
                     let font_path = tools.get_str("text","Font").unwrap(); //tools_clone.get_str("text","Font").unwrap();
                     let font_n = combo_box_clone.selected() as usize;
                     let path = &paths_clone.borrow()[font_n];
-                    canvas.text(&text, &path, point.x, point.y - CANVASOFFSET, color, size );
+                    canvas.text(&text, path, point.x, point.y - CANVASOFFSET, color, size );
                 },
                 _ => (),
                 }
@@ -2141,9 +2130,9 @@ fn main() {
                                             prev_position.y,point.x ,point.y,size as u32, size as u32,
                                                     color),
                             Some(2) => canvas.paste_buffer(point.x,point.y,
-                                                    a.clone()),
+                                                    a),
                             Some(3) => canvas.smooth_circle(point.x,point.y,
-                                                    size as u32, a.clone(), color),
+                                                    size as u32, a, color),
                             None | Some(_) => println!("no Shape match!"),
                         }
                     },
@@ -2189,13 +2178,12 @@ fn load_image(path: &str, size: &MySize) -> Arc<canvas::Canvas> {
         }
         Err(err) => {
             if cfg!(feature = "debug"){println!("Failed: {} \n Creating new one ", err);}
-            let image = Canvas::from_color(size.x, size.y, Color::rgb(255, 255, 255));
-            image
+            Canvas::from_color(size.x, size.y, Color::rgb(255, 255, 255))
         }
     }
 }
 
-///load pastel_copy_buffer if exists
+///load 'pastel_copy_buffer' if exists
 fn load_buffer(path: &str) -> orbimage::Image {
     if cfg!(feature = "debug"){print!("Loading copy buffer from:  {} .....", path);}
     match orbimage::Image::from_path(path.to_string()) {
@@ -2205,8 +2193,7 @@ fn load_buffer(path: &str) -> orbimage::Image {
         }
         Err(err) => {
             if cfg!(feature = "debug"){println!("Failed: {} \n Creating empty one ", err);}
-            let image = orbimage::Image::new(10,10);
-            image
+            orbimage::Image::new(10,10)
         }
     }
 }    

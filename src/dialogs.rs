@@ -254,7 +254,7 @@ pub fn new_dialog(title: &str) -> Option<String> {
             //text_box: &TextBox
 
             unsafe {
-                (&mut *new_window_clone).close();
+                (*new_window_clone).close();
                 
             }
         });
@@ -281,7 +281,7 @@ pub fn new_dialog(title: &str) -> Option<String> {
             //text_box: &TextBox
 
             unsafe {
-                (&mut *new_window_clone).close();
+                (*new_window_clone).close();
             }
         });
     }
@@ -359,7 +359,7 @@ pub fn popup(title: &str, text: &str) {
         let button = close_button.clone();
         let new_window_clone = &mut new_window as *mut Window;
         button.on_click(move |_button: &Button, _point: Point| unsafe {
-                            (&mut *new_window_clone).close();
+                            (*new_window_clone).close();
                         });
     }
 

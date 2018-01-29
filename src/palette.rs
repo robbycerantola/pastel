@@ -233,7 +233,7 @@ impl Palette {
         n
     }
 
-    pub fn save(&self, filename: &String ) -> Result <i32, Error>{
+    pub fn save(&self, filename: &str ) -> Result <i32, Error>{
         
         let mut palette_data = self.swatches.clone().into_inner();
         let mut payload = String::new();
@@ -297,7 +297,7 @@ impl Palette {
             Err(why) => return Err(why) ,// panic!("couldn't read {}: {}", display,why),
             Ok(_) => {
                 //deserialize
-                colors = payload.split(",").map(|payload| payload.parse::<u8>().unwrap()).collect();
+                colors = payload.split(',').map(|payload| payload.parse::<u8>().unwrap()).collect();
                 let mut i=0;
                 let mut sw=0;
                 let mut last=SWATCH_MAX;

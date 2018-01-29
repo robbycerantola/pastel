@@ -94,7 +94,7 @@ impl Canvas {
         Ok(Self::from_image(Image::from_path(path)?))
     }
     
-    pub fn save(&self, filename: &String) -> Result <i32, Error>{
+    pub fn save(&self, filename: &str) -> Result <i32, Error>{
         //let width = self.rect.get().width as u32;
         //let height = self.rect.get().height as u32;
         let width = self.width() as u32;
@@ -117,7 +117,7 @@ impl Canvas {
             new_image_buffer.push(image_buffer[i + 1]);
             new_image_buffer.push(image_buffer[i]);
             new_image_buffer.push(image_buffer[i + 3]);
-            i = i + 4;
+            i += 4;
         }
 
         if cfg!(feature = "debug"){
@@ -168,7 +168,7 @@ impl Canvas {
         let mut height = self.rect.get().height as u32;
         //get image data in form of [Color] slice
         let image_data = self.image.clone().into_inner().into_data();
-        let new_slice = self.trans_from_slice(image_data,width,height,cod,a,b);
+        let new_slice = self.trans_from_slice(&image_data,width,height,cod,a,b);
         let mut image = self.image.borrow_mut();
         
         if cod == "resize" {
@@ -222,13 +222,12 @@ impl Canvas {
         //get image data in form of [Color] slice
         let image_data = image_selection.into_data();
         //apply transformation to slice
-        let new_slice = self.trans_from_slice(image_data,width,height,cod,a,b);
+        self.trans_from_slice(&image_data,width,height,cod,a,b)
         //here only return new_slice instead of render because of borrowing issue 
-        new_slice
     }
 
     /// apply some transformation to an image slice
-    fn trans_from_slice (&self, image_data: Box<[Color]>, width: u32, height: u32, cod: &str, a: f32, b:i32) -> Vec<Color> {
+    fn trans_from_slice (&self, image_data: &[Color], width: u32, height: u32, cod: &str, a: f32, b:i32) -> Vec<Color> {
         //let mut width = width;
         //let mut height = height;
         let image_buffer = unsafe {
@@ -237,7 +236,7 @@ impl Canvas {
                 
         let mut imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, image_buffer.to_vec()).unwrap();
         let vec_image_buffer:Vec<u8> = image::ImageBuffer::into_raw ( 
-            match cod.as_ref() {
+            match cod {
             
              "blur"            => image::imageops::blur(&imgbuf,a),
              "unsharpen"       => image::imageops::unsharpen(&imgbuf,a,10),
@@ -591,8 +590,7 @@ impl Canvas {
     }
 
     pub fn mask_flag(& self) -> bool {
-        let flag = self.mask_flag.get();
-        flag
+        self.mask_flag.get()
     }
 
     ///Draw some text on canvas
@@ -657,8 +655,7 @@ impl Canvas {
     ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very fast.
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = self.width()as i32 * y + x;
-        let rgba = self.image.borrow().data()[p as usize];
-        rgba
+        self.image.borrow().data()[p as usize]
     }
 
     ///circle with mask support
@@ -777,7 +774,7 @@ impl Canvas {
         let mut rb = self.brush.borrow_mut();
         if self.old_size.get() != size || color.data != self.old_color.get().data {
             if let Ok(sb) = orbimage::parse_png(SMOOTH_BRUSH) {
-                let qb = sb.resize(size*2, size*2, ResizeType::Lanczos3).unwrap().colorize(color,opacity);
+                let qb = sb.resize(size*2, size*2, ResizeType::Lanczos3).unwrap().colorize(color);
                 *rb = qb;
                 self.old_size.set(size);
                 self.old_color.set(color);

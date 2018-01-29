@@ -58,7 +58,7 @@ impl Tools {
     pub fn get(&self, tool_name: &str  , property: &str) -> Option<i32> {
         let properties = &self.tools[tool_name];
         for a in properties {
-            if &a.name.get() == property {
+            if a.name.get() == property {
                 return Some(a.value.get().parse::<i32>().unwrap());
             }
         } 
@@ -69,7 +69,7 @@ impl Tools {
     pub fn get_str(&self, tool_name: &str  , property: &str) -> Option<String> {
         let properties = &self.tools[tool_name];
         for a in properties {
-            if &a.name.get() == property {
+            if a.name.get() == property {
                 return Some(a.value.get());
             }
         } 
@@ -80,7 +80,7 @@ impl Tools {
     pub fn set <T: MyTrait> (&self, tool_name: &str, property: &str, value: T){
         let properties = &self.tools[tool_name];
         for a in properties {
-            if &a.name.get() == property {
+            if a.name.get() == property {
                 a.value.set(value.to_string());
             }
         } 

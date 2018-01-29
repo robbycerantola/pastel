@@ -4,6 +4,8 @@ use orbclient;
 use orbtk::{Color, Rect, Renderer, Window}; 
 use orbclient::EventOption;
 
+use std::mem::swap;
+
 use CANVASOFFSET;
 
 //  which ones to be added directly to orbclient ?
@@ -22,17 +24,16 @@ pub trait AddOnsToOrbimage {
     fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) -> orbimage::Image;
     fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
     fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
-    fn colorize (&self, color: Color, opacity: u8) -> orbimage::Image;
+    fn colorize (&self, color: Color) -> orbimage::Image;
 }
 
 impl AddOnsToOrbimage for orbimage::Image {
-    ///return pixel color
+    ///return pixel color safely
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = (self.width()as i32 * y + x) as usize;
         if p < self.data().len() {
-            let rgba = self.data()[p];
-            return rgba
-        }else { return Color::rgba(0,0,0,0)}
+            self.data()[p] //return rgba value if exist
+        }else { Color::rgba(0,0,0,0)}
     }
     
     fn pixraw (&self, x:i32, y:i32) -> u32 {
@@ -273,11 +274,13 @@ impl AddOnsToOrbimage for orbimage::Image {
                     EventOption::Button(btn) => {if btn.left {
                                                     
                                                     if lx < x {
-                                                        let tmp =x; x= lx; lx = tmp;
+                                                        //let tmp =x; x= lx; lx = tmp;
+                                                        swap(&mut x, &mut lx);
                                                     } 
                                                     
                                                     if ly < y {
-                                                        let tmp = y; y=ly; ly= tmp;
+                                                        //let tmp = y; y=ly; ly= tmp;
+                                                        swap(&mut y, &mut ly)
                                                     }
                                                     
                                                     let dx=lx-x;
@@ -344,11 +347,14 @@ impl AddOnsToOrbimage for orbimage::Image {
                     EventOption::Button(btn) => {if btn.left {
                                                     
                                                     if lx < x {
-                                                        let tmp =x; x= lx; lx = tmp;
+                                                        //let tmp =x; x= lx; lx = tmp;
+                                                        swap(&mut x, &mut lx);
+                                                        
                                                     } 
                                                     
                                                     if ly < y {
-                                                        let tmp = y; y=ly; ly= tmp;
+                                                        //let tmp = y; y=ly; ly= tmp;
+                                                        swap(&mut y, &mut ly);
                                                     }
                                                     
                                                     let dx=lx-x;
@@ -601,15 +607,14 @@ impl AddOnsToOrbimage for orbimage::Image {
         }
     }
 */
-    fn colorize (&self, color: Color, opacity: u8) -> orbimage::Image {
+    /// colorize a grayscale image 
+    fn colorize (&self, color: Color) -> orbimage::Image {
         let w = self.width();
         let h = self.height();
         let mut data = self.clone().into_data();
-        //let i:usize = 0;
         let mut a;
         for i in 0..data.len() {
             a = data[i].a();
-            //data[i]=Color::rgba(color.r(),color.g(),color.b(),(a as f32 *(opacity as f32 /100.0))as u8)
             data[i]=Color::rgba(color.r(),color.g(),color.b(),a);
         }
         orbimage::Image::from_data(w ,h ,data).unwrap()
@@ -630,9 +635,8 @@ impl AddOnsToOrbclient for orbclient::Window{
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = (self.width()as i32 * y + x) as usize;
         if p < self.data().len() {
-            let rgba = self.data()[p];
-            return rgba
-        }else { return Color::rgba(0,0,0,0)}
+            self.data()[p] //return rgba
+        }else {Color::rgba(0,0,0,0)}
     }
     
     /// Draws ant_line - - -   
@@ -660,7 +664,7 @@ impl AddOnsToOrbclient for orbclient::Window{
             // rgb bitwise xor between old and new pixel color
             // New faster implementation xor-ing 32 bit internal color data   
             // Attention :trick does not work as intended xor-ing entire 32bit color data, if new color alpha > 0!!
-            unsafe{self.pixel(x,y,Color{data: (&old_color.data ^ &color.data)});}
+            self.pixel(x,y,Color{data: (old_color.data ^ color.data)});
             }
             
             if x == argx2 && y == argy2 { break };
@@ -701,24 +705,24 @@ impl AddOnsToOrbclient for orbclient::Window{
         let mut old_color : Color ;
         
         while x >= y {
-            unsafe{
+            
             old_color = self.pixcol(x0 - x, y0+ y);
-            self.pixel(x0 - x, y0 + y, Color{data: (&old_color.data ^ &color.data)});
+            self.pixel(x0 - x, y0 + y, Color{data: (old_color.data ^ color.data)});
             old_color = self.pixcol(x0 + x, y0+ y);
-            self.pixel(x0 + x, y0 + y, Color{data: (&old_color.data ^ &color.data)});
+            self.pixel(x0 + x, y0 + y, Color{data: (old_color.data ^ color.data)});
             old_color = self.pixcol(x0 - y, y0+ x);
-            self.pixel(x0 - y, y0 + x, Color{data: (&old_color.data ^ &color.data)});
+            self.pixel(x0 - y, y0 + x, Color{data: (old_color.data ^ color.data)});
             old_color = self.pixcol(x0 + y, y0+ x);
-            self.pixel(x0 + y, y0 + x, Color{data: (&old_color.data ^ &color.data)});
+            self.pixel(x0 + y, y0 + x, Color{data: (old_color.data ^ color.data)});
             old_color = self.pixcol(x0 - x, y0 - y);
-            self.pixel(x0 - x, y0 - y, Color{data: (&old_color.data ^ &color.data)});
+            self.pixel(x0 - x, y0 - y, Color{data: (old_color.data ^ color.data)});
             old_color = self.pixcol(x0 + x, y0 - y);
-            self.pixel(x0 + x, y0 - y, Color{data: (&old_color.data ^ &color.data)});
+            self.pixel(x0 + x, y0 - y, Color{data: (old_color.data ^ color.data)});
             old_color = self.pixcol(x0 - y, y0 - x);
-            self.pixel(x0 - y, y0 - x, Color{data: (&old_color.data ^ &color.data)});
+            self.pixel(x0 - y, y0 - x, Color{data: (old_color.data ^ color.data)});
             old_color = self.pixcol(x0 + y, y0 -x);
-            self.pixel(x0 + y, y0 - x, Color{data: (&old_color.data ^ &color.data)});
-            }
+            self.pixel(x0 + y, y0 - x, Color{data: (old_color.data ^ color.data)});
+            
             y += 1;
             err += 1 + 2*y;
             if 2*(err-x) + 1 > 0 {

@@ -1,17 +1,17 @@
 //canvas widget based on image widget
 
 extern crate rusttype;
-extern crate resize;
+//extern crate resize;
 
 use self::rusttype::{FontCollection, Scale, point};
-use self::resize::Filter;
+//use self::resize::Filter;
 
 use image;
 use image::{GenericImage, ImageBuffer, Pixel};
 
 use orbclient::{Color, Renderer};
 use orbimage::{self, Image, ResizeType};
-//use orbimage::ResizeType;
+
 
 use orbtk::Window;
 use orbtk::event::Event;
@@ -244,8 +244,8 @@ impl Canvas {
              "flip_vertical"   => image::imageops::flip_vertical(&imgbuf),
              "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
              "rotate90"        => image::imageops::rotate90(&imgbuf),
-             "rotate"          => self.rotate_center(&imgbuf,(a as f32 * PI/180.0)),
-             //"rotate"          => imageproc::affine::rotate_about_center(&imgbuf,(a as f32 * PI/180.0),imageproc::affine::Interpolation::Bilinear),
+             "rotate"          => self.rotate_center(&imgbuf, a as f32 * PI/180.0),
+             //"rotate"          => imageproc::affine::rotate_about_center(&imgbuf, a as f32 * PI/180.0 ,imageproc::affine::Interpolation::Bilinear),
              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
              "contrast"        => image::imageops::colorops::contrast(&imgbuf, a),
@@ -410,8 +410,8 @@ impl Canvas {
         let mut image = self.image.borrow_mut();
         
         //define custom filter
-        fn kernel(x: f32) ->f32 { f32::max(1.0 - x.abs(),0.0) }
-        let filter = Filter::new(Box::new(kernel), 1.0);
+        //fn kernel(x: f32) ->f32 { f32::max(1.0 - x.abs(),0.0) }
+        //let filter = Filter::new(Box::new(kernel), 1.0);
         
         //limits zoom in to factor 3
         if self.zoom_factor.get() < 2.0 {
@@ -428,8 +428,8 @@ impl Canvas {
     pub fn zoom_out(&self) {
         let mut image = self.image.borrow_mut();
         //define custom filter
-        fn kernel(x: f32) ->f32 { f32::max(1.0 - x.abs(),0.0) }
-        let filter = Filter::new(Box::new(kernel), 1.0);
+        //fn kernel(x: f32) ->f32 { f32::max(1.0 - x.abs(),0.0) }
+        //let filter = Filter::new(Box::new(kernel), 1.0);
 
         //limits zoom out to factor 1.0
         if self.zoom_factor.get() > 1.0 {
@@ -484,6 +484,7 @@ impl Canvas {
     }
 
     ///paste an image into current canvas starting at x,y with transparency , mask and view support
+    #[inline]
     pub fn paste_image (&self, x: i32, y:i32, opacity: u8, buffer: Image, ){
         let w = buffer.width() as i32;
         let h = buffer.height() as i32;
@@ -514,6 +515,7 @@ impl Canvas {
     }
     
     ///paste internal copy buffer into current canvas starting at x,y with transparency , mask and view support
+    #[inline]
     pub fn paste_buffer (&self, x: i32, y:i32, opacity: u8 ){
         let buffer = self.copy_buffer.borrow().clone();
         let w = buffer.width() as i32;
@@ -638,6 +640,7 @@ impl Canvas {
    because in rust I cannot override the pixel function !! 
 */ 
     ///pixel function with mask and pan support
+    #[inline]
     pub fn pixel(&self , x: i32, y: i32, color: Color) {
         let mut color = color;
         let Rect {x: panx, y: pany, ..} = self.view.get();
@@ -713,10 +716,10 @@ impl Canvas {
     }
     
     fn line4points(&self, x0: i32, y0: i32, x: i32, y: i32, color: Color){
-        self.line(x0 - x, y0 + y, (x+x0), y0 + y, color);
+        self.line(x0 - x, y0 + y, x + x0, y0 + y, color);
         //self.rect(x0 - x, y0 + y, x as u32 * 2 + 1, 1, color);
         if y != 0 {
-            self.line(x0 - x, y0 - y, (x+x0), y0-y , color);
+            self.line(x0 - x, y0 - y, x + x0, y0 - y , color);
             //self.rect(x0 - x, y0 - y, x as u32 * 2 + 1, 1, color);
         }
     }
@@ -1094,7 +1097,7 @@ impl Widget for Canvas {
         let width = self.view.get().width;
         let stride = image.width() as usize;
         let mut offset = self.view.get().y as usize * stride + self.view.get().x as usize;
-        let last_offset = cmp::min(((self.view.get().y as usize + self.view.get().height as usize) * stride + self.view.get().x as usize), image.data().len());
+        let last_offset = cmp::min(self.view.get().y as usize + self.view.get().height as usize * stride + self.view.get().x as usize, image.data().len());
         while offset < last_offset {
             let next_offset = offset + stride;
             renderer.image(x, y, width, 1, &image.data()[offset..]);
@@ -1164,6 +1167,7 @@ impl Widget for Canvas {
                 if y == 1 {
                     self.zoom_in();
                     *redraw = true;
+                    
                 }
                 if y == -1 {
                     self.zoom_out();

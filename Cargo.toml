@@ -2,7 +2,7 @@
 name = "pastel"
 description = "Simple bitmap editor for Redox OS"
 repository = "https://github.com/pastel.git"
-version = "0.0.36"
+version = "0.1.0"
 keywords = ["orbital", "redox", "editor", "graphics"]
 authors = ["Robby <robbycerantola@gmail.com>"]
 
@@ -12,11 +12,17 @@ orbclient = "0.3.12"
 orbtk = { git = "https://github.com/robbycerantola/orbtk.git", branch = "resync" }
 #orbtk = { path = "/home/robby/orbtk"}
 orbimage = "0.1.15"
-image = "0.12.4"
+#image = "0.12.4"
 rusttype = "0.2.3"
-resize = "0.2"
-glob = "*"
+
+[dependencies.image]
+version = "0.12.4"
+default-features = false
+features = ["jpeg","png_codec","tiff","bmp","gif_codec"]
 
 
 [features]
 debug = []
+
+[profile.release]
+panic = "abort"

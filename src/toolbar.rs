@@ -235,8 +235,9 @@ impl Widget for ToolbarIcon {
                         self.selected.set(false);
                         *redraw = true;
                     }
+                    /* #FIXME disable tooltip because of bug : selection happens only after tooltip has show up 
                     if rect.contains(point) {
-                        //FIXME after 2 sec shows up tooltip but only if mouse is moved 
+                        
                             match self.tooltip_time.get() {
                                 Some(time) => {
                                     if !self.tooltip.get(){
@@ -249,12 +250,13 @@ impl Widget for ToolbarIcon {
                                 None       => self.tooltip_time.set(Some(Instant::now())),
                             }
                         //self.tooltip.set(true);
-                        //*redraw = true;
+                        // *redraw = true;
                     }else{
                         self.tooltip_time.set(None);
                         self.tooltip.set(false);
                         *redraw = true;
                     }
+                    */
                 }
                     
                 _ => (),

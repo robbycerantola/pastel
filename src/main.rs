@@ -23,12 +23,11 @@ use std::process;
 use std::process::Command;
 use std::path::{Path, PathBuf};
 use std::{env, fs, cmp, io};
-//use std::fs::ReadDir;
 use std::cmp::Ordering;
 use std::ffi::OsStr;
 
 mod dialogs;
-use dialogs::{dialog, popup, new_dialog, text_dialog};
+use dialogs::{dialog, popup, new_dialog}; //, text_dialog
 
 mod palette;
 use palette::Palette;
@@ -413,7 +412,7 @@ fn main() {
     let combo_box = ComboBox::new();
     combo_box.position(x+600, y)
         .size(250,28).visible(false);
-    let mut paths:RefCell<Vec<String>> = RefCell::new(Vec::new());
+    let paths:RefCell<Vec<String>> = RefCell::new(Vec::new());
     //get only ttf fonts in default font directory
     let mut p =PathBuf::from(DEFAULTFONT);// set font path accordingly with default font path
     p.pop(); //get rid of name.ext
@@ -1443,19 +1442,19 @@ fn main() {
         let status_clone = status.clone();
         let tools_clone = tools.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            match dialog("Regular polygon", "sides:","3") {
-                            Some(response) => {
-                                tools_clone.set("polygon","Sides",response.parse::<i32>().unwrap_or(3));
-                                tools_clone.select("polygon");
-                                status_clone.text("Drawing regular poligons...");
-                            },
-                            None => {println!("Cancelled");},
-                        }
+            match dialog("Regular polygon", "sides:","3") {
+                Some(response) => {
+                    tools_clone.set("polygon","Sides",response.parse::<i32>().unwrap_or(3));
+                    tools_clone.select("polygon");
+                    status_clone.text("Drawing regular poligons...");
+                },
+                None => {println!("Cancelled");},
+            }
         });
         menutools.add(&action);
     }
 
-/*
+
     {
         let action = Action::new("Text");
         let status_clone = status.clone();
@@ -1463,29 +1462,41 @@ fn main() {
         let size_label_clone = size_label.clone();
         let tools_clone = tools.clone();
         let combo_box_clone = combo_box.clone();
+        let text_box_clone = text_box.clone();
         let paths_clone = paths.clone();
         action.on_click(move |_action: &Action, _point: Point| {
-                            match text_dialog("Text", "text:","") {
-                                Some(response) => {
-                                    tools_clone.select("text");
-                                    tools_clone.set("text","Text",response.0.to_owned());
-                                    //tools_clone.set("text","Font",response.1.to_owned());
-                                    combo_box_clone.push(&response.1.to_owned());
-                                    paths_clone.borrow_mut().push(response.1.to_owned());
-                                    let s = tools_clone.get("text","Size").unwrap();
-                                    let o = tools_clone.get("text","Opacity").unwrap();
-                                    size_bar_clone.visible(true);
-                                    size_label_clone.visible(true);
-                                    size_bar_clone.value.set(s);
-                                    size_label_clone.text(format!("Size: {}",s));
-                                    status_clone.text("Click on canvas to draw the text...(you can change color, size & opacity)");
-                                },
-                                None => {println!("Cancelled");},
-                            }
+            /*
+            match text_dialog("Text", "text:","") {
+                Some(response) => {
+                    tools_clone.select("text");
+                    tools_clone.set("text","Text",response.0.to_owned());
+                    //tools_clone.set("text","Font",response.1.to_owned());
+                    combo_box_clone.push(&response.1.to_owned());
+                    paths_clone.borrow_mut().push(response.1.to_owned());
+                    let s = tools_clone.get("text","Size").unwrap();
+                    let o = tools_clone.get("text","Opacity").unwrap();
+                    size_bar_clone.visible(true);
+                    size_label_clone.visible(true);
+                    size_bar_clone.value.set(s);
+                    size_label_clone.text(format!("Size: {}",s));
+                    status_clone.text("Click on canvas to draw the text...(you can change color, size & opacity)");
+                },
+                None => {println!("Cancelled");},
+            }
+            */
+            tools_clone.select("text");
+            size_bar_clone.visible(true);
+            size_label_clone.visible(true);
+            combo_box_clone.visible(true);
+            text_box_clone.visible(true);
+            let s = tools_clone.get("text","Size").unwrap();
+            size_bar_clone.value.set(s);
+            size_label_clone.text(format!("Size: {}",s));
+            status_clone.text("Click on canvas to draw the text...(you can change color, size & opacity)");
         });
         menutools.add(&action);
     }
-*/
+
 
 
     menutools.add(&Separator::new());
@@ -1799,7 +1810,7 @@ fn main() {
                             let newy = *cmp::max(&size_clone.y, &(canvas_clone.height() + 18 + CANVASOFFSET as u32));
                             unsafe{ (*window_clone).set_size(newx, newy) }
                             status_clone.text(format!("Zoomed in ...({}%)",(100.0 * canvas_clone.zoom_factor.get()) as i32));
-                            status_clone.position(4,(canvas_clone.height()as i32 + CANVASOFFSET ) );
+                            status_clone.position(4, canvas_clone.height()as i32 + CANVASOFFSET);
                         });
         menuview.add(&action);
     }
@@ -1818,7 +1829,7 @@ fn main() {
                             let newy = *cmp::max(&size_clone.y, &(canvas_clone.height() + 18 + CANVASOFFSET as u32));
                             unsafe{ (*window_clone).set_size(newx, newy) }
                             status_clone.text(format!("Zoomed out ...({}%)",(100.0 * canvas_clone.zoom_factor.get())as i32));
-                            status_clone.position(4,(canvas_clone.height()as i32 + CANVASOFFSET ) );
+                            status_clone.position(4, canvas_clone.height()as i32 + CANVASOFFSET );
                         });
         menuview.add(&action);
     }
@@ -1850,7 +1861,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
                             popup("Info",
-                                  "Pastel v0.0.36, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                                  "Pastel v0.1.0, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1865,6 +1876,8 @@ fn main() {
     let status_clone = status.clone();
     let combo_box_clone = combo_box.clone();
     let paths_clone = paths.clone();
+    
+    
 
     canvas
         .position(0, CANVASOFFSET)
@@ -1889,7 +1902,7 @@ fn main() {
                         canvas.paint_on_mask();
                 },
                 '@' => {
-                        status_clone.position(4,(canvas.height()as i32 + CANVASOFFSET ) );
+                        status_clone.position(4, canvas.height()as i32 + CANVASOFFSET);
                 },
                 _ => (),
             }
@@ -1911,18 +1924,18 @@ fn main() {
     .on_click(move |canvas: &Canvas, point: Point| {
         let click = click_pos.clone();
         let size = size_bar.clone().value.get();
-        let swatch_clone = swatch.clone();
+        //let swatch_clone = swatch.clone();
         {
             let mut prev_opt = click.borrow_mut();
             //let r = (red_bar.clone().value.get() as f32 * 2.55) as u8;
             //let g = (green_bar.clone().value.get() as f32 * 2.55) as u8;
             //let b = (blue_bar.clone().value.get() as f32 * 2.55) as u8;
             let a = (trans_bar.clone().value.get() as f32 * 2.55) as u8;
-            let swc = swatch_clone.read();
+            let swc = swatch.read(); //swatch_clone.read();
             let color = Color::rgba(swc.r(),swc.g(),swc.b(),a);
-            let tools_clone = tools.clone();
-            let antialias = tools_clone.get("preferences","Antialias").unwrap();
-            let selected_tool = tools_clone.current();
+            //let tools_clone = tools.clone();
+            let antialias = tools.get("preferences","Antialias").unwrap(); //tools_clone.get("preferences","Antialias").unwrap();
+            let selected_tool = tools.current(); //tools_clone.current();
 
             //tools that dont need prev_position
             match selected_tool.as_ref() {
@@ -1930,8 +1943,8 @@ fn main() {
                 "fill" => canvas.fill(point.x, point.y,color),
                 "rectangle" => {
                     canvas.undo_save();
-                    let filled = tools_clone.get("rectangle","Filled").unwrap();
-                    let mut width = tools_clone.get("rectangle","Size").unwrap();
+                    let filled = tools.get("rectangle","Filled").unwrap(); //tools_clone.get("rectangle","Filled").unwrap();
+                    let mut width = tools.get("rectangle","Size").unwrap(); //tools_clone.get("rectangle","Size").unwrap();
                     let mut myselection = Rect::new(0,0,0,0);
                     if let Some(selection) = unsafe {
                         canvas.image.borrow_mut().new_select_rect(
@@ -1963,7 +1976,7 @@ fn main() {
                 },
                 "polyline" => { 
                     canvas.undo_save();
-                    let width = tools_clone.get("polyline","Size").unwrap();
+                    let width = tools.get("polyline","Size").unwrap(); //tools_clone.get("polyline","Size").unwrap();
                     let mut tu = (point.x,point.y,point.x,point.y);
                     if let Some(tuple) = unsafe {
                         canvas.image.borrow_mut().interact_line(point.x,
@@ -2043,8 +2056,8 @@ fn main() {
                 },
                 "circle" => {
                     canvas.undo_save();
-                    let filled = tools_clone.get("circle","Filled").unwrap();
-                    let width = tools_clone.get("circle","Size").unwrap();
+                    let filled = tools.get("circle","Filled").unwrap(); //tools_clone.get("circle","Filled").unwrap();
+                    let width = tools.get("circle","Size").unwrap(); //tools_clone.get("circle","Size").unwrap();
                     let radius;
                     let mut myr = 0;
                     {
@@ -2068,7 +2081,7 @@ fn main() {
                     }
                 },
                 "polygon" => {
-                    let sides = tools_clone.get("polygon","Sides").unwrap();
+                    let sides = tools.get("polygon","Sides").unwrap(); //tools_clone.get("polygon","Sides").unwrap(); 
                     canvas.undo_save();
                     let mut aangle=0_f32;
                     let mut rr=0;
@@ -2088,8 +2101,8 @@ fn main() {
                 "text" => {
                     //let text = text_clone.text.get();
                     //let font_path = text_clone.font.get();
-                    let text = tools_clone.get_str("text","Text").unwrap();
-                    let font_path = tools_clone.get_str("text","Font").unwrap();
+                    let text = tools.get_str("text","Text").unwrap(); // tools_clone.get_str("text","Text").unwrap();
+                    let font_path = tools.get_str("text","Font").unwrap(); //tools_clone.get_str("text","Font").unwrap();
                     let font_n = combo_box_clone.selected() as usize;
                     let path = &paths_clone.borrow()[font_n];
                     canvas.text(&text, &path, point.x, point.y - CANVASOFFSET, color, size );
@@ -2117,7 +2130,7 @@ fn main() {
                         }
                     },
                     "brush" => {
-                        match tools.clone().get("brush","Shape") {
+                        match tools.get("brush","Shape") {
                             Some(0) => canvas.brush_line(prev_position.x,
                                             prev_position.y,
                                             point.x,

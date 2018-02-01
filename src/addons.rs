@@ -381,6 +381,7 @@ impl AddOnsToOrbimage for orbimage::Image {
     
         //gets events from orbclient and render helping lines directly into orbclient window 
         let mut orbclient = window.inner.borrow_mut();
+        //let mut orbclient = window.inner().borrow_mut();
         let mut w = false;
         let mut dx = 0_i32;
         let mut dy = 0_i32;

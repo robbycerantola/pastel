@@ -1186,7 +1186,7 @@ fn main() {
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
             tools_clone.select("marquee");
-            status_clone.text("Selecting... (click on canvas, move cursor to define a rectangle than click again)");
+            status_clone.text("Selecting... (click on canvas, move cursor to define a rectangle then click again)");
         });
         menuedit.add(&action);
     }
@@ -1228,7 +1228,7 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
             *canvas_clone.copy_buffer.borrow_mut() = load_buffer("/tmp/pastel_copy_buffer.png");
             tools_clone.select("paste");
-            status_clone.text("Pasting... (click on canvas, move cursor to refine the position than click again)");
+            status_clone.text("Pasting... (click on canvas, move cursor to refine the position then click again)");
         });
         menuedit.add(&action);
     }
@@ -1288,7 +1288,7 @@ fn main() {
                         canvas_clone.paint_on_mask();
                         if canvas_clone.mask_flag() {
                             _action.text("Back to canvas");
-                            status_clone.text("Paint in black & white (or greys) to define the mask, than click 'Mask -> Back to canvas' to use it");
+                            status_clone.text("Paint in black & white (or greys) to define the mask, then click 'Mask -> Back to canvas' to use it");
                         }else{
                             status_clone.text("");
                             _action.text("Edit");
@@ -1304,6 +1304,16 @@ fn main() {
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.clear_mask();
+                          });
+        menumask.add(&action);
+    }
+
+    {
+        let action = Action::new("Invert");
+        let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.invert_mask();
                           });
         menumask.add(&action);
     }
@@ -1986,10 +1996,11 @@ fn main() {
                     }
                 },
                 "copy" => {
-                    let mut image = canvas.image.borrow_mut();
+                    //let mut image = canvas.image.borrow_mut();
                     match *selection_clone.borrow() {
                         Some(selection) => {
-                             *canvas.copy_buffer.borrow_mut() = image.copy_selection(
+                             //*canvas.copy_buffer.borrow_mut() = image.copy_selection(
+                             canvas.copy_selection(
                                 selection.x,
                                 selection.y,
                                 selection.width,
@@ -2000,10 +2011,11 @@ fn main() {
                              let path = "/tmp/pastel_copy_buffer.png".to_string();
                              if newcanvas.save(&path).is_ok() {}
                          },
-                        None => if let Some(selection) =
+                        None => {} /*if let Some(selection) =
                             unsafe { image.select_rect(point.x, point.y,&mut *window_clone)} 
                         {       
-                            *canvas.copy_buffer.borrow_mut() = image.copy_selection(
+                            // *canvas.copy_buffer.borrow_mut() = image.copy_selection(
+                            canvas.copy_selection(
                                 selection.x,
                                 selection.y,
                                 selection.width,
@@ -2013,7 +2025,7 @@ fn main() {
                             let newcanvas = Canvas::from_image(canvas.copy_buffer.borrow().clone());
                             let path = "/tmp/pastel_copy_buffer.png".to_string();
                             if newcanvas.save(&path).is_ok() {}
-                        },
+                        }, */
                     }
                 },
                "marquee"=> {

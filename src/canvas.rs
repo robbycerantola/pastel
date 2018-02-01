@@ -12,7 +12,6 @@ use image::{GenericImage, ImageBuffer, Pixel};
 use orbclient::{Color, Renderer};
 use orbimage::{self, Image, ResizeType};
 
-
 use orbtk::Window;
 use orbtk::event::Event;
 use orbtk::point::Point;
@@ -57,7 +56,6 @@ pub struct Canvas {
     brush: RefCell<Image>,
     old_color: Cell<Color>,
     old_size: Cell<u32>,
-
 }
 
 impl Canvas {
@@ -74,7 +72,7 @@ impl Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             view: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             newundo_image: RefCell::new(vec!(Image::new(image.width(),image.height()))),
-            mask: RefCell::new(Image::from_color(image.width(), image.height(), Color::rgba(255,0,0,50))),
+            mask: RefCell::new(Image::from_color(image.width(), image.height(), Color::rgba(255,255,255,255))),
             mask_flag: Cell::new(false),
             mask_enabled: Cell::new(false),
             image: RefCell::new(image),
@@ -95,8 +93,6 @@ impl Canvas {
     }
     
     pub fn save(&self, filename: &str) -> Result <i32, Error>{
-        //let width = self.rect.get().width as u32;
-        //let height = self.rect.get().height as u32;
         let width = self.width() as u32;
         let height = self.height() as u32;
 
@@ -138,7 +134,6 @@ impl Canvas {
                             if cfg!(feature = "debug"){println!("Error: {}",e);}
                             Err(e)
                             },
-                
         }
     }
 
@@ -146,9 +141,8 @@ impl Canvas {
         //first prepare for undo 
         self.undo_save();
         
-       let mut image = self.image.borrow_mut();
-       //image.clear();
-       image.set(Color::rgba(255, 255, 255,255));
+        let mut image = self.image.borrow_mut();
+        image.set(Color::rgba(255, 255, 255,255));
     }
     
     pub fn height(&self) -> u32 {
@@ -178,12 +172,10 @@ impl Canvas {
         }
         image.clear();
         if cod == "rotate90" {
-            
             image.image(0, 0, height, width, &new_slice[..]);
         }else{
             image.image(0, 0, width, height, &new_slice[..]);
         }
-        
     }
 
     ///apply some transformations to canvas selection (in place)
@@ -204,16 +196,13 @@ impl Canvas {
         if cod == "resize" {
             width = a as u32;
             height = b as u32;
-            
         }
-        
         if cod == "rotate90" {
             image.image(x, y, height, width, &new_image[..]);
         }else{
             image.image(x,y, width, height, &new_image[..]);
         }
     }
-
 
     /// apply some transformation to an image 
     pub fn trans_image (&self, image_selection: Image, cod: &str, a: f32, b: i32) -> Vec<Color> {
@@ -228,12 +217,9 @@ impl Canvas {
 
     /// apply some transformation to an image slice
     fn trans_from_slice (&self, image_data: &[Color], width: u32, height: u32, cod: &str, a: f32, b:i32) -> Vec<Color> {
-        //let mut width = width;
-        //let mut height = height;
         let image_buffer = unsafe {
             slice::from_raw_parts(image_data.as_ptr() as *const u8, 4 * image_data.len())
         };
-                
         let mut imgbuf : image::ImageBuffer<image::Rgba<u8>, _> = image::ImageBuffer::from_raw(width as u32, height as u32, image_buffer.to_vec()).unwrap();
         let vec_image_buffer:Vec<u8> = image::ImageBuffer::into_raw ( 
             match cod {
@@ -462,7 +448,7 @@ impl Canvas {
         }
     }
 
-    /// retrive image from undo stack
+    /// retrieve image from undo stack
     pub fn undo (&self) {
         let mut newundo_image = self.newundo_image.borrow_mut();
         let l = newundo_image.len();
@@ -579,9 +565,9 @@ impl Canvas {
 
     pub fn clear_mask(& self) {
         if self.mask_flag.get() {
-             self.image.borrow_mut().set(Color::rgba(255, 0, 0,50));
+             self.image.borrow_mut().set(Color::rgba(255, 255, 255,255));
         } else {
-            self.mask.borrow_mut().set(Color::rgba(255, 0, 0,50));
+            self.mask.borrow_mut().set(Color::rgba(255, 255, 255,255));
         }
     }
 
@@ -591,6 +577,20 @@ impl Canvas {
 
     pub fn mask_flag(& self) -> bool {
         self.mask_flag.get()
+    }
+
+    pub fn invert_mask(&self) {
+        let width = self.rect.get().width as u32;
+        let height = self.rect.get().height as u32;
+
+        if self.mask_flag.get() {return}
+        
+        //get maske data in form of [Color] slice
+        let mask_data = self.mask.clone().into_inner().into_data();
+        let mut mask = self.mask.borrow_mut();
+        let new_slice = self.trans_from_slice(&mask_data,width,height,"invert",0.0,0);
+        mask.clear();
+        mask.image(0, 0, width, height, &new_slice[..]);
     }
 
     ///Draw some text on canvas
@@ -652,10 +652,14 @@ impl Canvas {
         self.image.borrow_mut().pixel(x + panx, y + pany, color);
     }
 
-    ///return rgba color of image pixel at position (x,y)  NOT SAFE if x y are bigger than current image size, but very fast.
+    ///return rgba color of image pixel at position (x,y)
+    //  NOT SAFE if x & y are out of bounds, but fast.
+    //  With mask support 
     fn pixcol(&self, x:i32, y:i32) -> Color {
         let p = self.width()as i32 * y + x;
-        self.image.borrow().data()[p as usize]
+        if self.mask.borrow().data()[p as usize].r() > 0 {
+            self.image.borrow().data()[p as usize]}
+        else {Color::rgba(255,255,255,255)}
     }
 
     ///circle with mask support
@@ -1060,6 +1064,25 @@ impl Canvas {
             x1 += -1;
         }
     }
+
+    ///crop new image from current image (copy) tranforming pure white into transparent with mask support
+    pub fn copy_selection(&self, x: i32,y: i32,w: u32, h: u32) {
+
+        let mut vec = vec![];
+        let mut col : Color;
+        
+        for y1 in y..y+h as i32 {
+            for x1 in x..x+w as i32 {
+                col=self.pixcol(x1,y1);
+                if col.r()==255 && col.g()==255 && col.b()==255 {
+                    col = Color::rgba(0,0,0,0);
+                }
+                vec.push(col);
+            }
+        }
+        *self.copy_buffer.borrow_mut() = orbimage::Image::from_data(w ,h ,vec.into_boxed_slice()).unwrap();
+    }
+
 }
 
 impl Click for Canvas {

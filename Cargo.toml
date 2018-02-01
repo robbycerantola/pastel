@@ -16,9 +16,9 @@ orbimage = "0.1.15"
 rusttype = "0.2.3"
 
 [dependencies.image]
-version = "0.12.4"
+version = "0.18"
 default-features = false
-features = ["jpeg","png_codec","tiff","bmp","gif_codec"]
+features = ["jpeg","png_codec","tiff","bmp","ppm"]
 
 
 [features]

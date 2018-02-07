@@ -25,6 +25,7 @@ pub trait AddOnsToOrbimage {
     fn paste_selection(&mut self, x: i32, y:i32, opacity: u8, buffer: orbimage::Image);
     fn smooth_circle(&mut self, x: i32, y:i32, size: u32, color: Color);
     fn colorize (&self, color: Color) -> orbimage::Image;
+    
 }
 
 impl AddOnsToOrbimage for orbimage::Image {
@@ -621,6 +622,9 @@ impl AddOnsToOrbimage for orbimage::Image {
         orbimage::Image::from_data(w ,h ,data).unwrap()
     }
 
+
+
+
 }
 
 pub trait AddOnsToOrbclient {
@@ -734,4 +738,29 @@ impl AddOnsToOrbclient for orbclient::Window{
     }
 
 }
+
+pub trait AddOnsToOrbclientColor {
+    fn compare(first_color: Color, second_color: Color, thresold: u8) -> bool;
+    fn eq(&self, other: &Color) -> bool ;
+}
+
+impl AddOnsToOrbclientColor for orbclient::Color{
+        /// Compare between two colors, return Bool indicating if they are similar considering thresold value
+    fn compare(first_color: Color, second_color: Color, thresold: u8) -> bool {
+        let r_check = first_color.r() - second_color.r();
+        let g_check = first_color.g() - second_color.g();
+        let b_check = first_color.b() - second_color.b();
+        //let a_check = first_color.a() - second_color.a();
+        //Do not check for alpha
+        r_check < thresold && g_check < thresold && b_check < thresold
+    }
+
+    fn eq(&self, other: &Color) -> bool {
+        self.r() == other.r() &&
+        self.g() == other.g() &&
+        self.b() == other.b()
+    }
+}
+
+
 

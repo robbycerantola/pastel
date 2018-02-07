@@ -2,7 +2,7 @@
 name = "pastel"
 description = "Simple bitmap editor for Redox OS"
 repository = "https://github.com/pastel.git"
-version = "0.1.0"
+version = "0.1.1"
 keywords = ["orbital", "redox", "editor", "graphics"]
 authors = ["Robby <robbycerantola@gmail.com>"]
 
@@ -26,3 +26,7 @@ debug = []
 
 [profile.release]
 panic = "abort"
+
+[patch.crates-io]
+#orbclient = { path = "/home/robby/orbclient" }
+orbclient = { git = "https://github.com/robbycerantola/orbclient.git", branch = "fast_image"}

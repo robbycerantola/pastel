@@ -8,21 +8,28 @@ To run on Redox simply edit file filesystem.toml and delete '#' before pastel it
 Then make all to compile Redox and install pastel.
 Once Redox is running select pastel from the menu.
 
-To run on Linux install dependencies (SDL2      ) and type on terminal
+To run on Linux install dependencies (rustup, SDL2) and type on terminal
 cargo run --release
 
-To run on Windows (msvc) download from https://www.libsdl.org/release/SDL2-devel-2.0.5-VC.zip 
-and manually copy SDL2.dll and SDL2.lib to 
-      
-      <rust_install_dir>\lib\rustlib\x86_64-pc-windows-msvc\lib 
+To run on Windows (msvc) install first rustup with all requierements (C++ build tools for Visual Studio 2013 or later).
+When installing rust please use nightly toolchain, then download 
+
+      https://www.libsdl.org/release/SDL2-devel-2.0.5-VC.zip 
+
+and manually copy SDL2.dll and SDL2.lib to
+
+      <user_dir>\.rustup\toolchain\nightly\lib\rustlib\x86_64-pc-windows-msvc\lib 
 
 Than go to pastel directory and at command prompt type :
-cargo run --release
+
+      cargo run --release
 
 
 
 To enable some debug informations you could type:
 
-RUST_BACKTRACE=1 cargo run --release --features debug
+      RUST_BACKTRACE=1 cargo run --release --features debug
+      
+
 
 

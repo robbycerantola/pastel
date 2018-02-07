@@ -10,6 +10,8 @@ use image;
 use image::{GenericImage, ImageBuffer, Pixel};
 
 use orbclient::{Color, Renderer};
+
+
 use orbimage::{self, Image, ResizeType};
 
 use orbtk::Window;
@@ -32,6 +34,8 @@ use std::cmp;
 use std::ops::Deref;
 
 use AddOnsToOrbimage;
+//use addons::AddOnsToRenderer;
+//use addons::AddOnsToOrbclientColor;
 
 use UNDODEPTH;
 use CANVASOFFSET;
@@ -44,9 +48,11 @@ pub struct Canvas {
     view: Cell<Rect>,
     pub image: RefCell<Image>,
     newundo_image: RefCell<Vec<Image>>,
+    undo_pos: Cell<usize>,
     mask: RefCell<Image>,
     mask_flag: Cell<bool>,
     mask_enabled: Cell<bool>,
+    mask_changed: Cell<bool>,
     pub copy_buffer: RefCell<Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
@@ -72,9 +78,11 @@ impl Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             view: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             newundo_image: RefCell::new(vec!(Image::new(image.width(),image.height()))),
-            mask: RefCell::new(Image::from_color(image.width(), image.height(), Color::rgba(255,255,255,255))),
+            undo_pos: Cell::new(0),
+            mask: RefCell::new(Image::from_color(image.width(), image.height(), Color::rgba(255,0,0,25))),
             mask_flag: Cell::new(false),
             mask_enabled: Cell::new(false),
+            mask_changed: Cell::new(false),
             image: RefCell::new(image),
             copy_buffer: RefCell::new(Image::new(0,0)),
             click_callback: RefCell::new(None),
@@ -138,11 +146,15 @@ impl Canvas {
     }
 
     pub fn clear(&self){
-        //first prepare for undo 
-        self.undo_save();
-        
-        let mut image = self.image.borrow_mut();
-        image.set(Color::rgba(255, 255, 255,255));
+        if self.mask_flag.get(){
+            let mut image = self.mask.borrow_mut();
+            image.set(Color::rgba(255,0,0,25));
+        }else{
+            //first prepare for undo 
+            self.undo_save();
+            let mut image = self.image.borrow_mut();
+            image.set(Color::rgba(255, 255, 255,255));
+        }
     }
     
     pub fn height(&self) -> u32 {
@@ -153,18 +165,26 @@ impl Canvas {
         self.image.borrow().width()
     }
 
-    ///apply some transformations to entire canvas
+    ///apply some transformations to entire canvas or mask
     pub fn transformation(&self, cod: &str, a: f32, b:i32){
-        //first prepare for undo 
-        self.undo_save();
-     
         let mut width = self.rect.get().width as u32;
         let mut height = self.rect.get().height as u32;
-        //get image data in form of [Color] slice
-        let image_data = self.image.clone().into_inner().into_data();
-        let new_slice = self.trans_from_slice(&image_data,width,height,cod,a,b);
-        let mut image = self.image.borrow_mut();
-        
+        let image_data;
+        let new_slice;
+        let mut image;
+        if self.mask_flag.get() {
+            //get image data in form of [Color] slice
+            image_data = self.mask.clone().into_inner().into_data();
+            new_slice = self.trans_from_slice(&image_data,width,height,cod,a,b);
+            image = self.mask.borrow_mut();
+        }else{
+            //first prepare for undo 
+            self.undo_save();
+            //get image data in form of [Color] slice
+            image_data = self.image.clone().into_inner().into_data();
+            new_slice = self.trans_from_slice(&image_data,width,height,cod,a,b);
+            image = self.image.borrow_mut();
+        }
         if cod == "resize" {
             width = a as u32;
             height = b as u32;
@@ -187,11 +207,14 @@ impl Canvas {
         let mut height = selection.height;
         let x = selection.x;
         let y = selection.y;
-        let mut image = self.image.borrow_mut();
+        let mut image = if self.mask_flag.get() {self.mask.borrow_mut()}else{self.image.borrow_mut()};
         let image_selection = image.copy_selection(x, y, width, height);
         let new_image = self.trans_image(image_selection, cod,a,b);
         //clear only under selection
-        image.rect(x,y,width,height,Color::rgba(255,255,255,255)); 
+        if self.mask_flag.get(){
+            image.rect(x,y,width,height,Color::rgba(255,255,255,25));
+            image.rect(x,y,width,height,Color::rgba(0,0,0,25));
+            }else{image.rect(x,y,width,height,Color::rgba(255,255,255,255))}; 
         
         if cod == "resize" {
             width = a as u32;
@@ -230,7 +253,6 @@ impl Canvas {
              "flip_horizontal" => image::imageops::flip_horizontal(&imgbuf),
              "rotate90"        => image::imageops::rotate90(&imgbuf),
              "rotate"          => self.rotate_center(&imgbuf, a as f32 * PI/180.0),
-             //"rotate"          => imageproc::affine::rotate_about_center(&imgbuf, a as f32 * PI/180.0 ,imageproc::affine::Interpolation::Bilinear),
              "brighten"        => image::imageops::colorops::brighten(&imgbuf, 10),
              "darken"          => image::imageops::colorops::brighten(&imgbuf, -10),
              "contrast"        => image::imageops::colorops::contrast(&imgbuf, a),
@@ -242,10 +264,17 @@ impl Canvas {
                                     self.image.borrow_mut().clear();
                                     image::imageops::resize(&imgbuf,a as u32,b as u32,image::FilterType::Nearest)
                                     },
+             "edge"            => {let kernel = [-1.0f32, -1.0, -1.0,
+                                                 -1.0, 8.0, -1.0,
+                                                 -1.0, -1.0, -1.0];
+                                image::imageops::filter3x3(&imgbuf,&kernel);
+                                imgbuf
+                                },
                              _ => imgbuf,
          });
         
         //convert rgba u8 image buffer back into Color slice
+        let flg = self.mask_flag.get();
         let mut i = 0 ;
         let mut r: u8 ;
         let mut g: u8 ;
@@ -443,28 +472,126 @@ impl Canvas {
         let image = self.image.borrow_mut();
         self.newundo_image.borrow_mut().push(image.clone());
         // prevents undo stack to grow too much!!
+        self.undo_pos.set(self.undo_pos.get()+1);
         if self.newundo_image.borrow_mut().len() > UNDODEPTH {
             self.newundo_image.borrow_mut().remove(0);
+            self.undo_pos.set(self.undo_pos.get()-1);
         }
     }
 
     /// retrieve image from undo stack
     pub fn undo (&self) {
-        let mut newundo_image = self.newundo_image.borrow_mut();
-        let l = newundo_image.len();
-        if l > 1 {
+        //let mut newundo_image = ;
+        let l = self.newundo_image.borrow_mut().len();
+        let i = self.undo_pos.get();
+        if l-1 == i {&self.undo_save();}
+        if i > 1 {
             let mut image = self.image.borrow_mut();
-            *image = newundo_image[l-1].clone();
-            newundo_image.pop();
+            
+            //println!("undo{} len{}",i,l);
+            *image = self.newundo_image.borrow_mut()[i].clone();  //l-1
+            self.undo_pos.set(i-1);
+            //newundo_image.pop();
         }
     }
+    
+    pub fn redo (&self) {
+        let newundo_image = self.newundo_image.borrow_mut();
+        let l = newundo_image.len();
+        let i = self.undo_pos.get() + 1;
+        //println!("redo{}",i);
+        if i < l {
+            let mut image = self.image.borrow_mut();
+            *image = newundo_image[i].clone();
+            self.undo_pos.set(i);
+        }
+    }
+    
+    pub fn magicwand (& self, x: i32 , y: i32){
+        //take care of panning
+        let Rect {x: panx, y: pany, ..} = self.view.get();
+        let x = x + panx;
+        let y =  y + pany;
+        let rgba = self.pixcol(x,y);
+        self.magicwand_scanline(x,y,Color::rgba(0,0,0,255).data, rgba.data);
+        self.mask_enabled.set(true); //enable and redraw mask
+        self.mask_changed.set(true);
+    }
+
+    fn magicwand_scanline( &self, x:i32, y:i32, new_color:u32, old_color:u32) {
+        
+        if old_color == new_color {
+            return;
+        }
+        if self.pixcol(x,y).data  != old_color  {
+            return;
+        }
+
+        let w = self.width() as i32;
+        let h = self.height() as i32;
+
+        //draw current scanline from start position to the right
+        let mut x1 = x;
+
+        while x1 < w && self.pixcol(x1,y).data  == old_color  {
+            self.mask.borrow_mut().pixel(x1,y,Color{data:new_color});
+            x1 +=1;
+        }
+        //get resulted color because of transparency and use this for comparison 
+        let res_color = self.pixcol(x,y).data;
+        
+        //draw current scanline from start position to the left
+        x1 = x -1;
+        
+        while x1 >= 0 && self.pixcol(x1,y).data  == old_color  {
+            self.mask.borrow_mut().pixel(x1,y,Color{data:new_color});
+            x1 += -1;
+          }
+        
+        //test for new scanlines above
+        x1 = x;
+        
+        while x1 < w && self.pixcol(x1,y).data  == res_color  { 
+            if y > 0 && self.pixcol(x1,y-1).data  == old_color  {
+              self.magicwand_scanline(x1, y - 1, new_color, old_color);
+            }
+            x1 += 1;
+          }
+        x1 = x - 1;
+        while x1 >= 0 && self.pixcol(x1,y).data == res_color {
+            if y > 0 && self.pixcol(x1,y - 1).data  == old_color  {
+              self.magicwand_scanline(x1, y - 1, new_color, old_color);
+            }
+            x1 += -1;
+          }
+         
+         //test for new scanlines below
+        x1 = x;
+        while x1 < w && self.pixcol(x1,y).data == res_color  {
+            //println!("Test below {} {} ", self.pixcol(x1,y).data,old_color);
+            if y < (h - 1) && self.pixcol(x1,y + 1).data == old_color {
+                self.magicwand_scanline(x1, y + 1, new_color, old_color);
+            }
+            x1 +=1;
+        }
+        x1 = x - 1;
+        while x1 >= 0 && self.pixcol(x1,y).data == res_color {
+            if y < (h - 1) && self.pixcol(x1,y + 1).data == old_color {
+                self.magicwand_scanline(x1, y + 1, new_color, old_color);
+            }
+            x1 += -1;
+        }
+    }
+
+
 
    ///wrapper for filling an image within a canvas with pan support
     pub fn fill (&self, x: i32 , y: i32, color: Color){
         self.undo_save();  //save state for undo
-        let mut image = self.image.borrow_mut();
+        let mut image = if self.mask_flag.get() { self.mask.borrow_mut()} else {self.image.borrow_mut()};
         //take care of panning
         let Rect {x: panx, y: pany, ..} = self.view.get();
+        
         image.fill(x + panx, y + pany, color);
     }
 
@@ -549,11 +676,23 @@ impl Canvas {
 */
 
     pub fn paint_on_mask(&self) {
+        self.mask_changed.set(true);
+        if self.mask_flag.get(){
+            self.mask_flag.set(false); 
+            //self.enable_mask(false);
+        }else{
+            self.mask_flag.set(true);
+            self.enable_mask(true);
+        }
+    }
+
+    pub fn switch_mask(&self) {
         let mut image = self.image.borrow_mut();
         let image2 = image.clone();
         let mut mask = self.mask.borrow_mut();
         *image = mask.clone();
         *mask = image2;
+        self.mask_changed.set(true);
         if self.mask_flag.get(){
             self.mask_flag.set(false); 
             self.enable_mask(true);
@@ -564,11 +703,7 @@ impl Canvas {
     }
 
     pub fn clear_mask(& self) {
-        if self.mask_flag.get() {
-             self.image.borrow_mut().set(Color::rgba(255, 255, 255,255));
-        } else {
-            self.mask.borrow_mut().set(Color::rgba(255, 255, 255,255));
-        }
+        self.mask.borrow_mut().set(Color::rgba(255, 0, 0,25));
     }
 
     pub fn enable_mask(& self, status: bool){
@@ -585,7 +720,7 @@ impl Canvas {
 
         if self.mask_flag.get() {return}
         
-        //get maske data in form of [Color] slice
+        //get mask data in form of [Color] slice
         let mask_data = self.mask.clone().into_inner().into_data();
         let mut mask = self.mask.borrow_mut();
         let new_slice = self.trans_from_slice(&mask_data,width,height,"invert",0.0,0);
@@ -642,14 +777,18 @@ impl Canvas {
     pub fn pixel(&self , x: i32, y: i32, color: Color) {
         let mut color = color;
         let Rect {x: panx, y: pany, ..} = self.view.get();
-        //if we are not painting the mask apply mask to pixel
-        if self.mask_enabled.get(){
-            //read from mask red channel value and use it as alpha value 
-            let alpha_mask = self.mask.borrow().pixcol(x,y).r();
-            // add alpha mask to color
-            color = Color::rgba(color.r(),color.g(),color.b(),alpha_mask & color.a());
+        if self.mask_flag.get(){
+            self.mask.borrow_mut().pixel(x + panx, y + pany, color);
+        }else{
+            //if we are not painting on the mask, apply mask to pixel
+            if self.mask_enabled.get(){
+                //read from mask red channel value and use it as alpha value 
+                let alpha_mask = self.mask.borrow().pixcol(x,y).r();
+                // add alpha mask to color
+                color = Color::rgba(color.r(),color.g(),color.b(),alpha_mask & color.a());
+            }
+            self.image.borrow_mut().pixel(x + panx, y + pany, color);
         }
-        self.image.borrow_mut().pixel(x + panx, y + pany, color);
     }
 
     ///return rgba color of image pixel at position (x,y)
@@ -1105,12 +1244,13 @@ impl Widget for Canvas {
         &self.rect
     }
 
-    fn draw(&self, renderer: &mut Renderer, _focused: bool, _theme: &Theme) {
+    fn draw(&self, renderer:  &mut Renderer, _focused: bool, _theme: &Theme) {
         let rect = self.rect.get();
         let image = self.image.borrow();
+        let mask = self.mask.borrow();
         //render entire image
         //renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
-
+        if !self.mask_flag.get() {
         //render only the view of the image (ROI) so we can pan  #TODO find a way to render zoomed 
         let x = rect.x;
         let mut y = rect.y;
@@ -1121,9 +1261,17 @@ impl Widget for Canvas {
         while offset < last_offset {
             let next_offset = offset + stride;
             renderer.image(x, y, width, 1, &image.data()[offset..]);
+            
             offset = next_offset;
             y += 1;
         }
+        }
+        //render mask only if needed (changed) on top of image
+        if self.mask_flag.get() || self.mask_changed.get() {
+            renderer.image_fast(rect.x, rect.y, image.width(), image.height(), image.data());
+            renderer.image_fast(rect.x, rect.y, image.width(), image.height(), mask.data());
+            self.mask_changed.set(false);
+            } 
     }
 
     fn event(&self, event: Event, focused: bool, redraw: &mut bool) -> bool {
@@ -1200,7 +1348,7 @@ impl Widget for Canvas {
     }
 
     fn visible(&self, flag: bool){
-        !flag;
+        unimplemented!();
     }
     
     fn name(&self) -> &str {

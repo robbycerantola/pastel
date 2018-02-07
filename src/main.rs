@@ -153,6 +153,7 @@ fn main() {
     tools.insert("polygon",vec![Property::new("Opacity","100"),Property::new("Sides","6")]);
     tools.insert("text",vec![Property::new("Opacity","100"),Property::new("Size","8"),Property::new("Text","Pastel"),Property::new("Font",DEFAULTFONT)]);
     tools.insert("pan",vec![Property::new("Opacity","100")]);
+    tools.insert("magicwand",vec![Property::new("Opacity","100"),Property::new("Fuzziness","1")]);
     // not a real tool but a way to store general preferences
     tools.insert("preferences",vec![Property::new("Antialias","1")]); 
     // where to store current active tool
@@ -1178,6 +1179,16 @@ fn main() {
         menuedit.add(&action);
     }
 
+    {
+        let action = Action::new("Redo     ");
+        let canvas_clone = canvas.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+            canvas_clone.redo();
+        });
+        menuedit.add(&action);
+    }
+
     menuedit.add(&Separator::new());
 
     {
@@ -1281,17 +1292,17 @@ fn main() {
     
     //Menu entries for mask
     {
-        let action = Action::new("Edit          ");
+        let action = Action::new("Paint on mask    ");
         let canvas_clone = canvas.clone();
         let status_clone = status.clone();
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.paint_on_mask();
                         if canvas_clone.mask_flag() {
-                            _action.text("Back to canvas");
-                            status_clone.text("Paint in black & white (or greys) to define the mask, then click 'Mask -> Back to canvas' to use it");
+                            _action.text("Paint on canvas");
+                            status_clone.text("Paint in black & white (or greys) to define the mask, then click 'Mask -> Paint on canvas' to go back and to use it make sure to Enable mask");
                         }else{
                             status_clone.text("");
-                            _action.text("Edit");
+                            _action.text("Paint on mask");
                         }
                             
                           });
@@ -1315,6 +1326,17 @@ fn main() {
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.invert_mask();
                           });
+        menumask.add(&action);
+    }
+
+    {
+        let action = Action::new("MagicWand");
+        let tools_clone = tools.clone();
+        let status_clone = status.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+            tools_clone.select("magicwand");
+            status_clone .text("Magic Wand...");
+        });
         menumask.add(&action);
     }
 
@@ -1714,6 +1736,16 @@ fn main() {
     }
 
     {
+        let action = Action::new("Edge detection");
+        let canvas_clone = canvas.clone();
+        let selection_clone = selection.clone();
+        action.on_click(move |_action: &Action, _point: Point| {
+                        canvas_clone.transformation("edge",0.0,0);
+                    });
+        menuimage.add(&action);
+    }
+
+    {
         let action = Action::new("Clear");
         let canvas_clone = canvas.clone();
         action.on_click(move |_action: &Action, _point: Point| {
@@ -1861,8 +1893,8 @@ fn main() {
     {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
-                            popup("Info",
-                                  "Pastel v0.1.0, simple bitmap editor \n for Redox OS by Robby Cerantola");
+            popup("Info",
+                  "Pastel v0.1.1, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }
@@ -1899,6 +1931,7 @@ fn main() {
                 },
                 'Q' => {
                         canvas.paint_on_mask();
+                        canvas.emit_click(Point{x: 0, y: 0});  //trigger redraw
                 },
                 '@' => {
                         status_clone.position(4, canvas.height()as i32 + CANVASOFFSET);
@@ -1940,6 +1973,10 @@ fn main() {
             match selected_tool.as_ref() {
                 "pen"  => canvas.pixel(point.x, point.y, color),
                 "fill" => canvas.fill(point.x, point.y,color),
+                "magicwand" => {
+                    canvas.magicwand(point.x, point.y);
+                    tools.select("pen"); //#FIXME dirty workaround to avoid multiple clicks for now
+                    },
                 "rectangle" => {
                     canvas.undo_save();
                     let filled = tools.get("rectangle","Filled").unwrap(); //tools_clone.get("rectangle","Filled").unwrap();

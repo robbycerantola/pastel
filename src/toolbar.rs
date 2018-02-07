@@ -1,6 +1,7 @@
 //toolbar widget
 
 use orbclient::{Color, Renderer};
+
 use orbimage;
 use std::cell::{Cell, RefCell};
 use orbtk::cell::CloneCell;

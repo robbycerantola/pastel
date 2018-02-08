@@ -1252,19 +1252,19 @@ impl Widget for Canvas {
         //renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
         if !self.mask_flag.get() {
         //render only the view of the image (ROI) so we can pan  #TODO find a way to render zoomed 
-        let x = rect.x;
-        let mut y = rect.y;
-        let width = self.view.get().width;
-        let stride = image.width() as usize;
-        let mut offset = self.view.get().y as usize * stride + self.view.get().x as usize;
-        let last_offset = cmp::min(self.view.get().y as usize + self.view.get().height as usize * stride + self.view.get().x as usize, image.data().len());
-        while offset < last_offset {
-            let next_offset = offset + stride;
-            renderer.image(x, y, width, 1, &image.data()[offset..]);
-            
-            offset = next_offset;
-            y += 1;
-        }
+            let x = rect.x;
+            let mut y = rect.y;
+            let width = self.view.get().width;
+            let stride = image.width() as usize;
+            let mut offset = self.view.get().y as usize * stride + self.view.get().x as usize;
+            let last_offset = cmp::min(self.view.get().y as usize + self.view.get().height as usize * stride + self.view.get().x as usize, image.data().len());
+            while offset < last_offset {
+                let next_offset = offset + stride;
+                //renderer.image_fast(x, y, width, 1, &image.data()[offset..offset + width as usize]);
+                renderer.image_fast(x, y, width, 1, &image.data()[offset..]);
+                offset = next_offset;
+                y += 1;
+            }
         }
         //render mask only if needed (changed) on top of image
         if self.mask_flag.get() || self.mask_changed.get() {

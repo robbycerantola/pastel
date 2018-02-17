@@ -189,7 +189,7 @@ fn main() {
     let theme = Theme::from_path("pasteltheme.css").unwrap();
     let mut window_builder = WindowBuilder::new(Rect::new(100, 100, 1024, wy), &title);
     window_builder = window_builder.theme(theme);
-    window_builder = window_builder.flags(&[orbclient::WindowFlag::Resizable ]);
+    window_builder = window_builder.flags(&[orbclient::WindowFlag::Resizable]);
     let mut window = window_builder.build();
 
     /*

@@ -1269,9 +1269,9 @@ impl Widget for Canvas {
         }
         //render mask only if needed (changed) on top of image
         if self.mask_flag.get() || self.mask_changed.get() {
-            //renderer.image_fast(rect.x, rect.y, image.width(), image.height(), image.data());
+            //renderer.image_parallel(0, 0, image.width(), image.height(), image.data());
             renderer.image_over(CANVASOFFSET, image.data());
-            renderer.image_fast(rect.x, rect.y, image.width(), image.height(), mask.data());
+            renderer.image_parallel(rect.x, rect.y, image.width(), image.height(), mask.data());
             self.mask_changed.set(false);
             } 
     }

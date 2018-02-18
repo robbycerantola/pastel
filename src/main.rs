@@ -4,6 +4,7 @@ simple image editor in Rust for Redox
 #![feature(const_fn)]  //needed for fixing theme 
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![feature(cfg_target_feature)]
 
 extern crate orbtk;
 extern crate orbimage;

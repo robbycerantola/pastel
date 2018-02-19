@@ -1271,7 +1271,13 @@ impl Widget for Canvas {
         if self.mask_flag.get() || self.mask_changed.get() {
             //renderer.image_parallel(0, 0, image.width(), image.height(), image.data());
             renderer.image_over(CANVASOFFSET, image.data());
+            
+            #[cfg(target_os = "linux")]
             renderer.image_parallel(rect.x, rect.y, image.width(), image.height(), mask.data());
+            
+            #[cfg(target_os = "redox")]
+            renderer.image_fast(rect.x, rect.y, image.width(), image.height(), mask.data());
+            
             self.mask_changed.set(false);
             } 
     }

@@ -144,7 +144,7 @@ dependencies = [
  "byteorder 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "enum_primitive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gif 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "jpeg-decoder 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jpeg-decoder 0.1.14 (git+https://github.com/robbycerantola/jpeg-decoder.git)",
  "num-iter 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-rational 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -159,7 +159,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "enum_primitive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "jpeg-decoder 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jpeg-decoder 0.1.14 (git+https://github.com/robbycerantola/jpeg-decoder.git)",
  "num-iter 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-rational 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -182,10 +182,9 @@ dependencies = [
 [[package]]
 name = "jpeg-decoder"
 version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/robbycerantola/jpeg-decoder.git#fded71064bc8133b29f7df4b030ccdf2d52de583"
 dependencies = [
  "byteorder 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rayon 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -288,7 +287,7 @@ dependencies = [
 [[package]]
 name = "orbclient"
 version = "0.3.12"
-source = "git+https://github.com/robbycerantola/orbclient.git?branch=over#bf27038ca21f90905ef8d8efbc77fabedb01ce6b"
+source = "git+https://github.com/redox-os/orbclient.git#30a4f46986b1adb107f4b73a3315b7cfb55fb0ac"
 dependencies = [
  "rayon 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall 0.1.37 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -301,7 +300,7 @@ name = "orbfont"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "orbclient 0.3.12 (git+https://github.com/robbycerantola/orbclient.git?branch=over)",
+ "orbclient 0.3.12 (git+https://github.com/redox-os/orbclient.git)",
  "rusttype 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -311,7 +310,7 @@ version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "image 0.12.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "orbclient 0.3.12 (git+https://github.com/robbycerantola/orbclient.git?branch=over)",
+ "orbclient 0.3.12 (git+https://github.com/redox-os/orbclient.git)",
  "resize 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -322,7 +321,7 @@ source = "git+https://github.com/robbycerantola/orbtk.git?branch=resync#abc371d6
 dependencies = [
  "cssparser 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
- "orbclient 0.3.12 (git+https://github.com/robbycerantola/orbclient.git?branch=over)",
+ "orbclient 0.3.12 (git+https://github.com/redox-os/orbclient.git)",
  "orbfont 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbimage 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -332,7 +331,7 @@ name = "pastel"
 version = "0.1.1"
 dependencies = [
  "image 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "orbclient 0.3.12 (git+https://github.com/robbycerantola/orbclient.git?branch=over)",
+ "orbclient 0.3.12 (git+https://github.com/redox-os/orbclient.git)",
  "orbimage 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbtk 0.2.26 (git+https://github.com/robbycerantola/orbtk.git?branch=resync)",
  "rusttype 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -584,7 +583,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum image 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)" = "545f000e8aa4e569e93f49c446987133452e0091c2494ac3efd3606aa3d309f2"
 "checksum inflate 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e7e0062d2dc2f17d2f13750d95316ae8a2ff909af0fda957084f5defd87c43bb"
 "checksum inflate 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "f5f9f47468e9a76a6452271efadc88fe865a82be91fe75e6c0c57b87ccea59d4"
-"checksum jpeg-decoder 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "0dfe27a6c0dabd772d0f9b9f8701c4ca12c4d1eebcadf2be1f6f70396f6a1434"
+"checksum jpeg-decoder 0.1.14 (git+https://github.com/robbycerantola/jpeg-decoder.git)" = "<none>"
 "checksum lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)" = "76f033c7ad61445c5b347c7382dd1237847eb1bce590fe50365dcb33d546be73"
 "checksum lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c8f31047daa365f19be14b47c29df4f7c3b581832407daabe6ae77397619237d"
 "checksum libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)" = "1e5d97d6708edaa407429faa671b942dc0f2727222fb6b6539bf1db936e4b121"
@@ -600,7 +599,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)" = "92e5113e9fd4cc14ded8e499429f396a20f98c772a47cc8622a736e1ec843c31"
 "checksum num-traits 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e7de20f146db9d920c45ee8ed8f71681fd9ade71909b48c3acbd766aa504cf10"
 "checksum num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c51a3322e4bca9d212ad9a158a02abc6934d005490c054a2778df73a70aa0a30"
-"checksum orbclient 0.3.12 (git+https://github.com/robbycerantola/orbclient.git?branch=over)" = "<none>"
+"checksum orbclient 0.3.12 (git+https://github.com/redox-os/orbclient.git)" = "<none>"
 "checksum orbfont 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "da4dfbc851e5c24c3cf1e16ec5222f868f3362d2b7493d0b53051fe2669267a2"
 "checksum orbimage 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "c3b031607ef7a3c562949dfb595b1ea2b2d697b14544af407242a52dce811a6f"
 "checksum orbtk 0.2.26 (git+https://github.com/robbycerantola/orbtk.git?branch=resync)" = "<none>"

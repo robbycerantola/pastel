@@ -29,4 +29,6 @@ panic = "abort"
 
 [patch.crates-io]
 #orbclient = { path = "/home/robby/orbclient" }
-orbclient = { git = "https://github.com/robbycerantola/orbclient.git", branch = "over"}
+orbclient = { git = "https://github.com/redox-os/orbclient.git"}
+jpeg-decoder = { git = "https://github.com/robbycerantola/jpeg-decoder.git"}
+

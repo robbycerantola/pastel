@@ -1272,10 +1272,12 @@ impl Widget for Canvas {
             //renderer.image_parallel(0, 0, image.width(), image.height(), image.data());
             renderer.image_over(CANVASOFFSET, image.data());
             
-            #[cfg(target_os = "linux")]
+            //#[cfg(target_os = "linux")]
+            #[cfg(feature = "multicore")]
             renderer.image_parallel(rect.x, rect.y, image.width(), image.height(), mask.data());
             
-            #[cfg(target_os = "redox")]
+            //#[cfg(target_os = "redox")]
+            #[cfg(not(feature = "multicore"))]
             renderer.image_fast(rect.x, rect.y, image.width(), image.height(), mask.data());
             
             self.mask_changed.set(false);

@@ -25,7 +25,7 @@ rusttype = "0.2.3"
 #default-features = false
 
 [features]
-default = ["multicore"]
+default = []
 debug = []
 multicore = []
 
@@ -34,6 +34,6 @@ panic = "abort"
 
 [patch.crates-io]
 #orbclient = { path = "/home/robby/orbclient" }
-orbclient = { git = "https://github.com/robbycerantola/orbclient.git", branch = "oldrayon" }
+orbclient = { git = "https://github.com/robbycerantola/orbclient.git", branch = "image_line" }
 jpeg-decoder = { git = "https://github.com/robbycerantola/jpeg-decoder.git", default-features = false }
 

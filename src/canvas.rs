@@ -1262,7 +1262,7 @@ impl Widget for Canvas {
                 let next_offset = offset + stride;
                 //renderer.image_fast(x, y, width, 1, &image.data()[offset..offset + width as usize]);
                 //renderer.image_fast(x, y, width, 1, &image.data()[offset..]);
-                renderer.image_line(x, y, width, &image.data()[offset..]);
+                renderer.image_opaque(x, y, width, 1, &image.data()[offset..]);
                 offset = next_offset;
                 y += 1;
             }

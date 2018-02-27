@@ -9,20 +9,12 @@ authors = ["Robby <robbycerantola@gmail.com>"]
 
 [dependencies]
 orbclient = "0.3.12"
-orbtk = { git = "https://github.com/robbycerantola/orbtk.git", branch = "resync" }
-#orbtk = { path = "/home/robby/orbtk"}
+#orbtk = { git = "https://github.com/robbycerantola/orbtk.git", branch = "mode" }
+orbtk = { path = "/home/robby/orbtk"}
 orbimage = "0.1.15"
 image = "0.12.4"
 rusttype = "0.2.3"
 
-#[dependencies.image]
-#version = "0.18"
-#default-features = false
-#features = ["jpeg","png_codec","tiff","bmp","ppm"]
-
-#[dependencies.jpeg-decoder]
-#version = "0.1.14"
-#default-features = false
 
 [features]
 default = []
@@ -34,6 +26,7 @@ panic = "abort"
 
 [patch.crates-io]
 #orbclient = { path = "/home/robby/orbclient" }
-orbclient = { git = "https://github.com/robbycerantola/orbclient.git" }
+orbclient = { git = "https://github.com/robbycerantola/orbclient.git", branch = "mode" }
 jpeg-decoder = { git = "https://github.com/robbycerantola/jpeg-decoder.git", default-features = false }
+orbimage = { path = "/home/robby/orbimage" }
 

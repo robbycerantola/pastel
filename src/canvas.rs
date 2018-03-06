@@ -484,7 +484,7 @@ impl Canvas {
         //let mut newundo_image = ;
         let l = self.newundo_image.borrow_mut().len();
         let i = self.undo_pos.get();
-        if l-1 == i {&self.undo_save();}
+        if l-1 == i {self.undo_save();}
         if i > 1 {
             let mut image = self.image.borrow_mut();
             
@@ -1260,9 +1260,8 @@ impl Widget for Canvas {
             let last_offset = cmp::min(self.view.get().y as usize + self.view.get().height as usize * stride + self.view.get().x as usize, image.data().len());
             while offset < last_offset {
                 let next_offset = offset + stride;
-                //renderer.image_fast(x, y, width, 1, &image.data()[offset..offset + width as usize]);
-                //renderer.image_fast(x, y, width, 1, &image.data()[offset..]);
-                renderer.image_opaque(x, y, width, 1, &image.data()[offset..]);
+                renderer.image_fast2(x, y, width, 1, &image.data()[offset..]);
+                //renderer.image_opaque(x, y, width, 1, &image.data()[offset..]);
                 offset = next_offset;
                 y += 1;
             }
@@ -1278,7 +1277,7 @@ impl Widget for Canvas {
             
             //#[cfg(target_os = "redox")]
             #[cfg(not(feature = "multicore"))]
-            renderer.image_fast(rect.x, rect.y, image.width(), image.height(), mask.data());
+            renderer.image_fast2(rect.x, rect.y, image.width(), image.height(), mask.data());
             
             self.mask_changed.set(false);
             } 

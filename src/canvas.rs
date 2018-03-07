@@ -9,7 +9,7 @@ use self::rusttype::{FontCollection, Scale, point};
 use image;
 use image::{GenericImage, ImageBuffer, Pixel};
 
-use orbclient::{Color, Renderer};
+use orbclient::{Color, Renderer, Mode};
 
 
 use orbimage::{self, Image, ResizeType};
@@ -477,6 +477,11 @@ impl Canvas {
             self.newundo_image.borrow_mut().remove(0);
             self.undo_pos.set(self.undo_pos.get()-1);
         }
+    }
+
+    pub fn mode_set(&self, mode: Mode) {
+        self.image.borrow().mode().set(mode);
+        self.mask.borrow().mode().set(mode);
     }
 
     /// retrieve image from undo stack
@@ -1260,8 +1265,8 @@ impl Widget for Canvas {
             let last_offset = cmp::min(self.view.get().y as usize + self.view.get().height as usize * stride + self.view.get().x as usize, image.data().len());
             while offset < last_offset {
                 let next_offset = offset + stride;
-                renderer.image_fast2(x, y, width, 1, &image.data()[offset..]);
-                //renderer.image_opaque(x, y, width, 1, &image.data()[offset..]);
+                //renderer.image_fast2(x, y, width, 1, &image.data()[offset..]);
+                renderer.image_fast(x, y, width, 1, &image.data()[offset..]);
                 offset = next_offset;
                 y += 1;
             }
@@ -1277,7 +1282,7 @@ impl Widget for Canvas {
             
             //#[cfg(target_os = "redox")]
             #[cfg(not(feature = "multicore"))]
-            renderer.image_fast2(rect.x, rect.y, image.width(), image.height(), mask.data());
+            renderer.image_fast(rect.x, rect.y, image.width(), image.height(), mask.data());
             
             self.mask_changed.set(false);
             } 

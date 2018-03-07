@@ -11,6 +11,7 @@ extern crate orbimage;
 extern crate image;
 extern crate orbclient;
 
+use orbclient::Mode;
 
 use orbtk::{Color, Action, Button, ComboBox, Image, Label, Menu, Point, ProgressBar, Rect, Separator, TextBox, Window, WindowBuilder, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
 use orbtk::dialogs::FileDialog;
@@ -138,6 +139,8 @@ fn main() {
     canvas.undo_save();
     size.x = canvas.width();
     size.y = canvas.height();
+
+    canvas.mode_set(Mode::Blend);
 
     //Tools and properties 
     //create new tool with some properties and initial values

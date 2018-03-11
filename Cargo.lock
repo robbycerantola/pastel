@@ -260,7 +260,7 @@ dependencies = [
 [[package]]
 name = "orbclient"
 version = "0.3.13"
-source = "git+https://github.com/robbycerantola/orbclient.git#80d5ea3817d7f9041408c3654d05957a4ccfda41"
+source = "git+https://github.com/robbycerantola/orbclient.git#b6e32fac7516c3925261da00df14044609bbbe79"
 dependencies = [
  "rayon 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall 0.1.37 (registry+https://github.com/rust-lang/crates.io-index)",

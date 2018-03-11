@@ -683,14 +683,13 @@ impl Canvas {
     pub fn paint_on_mask(&self) {
         self.mask_changed.set(true);
         if self.mask_flag.get(){
-            self.mask_flag.set(false); 
-            //self.enable_mask(false);
+            self.mask_flag.set(false);
         }else{
             self.mask_flag.set(true);
             self.enable_mask(true);
         }
     }
-
+/*
     pub fn switch_mask(&self) {
         let mut image = self.image.borrow_mut();
         let image2 = image.clone();
@@ -706,7 +705,7 @@ impl Canvas {
             self.enable_mask(false);
         }
     }
-
+*/
     pub fn clear_mask(& self) {
         self.mask.borrow_mut().set(Color::rgba(255, 0, 0,25));
     }
@@ -1253,10 +1252,9 @@ impl Widget for Canvas {
         let rect = self.rect.get();
         let image = self.image.borrow();
         let mask = self.mask.borrow();
-        //render entire image
-        //renderer.image(rect.x, rect.y, image.width(), image.height(), image.data());
-        if !self.mask_flag.get() {
+
         //render only the view of the image (ROI) so we can pan  #TODO find a way to render zoomed 
+        if !self.mask_flag.get() {
             let x = rect.x;
             let mut y = rect.y;
             let width = self.view.get().width;
@@ -1271,21 +1269,19 @@ impl Widget for Canvas {
                 y += 1;
             }
         }
-        //render mask only if needed (changed) on top of image
+        //to speed up render mask only if needed (changed) on top of image
         if self.mask_flag.get() || self.mask_changed.get() {
-            //renderer.image_parallel(0, 0, image.width(), image.height(), image.data());
+            //background immutable image
             renderer.image_over(CANVASOFFSET, image.data());
-            
-            //#[cfg(target_os = "linux")]
-            #[cfg(feature = "multicore")]
-            renderer.image_parallel(rect.x, rect.y, image.width(), image.height(), mask.data());
-            
-            //#[cfg(target_os = "redox")]
-            #[cfg(not(feature = "multicore"))]
+            //transparent editable mask
             renderer.image_fast(rect.x, rect.y, image.width(), image.height(), mask.data());
-            
             self.mask_changed.set(false);
-            } 
+            
+            }
+        //to return immediately from mask view after click on menu
+        if !self.mask_flag.get() && !self.mask_changed.get() {
+            renderer.image_over(CANVASOFFSET, image.data());
+        }
     }
 
     fn event(&self, event: Event, focused: bool, redraw: &mut bool) -> bool {
@@ -1376,9 +1372,11 @@ pub fn colorize (color: Color, img: Image) -> Image {
     let mut data = img.into_data();
     //let i:usize = 0;
     let mut a;
+
     for i in 0..data.len() {
         a = data[i].a();
         data[i]=Color::rgba(color.r(),color.g(),color.b(),a)
     }
+
     orbimage::Image::from_data(w ,h ,data).unwrap()
 }

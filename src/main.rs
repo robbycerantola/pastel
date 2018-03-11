@@ -1299,8 +1299,11 @@ fn main() {
         let action = Action::new("Paint on mask    ");
         let canvas_clone = canvas.clone();
         let status_clone = status.clone();
+        let window_clone = &mut window as *mut Window;
+
         action.on_click(move |_action: &Action, _point: Point| {
                         canvas_clone.paint_on_mask();
+                        unsafe{(*window_clone).needs_redraw();}
                         if canvas_clone.mask_flag() {
                             _action.text("Paint on canvas");
                             status_clone.text("Paint in black & white (or greys) to define the mask, then click 'Mask -> Paint on canvas' to go back and to use it make sure to Enable mask");
@@ -2052,21 +2055,7 @@ fn main() {
                              let path = "/tmp/pastel_copy_buffer.png".to_string();
                              if newcanvas.save(&path).is_ok() {}
                          },
-                        None => {} /*if let Some(selection) =
-                            unsafe { image.select_rect(point.x, point.y,&mut *window_clone)} 
-                        {       
-                            // *canvas.copy_buffer.borrow_mut() = image.copy_selection(
-                            canvas.copy_selection(
-                                selection.x,
-                                selection.y,
-                                selection.width,
-                                selection.height
-                            );
-                            //save buffer to disk as pastel_copy_buffer.png so we can reload when starting new program instance
-                            let newcanvas = Canvas::from_image(canvas.copy_buffer.borrow().clone());
-                            let path = "/tmp/pastel_copy_buffer.png".to_string();
-                            if newcanvas.save(&path).is_ok() {}
-                        }, */
+                        None => {} 
                     }
                 },
                "marquee"=> {

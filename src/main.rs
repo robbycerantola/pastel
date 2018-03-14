@@ -70,7 +70,7 @@ struct MySize {
 const CANVASOFFSET: i32 = 200;
 
 // undo stack depth
-const UNDODEPTH: usize = 10;
+const UNDODEPTH: usize = 20;
 
 // enable disable help and status line
 const STATUSLINE: bool = true;

@@ -47,7 +47,7 @@ pub struct Canvas {
     pub rect: Cell<Rect>,
     view: Cell<Rect>,
     pub image: RefCell<Image>,
-    newundo_image: RefCell<Vec<Image>>,
+    undo_image: RefCell<Vec<Image>>,
     undo_pos: Cell<usize>,
     mask: RefCell<Image>,
     mask_flag: Cell<bool>,
@@ -77,7 +77,7 @@ impl Canvas {
         Arc::new(Canvas {
             rect: Cell::new(Rect::new(0, 0, image.width(), image.height())),
             view: Cell::new(Rect::new(0, 0, image.width(), image.height())),
-            newundo_image: RefCell::new(vec!(Image::new(image.width(),image.height()))),
+            undo_image: RefCell::new(vec!(Image::new(image.width(),image.height()))),
             undo_pos: Cell::new(0),
             mask: RefCell::new(Image::from_color(image.width(), image.height(), Color::rgba(255,0,0,25))),
             mask_flag: Cell::new(false),
@@ -470,11 +470,11 @@ impl Canvas {
     /// save image state to undo stack 
     pub fn undo_save(&self) {
         let image = self.image.borrow_mut();
-        self.newundo_image.borrow_mut().push(image.clone());
+        self.undo_image.borrow_mut().push(image.clone());
         // prevents undo stack to grow too much!!
         self.undo_pos.set(self.undo_pos.get()+1);
-        if self.newundo_image.borrow_mut().len() > UNDODEPTH {
-            self.newundo_image.borrow_mut().remove(0);
+        if self.undo_image.borrow_mut().len() > UNDODEPTH {
+            self.undo_image.borrow_mut().remove(0);
             self.undo_pos.set(self.undo_pos.get()-1);
         }
     }
@@ -486,29 +486,27 @@ impl Canvas {
 
     /// retrieve image from undo stack
     pub fn undo (&self) {
-        //let mut newundo_image = ;
-        let l = self.newundo_image.borrow_mut().len();
+        let l = self.undo_image.borrow_mut().len();
         let i = self.undo_pos.get();
         if l-1 == i {self.undo_save();}
         if i > 1 {
             let mut image = self.image.borrow_mut();
-            
-            //println!("undo{} len{}",i,l);
-            *image = self.newundo_image.borrow_mut()[i].clone();  //l-1
+            *image = self.undo_image.borrow_mut()[i].clone();  //l-1
             self.undo_pos.set(i-1);
-            //newundo_image.pop();
+            if l-i > 1 {self.undo_image.borrow_mut().pop();}
         }
     }
     
     pub fn redo (&self) {
-        let newundo_image = self.newundo_image.borrow_mut();
-        let l = newundo_image.len();
-        let i = self.undo_pos.get() + 1;
+        let undo_image = self.undo_image.borrow_mut();
+        let l = undo_image.len();
+        let i = self.undo_pos.get() + 2;
         //println!("redo{}",i);
         if i < l {
             let mut image = self.image.borrow_mut();
-            *image = newundo_image[i].clone();
+            *image = undo_image[i].clone();
             self.undo_pos.set(i);
+            
         }
     }
     
@@ -1310,13 +1308,18 @@ impl Widget for Canvas {
                 }
             },
             //Short cuts 
-             // Ctrl+z => Undo   
+             // Ctrl+z => Undo 
+             // Ctrl+Shift+z => Redo  
             Event::Text {c} => {
                 if c == 'z' {
                     self.undo();
                     *redraw = true;
                 }
-                //dispatch shortcut out of Canvas
+                if c == 'Z' {
+                    self.redo();
+                    *redraw = true;
+                }
+                //dispatch shortcuts out of Canvas
                 if ['v','c','x','Q'].contains(&c) {
                     self.emit_shortcut(c);
                 }

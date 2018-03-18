@@ -1,10 +1,9 @@
 /*Pastel by Robby 21-05-2017
 simple image editor in Rust for Redox
 */
-#![feature(const_fn)]  //needed for fixing theme 
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![feature(cfg_target_feature)]
 
 extern crate orbtk;
 extern crate orbimage;
@@ -13,13 +12,14 @@ extern crate orbclient;
 
 use orbclient::Mode;
 
-use orbtk::{Color, Action, Button, ComboBox, Image, Label, Menu, Point, ProgressBar, Rect, Separator, TextBox, Window, WindowBuilder, Widget};  //Renderer,TextBox,ControlKnob,InnerWindow,
+use orbtk::{Color, Action, Button, ComboBox, Image, Label, Menu, Point, ProgressBar, Rect,
+     Separator, TextBox, Window, WindowBuilder, Widget};
 use orbtk::dialogs::FileDialog;
-use orbtk::traits::{Click, Enter, Place, Text, Style};  //Border, Enter
+use orbtk::traits::{Click, Enter, Place, Text, Style};
 use orbtk::theme::Theme;
 
 use std::rc::Rc;
-use std::cell::RefCell; //, RefMut, Cell
+use std::cell::RefCell;
 use std::sync::Arc;
 use std::process;
 use std::process::Command;
@@ -29,7 +29,7 @@ use std::cmp::Ordering;
 use std::ffi::OsStr;
 
 mod dialogs;
-use dialogs::{dialog, popup, new_dialog}; //, text_dialog
+use dialogs::{dialog, popup, new_dialog};
 
 mod palette;
 use palette::Palette;
@@ -48,9 +48,6 @@ use color_swatch::ColorSwatch;
 
 mod toolbar;
 use toolbar::{Toolbar, ToolbarIcon};
-
-//mod progress_bar;
-//use progress_bar::ProgressBar;
 
 /*
 mod control_knob;
@@ -179,15 +176,6 @@ fn main() {
     let mut y = 56;
     let wy = size.y + CANVASOFFSET as u32 + 18;
     let title = format!("Pastel: {}", filename);
-
-/*
-    //resizable main window
-    let mut window = Window::new_flags(
-        Rect::new(100, 100, 1024, wy),
-        &title.to_owned(),
-        &[orbclient::WindowFlag::Resizable ]
-    );
-*/
 
     //themed resizable main window
     let theme = Theme::from_path("pasteltheme.css").unwrap();

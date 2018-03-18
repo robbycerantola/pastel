@@ -53,6 +53,7 @@ pub struct Canvas {
     mask_flag: Cell<bool>,
     mask_enabled: Cell<bool>,
     mask_changed: Cell<bool>,
+    mask_return: Cell<bool>,
     pub copy_buffer: RefCell<Image>,
     click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
     right_click_callback: RefCell<Option<Arc<Fn(&Canvas, Point)>>>,
@@ -83,6 +84,7 @@ impl Canvas {
             mask_flag: Cell::new(false),
             mask_enabled: Cell::new(false),
             mask_changed: Cell::new(false),
+            mask_return: Cell::new(false),
             image: RefCell::new(image),
             copy_buffer: RefCell::new(Image::new(0,0)),
             click_callback: RefCell::new(None),
@@ -682,6 +684,7 @@ impl Canvas {
         self.mask_changed.set(true);
         if self.mask_flag.get(){
             self.mask_flag.set(false);
+            self.mask_return.set(true);
         }else{
             self.mask_flag.set(true);
             self.enable_mask(true);
@@ -1251,7 +1254,7 @@ impl Widget for Canvas {
         let image = self.image.borrow();
         let mask = self.mask.borrow();
 
-        //render only the view of the image (ROI) so we can pan  #TODO find a way to render zoomed 
+        //render only the view of the image (ROI) so we can pan but only in normal drawing window #TODO find a way to render zoomed 
         if !self.mask_flag.get() {
             let x = rect.x;
             let mut y = rect.y;
@@ -1261,7 +1264,6 @@ impl Widget for Canvas {
             let last_offset = cmp::min(self.view.get().y as usize + self.view.get().height as usize * stride + self.view.get().x as usize, image.data().len());
             while offset < last_offset {
                 let next_offset = offset + stride;
-                //renderer.image_fast2(x, y, width, 1, &image.data()[offset..]);
                 renderer.image_fast(x, y, width, 1, &image.data()[offset..]);
                 offset = next_offset;
                 y += 1;
@@ -1276,10 +1278,12 @@ impl Widget for Canvas {
             self.mask_changed.set(false);
             
             }
-        //to return immediately from mask view after click on menu
-        if !self.mask_flag.get() && !self.mask_changed.get() {
+        //to refresh window immediately after a return from (quick)mask view
+        if self.mask_return.get(){
+            self.mask_return.set(false);
             renderer.image_over(CANVASOFFSET, image.data());
         }
+        
     }
 
     fn event(&self, event: Event, focused: bool, redraw: &mut bool) -> bool {
@@ -1345,12 +1349,12 @@ impl Widget for Canvas {
                 *redraw = true;
             },
             Event::Scroll {x,y} => {
-                if y == 1 {
+                if y == 1 && !self.mask_flag.get(){
                     self.zoom_in();
                     *redraw = true;
                     
                 }
-                if y == -1 {
+                if y == -1 && !self.mask_flag.get(){
                     self.zoom_out();
                     *redraw = true;
                 }

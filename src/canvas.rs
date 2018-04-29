@@ -1254,8 +1254,8 @@ impl Widget for Canvas {
         let image = self.image.borrow();
         let mask = self.mask.borrow();
 
-        //render only the view of the image (ROI) so we can pan but only in normal drawing window #TODO find a way to render zoomed 
-        if !self.mask_flag.get() {
+        //render only the view of the image (ROI) so we can pan but only in normal drawing window 
+        if !self.mask_flag.get()  {
             let x = rect.x;
             let mut y = rect.y;
             let width = self.view.get().width;
@@ -1265,6 +1265,24 @@ impl Widget for Canvas {
             while offset < last_offset {
                 let next_offset = offset + stride;
                 renderer.image_fast(x, y, width, 1, &image.data()[offset..]);
+                /* zoomed rendering not working, yet....
+                if  self.zoom_factor.get() == 1.0 {
+                    renderer.image_fast(x, y, width, 1, &image.data()[offset..]);
+                } else {
+                    let wy = y * self.zoom_factor.get() as i32;
+                    let wx = x * self.zoom_factor.get() as i32;
+                    for ix in x..width as i32 -1 {
+                        
+                        let icolor = image.getpixel(ix,y);
+                        //let icolor = Color::rgb(100,200,100);
+                        for v in 0..self.zoom_factor.get() as i32 {
+                            for w in 0..self.zoom_factor.get() as i32 {
+                                renderer.pixel(wx+v,wy+w, icolor);
+                            }
+                        }
+                    }
+                }
+                */
                 offset = next_offset;
                 y += 1;
             }

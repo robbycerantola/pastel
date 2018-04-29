@@ -208,7 +208,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "num-integer 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-iter 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-traits 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -216,7 +216,7 @@ name = "num-integer"
 version = "0.1.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "num-traits 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -225,7 +225,7 @@ version = "0.1.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "num-integer 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-traits 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -234,7 +234,7 @@ version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "num-integer 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-traits 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -242,12 +242,12 @@ name = "num-traits"
 version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "num-traits 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "num-traits"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -261,7 +261,7 @@ dependencies = [
 [[package]]
 name = "orbclient"
 version = "0.3.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/robbycerantola/orbclient.git#185001dbf8dcd6b41eae1e3e149ed9dcb5c44ecc"
 dependencies = [
  "rayon 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall 0.1.37 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -274,7 +274,7 @@ name = "orbfont"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "orbclient 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "orbclient 0.3.13 (git+https://github.com/robbycerantola/orbclient.git)",
  "rusttype 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -284,7 +284,7 @@ version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "image 0.12.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "orbclient 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "orbclient 0.3.13 (git+https://github.com/robbycerantola/orbclient.git)",
  "resize 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -295,7 +295,7 @@ source = "git+https://github.com/robbycerantola/orbtk.git?branch=mode#0bfc881d1a
 dependencies = [
  "cssparser 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
- "orbclient 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "orbclient 0.3.13 (git+https://github.com/robbycerantola/orbclient.git)",
  "orbfont 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbimage 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -305,7 +305,7 @@ name = "pastel"
 version = "0.1.1"
 dependencies = [
  "image 0.12.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "orbclient 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "orbclient 0.3.13 (git+https://github.com/robbycerantola/orbclient.git)",
  "orbimage 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "orbtk 0.2.26 (git+https://github.com/robbycerantola/orbtk.git?branch=mode)",
  "rusttype 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -587,9 +587,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num-iter 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)" = "4b226df12c5a59b63569dd57fafb926d91b385dfce33d8074a412411b689d593"
 "checksum num-rational 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)" = "ee314c74bd753fc86b4780aa9475da469155f3848473a261d2d18e35245a784e"
 "checksum num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)" = "92e5113e9fd4cc14ded8e499429f396a20f98c772a47cc8622a736e1ec843c31"
-"checksum num-traits 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0b3c2bd9b9d21e48e956b763c9f37134dc62d9e95da6edb3f672cacb6caf3cd3"
+"checksum num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "dee092fcdf725aee04dd7da1d21debff559237d49ef1cb3e69bcb8ece44c7364"
 "checksum num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c51a3322e4bca9d212ad9a158a02abc6934d005490c054a2778df73a70aa0a30"
-"checksum orbclient 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)" = "f07bacf59f2efd7520b9c9c6ec068a5749553ac6dca7cd79f299041123cc1dfb"
+"checksum orbclient 0.3.13 (git+https://github.com/robbycerantola/orbclient.git)" = "<none>"
 "checksum orbfont 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "da4dfbc851e5c24c3cf1e16ec5222f868f3362d2b7493d0b53051fe2669267a2"
 "checksum orbimage 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "4ba0f4046c0c2c3325a87055396d19929122095366d8da2292fbda6347977ce1"
 "checksum orbtk 0.2.26 (git+https://github.com/robbycerantola/orbtk.git?branch=mode)" = "<none>"

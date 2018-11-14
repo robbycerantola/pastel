@@ -8,7 +8,7 @@ authors = ["Robby <robbycerantola@gmail.com>"]
 
 
 [dependencies]
-orbclient = "0.3.13"
+orbclient = "0.3.17"
 orbtk = { git = "https://github.com/robbycerantola/orbtk.git", branch = "mode" }
 orbimage = "0.1.16"
 image = "0.12.4"

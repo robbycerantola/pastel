@@ -6,7 +6,7 @@ use orbclient::EventOption;
 
 use std::mem::swap;
 
-use CANVASOFFSET;
+use crate::CANVASOFFSET;
 
 //  which ones to be added directly to orbclient ?
 pub trait AddOnsToOrbimage {
@@ -296,7 +296,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 },
                                 event_option => if cfg!(feature = "debug"){
                                                     println!("{:?}", event_option)
-                                                }else{ ()}
+                                                }else{}
                 }
           }
         }
@@ -370,7 +370,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                 },
                                 event_option => if cfg!(feature = "debug"){
                                                     println!("{:?}", event_option)
-                                                }else{ ()}
+                                                }else{}
                 }
           }
         }
@@ -425,7 +425,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     }
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("Option: {:?}", event_option)}
-                                    else{()}
+                                    else{}
                 }
           }
         }
@@ -474,7 +474,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     }
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("Option: {:?}", event_option)}
-                                    else{()}
+                                    else{}
                 }
           }
         }
@@ -541,7 +541,7 @@ impl AddOnsToOrbimage for orbimage::Image {
                                                     }
                                                 },
                     event_option => if cfg!(feature = "debug"){println!("{:?}", event_option)}
-                                    else{ ()}
+                                    else{}
                 }
           }
         }

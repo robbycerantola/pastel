@@ -5,11 +5,13 @@ simple image editor in Rust for Redox
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+/*
 extern crate orbtk;
 extern crate orbimage;
 extern crate image;
 extern crate orbclient;
-
+extern crate dirs;
+*/
 use orbclient::Mode;
 
 use orbtk::{Color, Action, Button, ComboBox, Image, Label, Menu, Point, ProgressBar, Rect,
@@ -29,25 +31,25 @@ use std::cmp::Ordering;
 use std::ffi::OsStr;
 
 mod dialogs;
-use dialogs::{dialog, popup, new_dialog};
+use crate::dialogs::{dialog, popup, new_dialog};
 
 mod palette;
-use palette::Palette;
+use crate::palette::Palette;
 
 mod addons;
-use addons::AddOnsToOrbimage;
+use crate::addons::AddOnsToOrbimage;
 
 mod canvas;
-use canvas::Canvas;
+use crate::canvas::Canvas;
 
 mod marquee;
-use marquee::Marquee;
+use crate::marquee::Marquee;
 
 mod color_swatch;
-use color_swatch::ColorSwatch;
+use crate::color_swatch::ColorSwatch;
 
 mod toolbar;
-use toolbar::{Toolbar, ToolbarIcon};
+use crate::toolbar::{Toolbar, ToolbarIcon};
 
 /*
 mod control_knob;
@@ -55,7 +57,7 @@ use control_knob::ControlKnob;
 */
 
 mod tools;
-use tools::{Property, Tools};
+use crate::tools::{Property, Tools};
 
 #[derive(Clone)]
 struct MySize {
@@ -98,7 +100,7 @@ fn main() {
     
     //get user home directory (writable) 
     let mut home_dir = String::new();
-    match env::home_dir() {
+    match dirs::home_dir() {
         Some(path) => {
             home_dir.push_str(path.to_str().unwrap());
             home_dir.push_str("/");
@@ -1889,7 +1891,7 @@ fn main() {
         let action = Action::new("Info");
         action.on_click(move |_action: &Action, _point: Point| {
             popup("Info",
-                  "Pastel v0.1.1, simple bitmap editor \n for Redox OS by Robby Cerantola");
+                  "Pastel v0.1.2, simple bitmap editor \n for Redox OS by Robby Cerantola");
                         });
         menuhelp.add(&action);
     }

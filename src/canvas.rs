@@ -33,13 +33,13 @@ use std::fs::File;
 use std::cmp;
 use std::ops::Deref;
 
-use AddOnsToOrbimage;
+use crate::AddOnsToOrbimage;
 //use addons::AddOnsToRenderer;
 //use addons::AddOnsToOrbclientColor;
 
-use UNDODEPTH;
-use CANVASOFFSET;
-use ZOOMSTEP;
+use crate::UNDODEPTH;
+use crate::CANVASOFFSET;
+use crate::ZOOMSTEP;
 
 static SMOOTH_BRUSH: &'static [u8; 4242] = include_bytes!("../res/smooth_circle_black.png");
 
@@ -345,7 +345,7 @@ impl Canvas {
         -> ImageBuffer<I::Pixel, Vec<<I::Pixel as Pixel>::Subpixel>>
         where I::Pixel: 'static,
           <I::Pixel as Pixel>::Subpixel: 'static  {
-        let default :<I as image::GenericImage>::Pixel = unsafe { image.unsafe_get_pixel(0,0) };
+        let default :<I as image::GenericImageView>::Pixel = unsafe { image.unsafe_get_pixel(0,0) };
         let (width, height) = image.dimensions();
         //#TODO calculate new dimensions to fit rotated image; change canvas dimensions too! 
         let mut out = ImageBuffer::new(width, height);
@@ -376,7 +376,7 @@ impl Canvas {
     }
 
     fn nearest<P: Pixel + 'static, I: GenericImage + 'static>(&self, image: &I, x: f32, y: f32, default: P)
-        -> <I as image::GenericImage>::Pixel {
+        -> <I as image::GenericImageView>::Pixel {
         let rx = x.round();
         let ry = y.round();
 
@@ -1118,7 +1118,7 @@ impl Canvas {
         let i :usize = 0;
         let sides = sides as usize;
         //find vertices
-        for i in 0..sides+1 {
+        for i in 0..=sides {
             let t :f32 =angle + 2.0*PI* i as f32 /sides as f32;
             x.push((r as f32 * t.cos()) as i32 + x0);
             y.push((r as f32 * t.sin()) as i32 + y0);
@@ -1377,7 +1377,7 @@ impl Widget for Canvas {
                     *redraw = true;
                 }
             },
-            _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {()}, 
+            _ => if cfg!(feature = "debug"){println!("CanvasEvent: {:?}", event)} else {}, 
         }
         focused
     }

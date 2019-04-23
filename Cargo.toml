@@ -2,17 +2,19 @@
 name = "pastel"
 description = "Simple bitmap editor for Redox OS"
 repository = "https://github.com/pastel.git"
-version = "0.1.1"
+version = "0.1.2"
 keywords = ["orbital", "redox", "editor", "graphics"]
 authors = ["Robby <robbycerantola@gmail.com>"]
+edition = "2018"
 
 
 [dependencies]
-orbclient = "0.3.17"
+orbclient = "0.3.21"
 orbtk = { git = "https://github.com/robbycerantola/orbtk.git", branch = "mode" }
-orbimage = "0.1.16"
-image = "0.12.4"
+orbimage = "0.1.17"
+image = "0.21.1"
 rusttype = "0.2.3"
+dirs = "1.0"
 
 
 [features]
@@ -25,6 +27,6 @@ panic = "abort"
 
 [patch.crates-io]
 #orbclient = { path = "/home/robby/orbclient" }
-jpeg-decoder = { git = "https://github.com/robbycerantola/jpeg-decoder.git", default-features = false }
-orbclient = { git = "https://github.com/robbycerantola/orbclient.git" }
+#jpeg-decoder = { git = "https://github.com/robbycerantola/jpeg-decoder.git", default-features = false }
+#orbclient = { git = "https://github.com/robbycerantola/orbclient.git" }
 

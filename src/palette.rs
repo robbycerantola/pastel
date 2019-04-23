@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::prelude::*;
 
-use color_swatch::ColorSwatch;
+use crate::color_swatch::ColorSwatch;
 
 const SWATCH_SIZE :i32 = 24;
 const SWATCH_MAX :usize = 109; //67

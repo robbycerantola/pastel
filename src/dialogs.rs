@@ -6,7 +6,7 @@ use orbtk::dialogs::FileDialog;
 use std::ops::Deref;
 use std::path::PathBuf;
 
-use DEFAULTFONT;
+use crate::DEFAULTFONT;
 
 //generic dialog window
 pub fn dialog(title: &str, text: &str, suggestion: &str) -> Option<String> {
